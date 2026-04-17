@@ -28,14 +28,13 @@ function fetchNetflixEmails(filterEmail) {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
 
-        // Search last 2 hours
         const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
         imap.search([
           ['SINCE', since],
           ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]
         ], (err, uids) => {
-          console.log('Search results:', err ? err.message : 'ok', uids ? uids.length : 0, 'emails found');
+          console.log('Emails found:', uids ? uids.length : 0);
 
           if (err || !uids || uids.length === 0) {
             imap.end();
@@ -52,7 +51,6 @@ function fetchNetflixEmails(filterEmail) {
                   if (err) return res(null);
 
                   const to = mail.to?.text || '';
-                  const from = mail.from?.text || '';
                   const toEmail = (to.match(/<([^>]+)>/) || [, to])[1]?.toLowerCase().trim() || to.toLowerCase().trim();
                   const subject = (mail.subject || '').toLowerCase();
                   const bodyHtml = mail.html || '';
@@ -61,14 +59,14 @@ function fetchNetflixEmails(filterEmail) {
                   const bodyPlain = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
 
-                  console.log(`Email -> from: ${from} | to: ${toEmail} | subject: ${mail.subject}`);
+                  console.log(`Email -> to: ${toEmail} | subject: ${mail.subject}`);
 
-                  // Filter by email if provided
                   if (filterEmail && !toEmail.includes(filterEmail.toLowerCase())) {
                     return res(null);
                   }
 
-                  const parsed = classifyEmail({ subject, body, bodyPlain, toEmail, ts });
+                  const parsed = classifyEmail({ subject, body, bodyHtml, bodyPlain, toEmail, ts });
+                  console.log('Classified:', parsed ? JSON.stringify(parsed) : 'null');
                   res(parsed);
                 });
               });
@@ -79,7 +77,6 @@ function fetchNetflixEmails(filterEmail) {
           fetch.once('end', async () => {
             const items = (await Promise.all(promises)).filter(Boolean);
             imap.end();
-            console.log('Returning items:', items.length);
             resolve(items.sort((a, b) => b.ts - a.ts));
           });
 
@@ -97,29 +94,40 @@ function fetchNetflixEmails(filterEmail) {
   });
 }
 
-function classifyEmail({ subject, body, bodyPlain, toEmail, ts }) {
+function classifyEmail({ subject, body, bodyHtml, bodyPlain, toEmail, ts }) {
   const sl = subject.toLowerCase();
 
-  // Household update link
-  const linkMatch = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:household|update|verify)[^"']*)/i);
-  if (linkMatch && (sl.includes('household') || sl.includes('update'))) {
-    return { type: 'update', label: 'Household Update', link: linkMatch[1], to: toEmail, ts };
+  // ── Household update link (button style like "Get code" button) ──
+  // Netflix sends a button with a link to get the code - extract that link
+  const householdLinkPatterns = [
+    /href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:household|temporary|access|getcode|get-code|tac)[^"']*)/i,
+    /href=["'](https:\/\/www\.netflix\.com\/account[^"']*)/i,
+    /href=["'](https:\/\/[^"']*netflix\.com[^"']*code[^"']*)/i,
+  ];
+
+  for (const pattern of householdLinkPatterns) {
+    const linkMatch = body.match(pattern);
+    if (linkMatch && (sl.includes('household') || sl.includes('temporary') || sl.includes('access code'))) {
+      return { type: 'household', label: 'Household Code', link: linkMatch[1], to: toEmail, ts };
+    }
   }
-  // Household code
-  if (sl.includes('household')) {
+
+  // ── Household update link (update household) ──
+  const updateMatch = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:update|verify)[^"']*)/i);
+  if (updateMatch && sl.includes('household')) {
+    return { type: 'update', label: 'Household Update', link: updateMatch[1], to: toEmail, ts };
+  }
+
+  // ── Household numeric code ──
+  if (sl.includes('household') || sl.includes('temporary') || sl.includes('access code')) {
     const m = bodyPlain.match(/\b(\d{4,6})\b/);
     if (m) return { type: 'household', label: 'Household Code', code: m[1], to: toEmail, ts };
+    // If no code found but has a link button, return the first netflix link
+    const anyLink = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*)/i);
+    if (anyLink) return { type: 'household', label: 'Household Code', link: anyLink[1], to: toEmail, ts };
   }
-  // Sign-in code
-  if (sl.includes('sign') || sl.includes('verify') || sl.includes('code') || sl.includes('login')) {
-    const m = bodyPlain.match(/\b(\d{4,6})\b/);
-    if (m) return { type: 'signin', label: 'Sign-In Code', code: m[1], to: toEmail, ts };
-  }
-  // Generic fallback - any 4-6 digit code
-  const m6 = bodyPlain.match(/\b(\d{4,6})\b/);
-  if (m6) return { type: 'signin', label: 'Sign-In Code', code: m6[1], to: toEmail, ts };
 
-  return null;
+  return null; // Skip sign-in codes completely
 }
 
 // Health check
@@ -132,7 +140,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug - shows ALL emails found without filter
+// Debug
 app.get('/api/debug', async (req, res) => {
   try {
     const codes = await fetchNetflixEmails('');
