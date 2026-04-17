@@ -133,12 +133,9 @@ function classifyEmail({ subject, body, bodyHtml, bodyPlain, bodyText, toEmail, 
       return { type, label, link, to: toEmail, ts };
     }
 
-    // Fallback: numeric code
-    const m = bodyPlain.match(/\b(\d{4,6})\b/);
-    if (m) return { type: 'household', label: 'Household Code', code: m[1], to: toEmail, ts };
   }
 
-  return null; // ignore all other emails (sign-in etc)
+  return null; // ignore all other emails (sign-in, numeric codes etc)
 }
 
 // Health check
