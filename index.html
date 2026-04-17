@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix Code Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #E50914;
+  --red-dark: #b20710;
+  --bg: #0a0a0a;
+  --s1: #141414;
+  --s2: #1e1e1e;
+  --s3: #252525;
+  --border: #2a2a2a;
+  --text: #f0f0f0;
+  --muted: #666;
+  --green: #46d369;
+  --amber: #f5a623;
+  --blue: #4da6ff;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -5%,rgba(229,9,20,.1) 0%,transparent 65%);pointer-events:none;z-index:0}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:100;background:rgba(10,10,10,.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--display);font-size:1.75rem;letter-spacing:2px;color:var(--red);user-select:none}
+.logo span{color:var(--text)}
+.header-note{font-family:var(--mono);font-size:.65rem;color:#333;letter-spacing:1px}
+
+/* MAIN */
+main{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:2.5rem 1.2rem 5rem}
+
+/* SEARCH SECTION */
+.hero{text-align:center;margin-bottom:2.5rem;animation:fadeIn .5s ease}
+.hero h1{font-family:var(--display);font-size:clamp(1.8rem,5vw,2.8rem);letter-spacing:3px;line-height:1;margin-bottom:.6rem}
+.hero h1 em{color:var(--red);font-style:normal}
+.hero p{color:var(--muted);font-size:.85rem;font-family:var(--mono);line-height:1.6}
+
+.search-box{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.4rem;margin-bottom:1.5rem;animation:fadeIn .5s ease .1s both}
+.search-lbl{font-family:var(--mono);font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem}
+.search-row{display:flex;gap:.5rem;flex-wrap:wrap}
+.email-inp{flex:1;min-width:180px;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:12px 15px;border-radius:8px;font-family:var(--mono);font-size:.85rem;outline:none;transition:border-color .2s}
+.email-inp:focus{border-color:var(--red)}
+.email-inp::placeholder{color:#3a3a3a}
+.search-btn{background:var(--red);border:none;color:#fff;padding:12px 24px;border-radius:8px;font-family:var(--display);font-size:1.05rem;letter-spacing:1px;cursor:pointer;transition:background .2s;white-space:nowrap}
+.search-btn:hover{background:var(--red-dark)}
+.search-btn:active{transform:scale(.98)}
+
+/* saved chips */
+.chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.7rem}
+.chip{background:var(--s2);border:1px solid var(--border);border-radius:100px;padding:5px 12px;font-family:var(--mono);font-size:.68rem;color:var(--muted);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+.chip:hover{border-color:#444;color:var(--text)}
+.chip.active{border-color:var(--red);color:var(--red);background:rgba(229,9,20,.08)}
+.chip-x{opacity:.35;transition:opacity .2s}
+.chip-x:hover{opacity:1;color:var(--red)}
+
+/* RESULT BAR */
+.result-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.6rem}
+.result-info{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.result-info b{color:var(--text)}
+.result-info em{color:var(--red);font-style:normal}
+.bar-right{display:flex;gap:.5rem}
+.refresh-btn{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:7px 14px;border-radius:6px;cursor:pointer;font-family:var(--mono);font-size:.72rem;letter-spacing:1px;transition:all .2s}
+.refresh-btn:hover{border-color:var(--red);color:var(--red)}
+.refresh-btn.loading svg{animation:spin 1s linear infinite}
+
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.3rem;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 16px;background:transparent;border:none;color:var(--muted);font-family:var(--mono);font-size:.72rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--red);border-bottom-color:var(--red)}
+.tc{background:var(--s2);border-radius:8px;padding:1px 6px;font-size:.63rem;color:var(--muted);min-width:17px;text-align:center}
+.tab.active .tc{background:rgba(229,9,20,.15);color:var(--red)}
+
+/* CARDS */
+.cards{display:grid;gap:.8rem}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:11px;padding:1.2rem 1.4rem;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;transition:all .2s;animation:slideUp .3s ease both;position:relative;overflow:hidden;cursor:default}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.card.signin::before{background:var(--blue)}
+.card.household::before{background:var(--green)}
+.card.update::before{background:var(--amber)}
+.card:hover{border-color:#363636;transform:translateX(3px)}
+
+/* FRESH highlight */
+.card.fresh{background:#0d160d}
+.card.fresh.signin{background:#0c1219}
+.card.fresh.update{background:#14100a}
+.fresh-badge{position:absolute;top:9px;right:10px;font-family:var(--mono);font-size:.55rem;letter-spacing:2px;padding:2px 8px;border-radius:4px;font-weight:500}
+.signin .fresh-badge{background:var(--blue);color:#fff}
+.household .fresh-badge{background:var(--green);color:#000}
+.update .fresh-badge{background:var(--amber);color:#000}
+
+.card-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.signin .card-icon{background:rgba(77,166,255,.1)}
+.household .card-icon{background:rgba(70,211,105,.1)}
+.update .card-icon{background:rgba(245,166,35,.1)}
+
+.card-body{min-width:0}
+.card-lbl{font-family:var(--mono);font-size:.63rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+.signin .card-lbl{color:var(--blue)}
+.household .card-lbl{color:var(--green)}
+.update .card-lbl{color:var(--amber)}
+.card-to{font-family:var(--mono);font-size:.67rem;color:#4a4a4a;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card-code{font-family:var(--mono);font-size:2rem;font-weight:500;letter-spacing:11px;color:var(--text);line-height:1}
+.card-link{display:inline-flex;align-items:center;gap:5px;color:var(--amber);text-decoration:none;font-family:var(--mono);font-size:.73rem;border:1px solid rgba(245,166,35,.25);border-radius:6px;padding:6px 12px;margin-top:5px;transition:all .2s}
+.card-link:hover{background:rgba(245,166,35,.1);border-color:var(--amber)}
+.card-age{font-family:var(--mono);font-size:.62rem;color:#444;margin-top:5px}
+
+.copy-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:9px 15px;border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:.7rem;letter-spacing:1px;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.copy-btn:hover{border-color:#444;color:var(--text)}
+.copy-btn.ok{border-color:var(--green)!important;color:var(--green)!important}
+
+/* EMPTY / LOADING */
+.empty{text-align:center;padding:3.5rem 1rem;color:var(--muted)}
+.empty-ico{font-size:2.8rem;margin-bottom:.8rem;opacity:.35}
+.empty h3{font-size:.95rem;color:#555;margin-bottom:.5rem}
+.empty p{font-size:.78rem;line-height:1.8;font-family:var(--mono)}
+.loading-wrap{text-align:center;padding:3rem}
+.spin-ring{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 1rem}
+.loading-wrap p{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:1px}
+
+/* TOAST */
+#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(16px);background:var(--green);color:#000;font-family:var(--mono);font-size:.75rem;padding:9px 22px;border-radius:100px;letter-spacing:1px;opacity:0;transition:all .3s;pointer-events:none;z-index:999;white-space:nowrap;font-weight:500}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* INITIAL STATE */
+.start-hint{text-align:center;padding:3rem 1rem;color:var(--muted)}
+.start-hint .ico{font-size:3rem;margin-bottom:1rem;opacity:.3}
+.start-hint p{font-family:var(--mono);font-size:.78rem;line-height:1.8}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:520px){
+  .card{grid-template-columns:auto 1fr}
+  .copy-btn{display:none}
+  .card-code{font-size:1.6rem;letter-spacing:7px}
+  .card{cursor:pointer}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NET<span>CODE</span></div>
+  <div class="header-note">LAST 15 MIN ONLY</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>GET YOUR <em>NETFLIX</em> CODE</h1>
+    <p>Enter your Netflix account email to get your latest code instantly</p>
+  </div>
+
+  <div class="search-box">
+    <div class="search-lbl">Netflix Account Email</div>
+    <div class="search-row">
+      <input class="email-inp" id="email-inp" placeholder="yourname@gmail.com" type="email"
+        onkeydown="if(event.key==='Enter') search()" />
+      <button class="search-btn" onclick="search()">GET CODE</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div id="results-section" style="display:none">
+    <div class="result-bar">
+      <div class="result-info" id="result-info"></div>
+      <div class="bar-right">
+        <button class="refresh-btn" id="ref-btn" onclick="search()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          REFRESH
+        </button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" id="tab-all" onclick="switchTab('all')">ALL <span class="tc" id="cnt-all">0</span></button>
+      <button class="tab" id="tab-signin" onclick="switchTab('signin')">SIGN-IN <span class="tc" id="cnt-signin">0</span></button>
+      <button class="tab" id="tab-household" onclick="switchTab('household')">HOUSEHOLD <span class="tc" id="cnt-household">0</span></button>
+      <button class="tab" id="tab-update" onclick="switchTab('update')">UPDATE <span class="tc" id="cnt-update">0</span></button>
+    </div>
+
+    <div class="cards" id="cards"></div>
+  </div>
+
+  <div id="start-hint" class="start-hint">
+    <div class="ico">📬</div>
+    <p>Enter your Netflix account email above<br>and click <b>GET CODE</b> to see your latest codes</p>
+  </div>
+</main>
+
+<div id="toast">✓ Copied!</div>
+
+<script>
+let allCodes = [];
+let curTab = 'all';
+let savedEmails = JSON.parse(localStorage.getItem('nfx_emails') || '[]');
+let autoTimer = null;
+let currentEmail = '';
+
+window.onload = () => renderChips();
+
+async function search() {
+  const email = document.getElementById('email-inp').value.trim().toLowerCase();
+  if (!email) { document.getElementById('email-inp').focus(); return; }
+
+  currentEmail = email;
+  saveEmail(email);
+
+  // Show results section, hide hint
+  document.getElementById('results-section').style.display = 'block';
+  document.getElementById('start-hint').style.display = 'none';
+
+  const btn = document.getElementById('ref-btn');
+  btn.classList.add('loading');
+  setCards(`<div class="loading-wrap"><div class="spin-ring"></div><p>FETCHING CODES...</p></div>`);
+
+  try {
+    const res = await fetch(`/api/codes?email=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    allCodes = data.codes;
+    updateInfo(email, data.codes.length);
+    updateCounts();
+    renderCards();
+
+    // Auto refresh every 30s
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => search(), 30000);
+  } catch(e) {
+    setCards(`<div class="empty"><div class="empty-ico">⚠️</div><h3>Error</h3><p>${e.message || 'Could not connect to server.'}</p></div>`);
+  }
+
+  btn.classList.remove('loading');
+}
+
+function saveEmail(email) {
+  if (!savedEmails.includes(email)) {
+    savedEmails.unshift(email);
+    if (savedEmails.length > 6) savedEmails = savedEmails.slice(0, 6);
+    localStorage.setItem('nfx_emails', JSON.stringify(savedEmails));
+  }
+  renderChips();
+}
+
+function selectChip(email) {
+  document.getElementById('email-inp').value = email;
+  search();
+}
+
+function removeChip(email, e) {
+  e.stopPropagation();
+  savedEmails = savedEmails.filter(x => x !== email);
+  localStorage.setItem('nfx_emails', JSON.stringify(savedEmails));
+  renderChips();
+}
+
+function renderChips() {
+  const c = document.getElementById('chips');
+  if (!savedEmails.length) { c.innerHTML = ''; return; }
+  c.innerHTML = savedEmails.map(e => `
+    <div class="chip ${currentEmail===e?'active':''}" onclick="selectChip('${esc(e)}')">
+      ${esc(e)}
+      <span class="chip-x" onclick="removeChip('${esc(e)}',event)">✕</span>
+    </div>`).join('');
+}
+
+function updateInfo(email, count) {
+  document.getElementById('result-info').innerHTML =
+    `Showing <b>${count}</b> code${count!==1?'s':''} for <em>${esc(email)}</em> · last 15 min`;
+}
+
+function switchTab(t) {
+  curTab = t;
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  renderCards();
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent = allCodes.length;
+  document.getElementById('cnt-signin').textContent = allCodes.filter(i=>i.type==='signin').length;
+  document.getElementById('cnt-household').textContent = allCodes.filter(i=>i.type==='household').length;
+  document.getElementById('cnt-update').textContent = allCodes.filter(i=>i.type==='update').length;
+}
+
+function renderCards() {
+  const list = curTab === 'all' ? allCodes : allCodes.filter(i => i.type === curTab);
+  if (!list.length) {
+    setCards(`<div class="empty"><div class="empty-ico">📭</div><h3>No codes found</h3><p>No Netflix codes in the last 15 minutes<br>for this email. Try refreshing in a moment.</p></div>`);
+    return;
+  }
+  document.getElementById('cards').innerHTML = list.map((item, i) => cardHtml(item, i)).join('');
+  // Mobile tap to copy
+  document.querySelectorAll('.card[data-code]').forEach(c => {
+    c.addEventListener('click', () => copy(c.dataset.code, null));
+  });
+}
+
+function cardHtml(item, i) {
+  const delay = `animation-delay:${i*0.04}s`;
+  const age = timeAgo(item.ts);
+  const fresh = (Date.now() - item.ts) < 15 * 60 * 1000;
+  const icons = { signin: '🔐', household: '🏠', update: '🔗' };
+
+  if (item.type === 'update') {
+    return `<div class="card update" style="${delay}">
+      ${fresh ? '<span class="fresh-badge">FRESH</span>' : ''}
+      <div class="card-icon">${icons.update}</div>
+      <div class="card-body">
+        <div class="card-lbl">${item.label}</div>
+        <div class="card-to">→ ${esc(item.to)}</div>
+        <a class="card-link" href="${esc(item.link)}" target="_blank">Open Update Link →</a>
+        <div class="card-age">${age}</div>
+      </div>
+      <button class="copy-btn" onclick="copy('${esc(item.link)}',this)">COPY</button>
+    </div>`;
+  }
+
+  return `<div class="card ${item.type}" style="${delay}" data-code="${esc(item.code)}">
+    ${fresh ? '<span class="fresh-badge">FRESH</span>' : ''}
+    <div class="card-icon">${icons[item.type]}</div>
+    <div class="card-body">
+      <div class="card-lbl">${item.label}</div>
+      <div class="card-to">→ ${esc(item.to)}</div>
+      <div class="card-code">${item.code}</div>
+      <div class="card-age">${age}</div>
+    </div>
+    <button class="copy-btn" onclick="event.stopPropagation();copy('${esc(item.code)}',this)">COPY</button>
+  </div>`;
+}
+
+function setCards(html) { document.getElementById('cards').innerHTML = html; }
+
+function copy(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (btn) { btn.textContent = '✓ OK'; btn.classList.add('ok'); setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('ok'); }, 2000); }
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  });
+}
+
+function timeAgo(ts) {
+  const d = Date.now()-ts, m = Math.floor(d/6e4), h = Math.floor(d/36e5);
+  if (m < 1) return 'Just now';
+  if (m < 60) return m + 'm ago';
+  return h + 'h ago';
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>
