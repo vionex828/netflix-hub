@@ -29,17 +29,12 @@ function fetchNetflixEmails(filterEmail) {
         if (err) { imap.end(); return reject(err); }
 
         const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
-
         imap.search([
           ['SINCE', since],
           ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]
         ], (err, uids) => {
           console.log('Emails found:', uids ? uids.length : 0);
-
-          if (err || !uids || uids.length === 0) {
-            imap.end();
-            return resolve([]);
-          }
+          if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
 
           const fetch = imap.fetch(uids, { bodies: '' });
           const promises = [];
@@ -49,24 +44,19 @@ function fetchNetflixEmails(filterEmail) {
               msg.on('body', (stream) => {
                 simpleParser(stream, (err, mail) => {
                   if (err) return res(null);
-
                   const to = mail.to?.text || '';
                   const toEmail = (to.match(/<([^>]+)>/) || [, to])[1]?.toLowerCase().trim() || to.toLowerCase().trim();
                   const subject = (mail.subject || '').toLowerCase();
                   const bodyHtml = mail.html || '';
                   const bodyText = mail.text || '';
-                  const body = bodyHtml || bodyText;
-                  const bodyPlain = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
 
-                  console.log(`Email -> to: ${toEmail} | subject: ${mail.subject}`);
+                  console.log('Email -> to:', toEmail, '| subject:', mail.subject);
 
-                  if (filterEmail && !toEmail.includes(filterEmail.toLowerCase())) {
-                    return res(null);
-                  }
+                  if (filterEmail && !toEmail.includes(filterEmail.toLowerCase())) return res(null);
 
-                  const parsed = classifyEmail({ subject, body, bodyHtml, bodyPlain, bodyText, toEmail, ts });
-                  console.log('Classified:', parsed ? JSON.stringify(parsed) : 'null');
+                  const parsed = classifyEmail({ subject, bodyHtml, bodyText, toEmail, ts });
+                  console.log('Result:', parsed ? parsed.type + ' link=' + (parsed.link||'').substring(0,60) : 'null');
                   res(parsed);
                 });
               });
@@ -85,57 +75,56 @@ function fetchNetflixEmails(filterEmail) {
       });
     });
 
-    imap.once('error', (err) => {
-      console.error('IMAP error:', err.message);
-      reject(err);
-    });
-
+    imap.once('error', (err) => { console.error('IMAP error:', err.message); reject(err); });
     imap.connect();
   });
 }
 
-function extractNetflixLink(body) {
-  // Priority 1: exact travel/verify link with nftoken
-  const travelMatch = body.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?[^\s"'<>]+/i);
-  if (travelMatch) return travelMatch[0].replace(/&amp;/g, '&');
+function extractLink(body) {
+  // Fix HTML encoding first
+  const b = body.replace(/&amp;/g, '&').replace(/&#38;/g, '&');
 
-  // Priority 2: any netflix verify/household/travel link inside href
-  const hrefMatch = body.match(/href=["']([^"']*netflix\.com\/account\/(?:travel|household)[^"']*)/i);
-  if (hrefMatch) return hrefMatch[1].replace(/&amp;/g, '&');
+  // 1. Mobile/Tablet: travel/verify link
+  const m1 = b.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?nftoken=[^\s"'<>\\]+/i);
+  if (m1) return { link: m1[0], type: 'household', label: 'Temporary Access Code 📱' };
 
-  // Priority 3: any netflix account link
-  const accountMatch = body.match(/href=["']([^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
-  if (accountMatch) return accountMatch[1].replace(/&amp;/g, '&');
+  // 2. TV: update-primary-location link
+  const m2 = b.match(/https:\/\/www\.netflix\.com\/account\/update-primary-location\?nftoken=[^\s"'<>\\]+/i);
+  if (m2) return { link: m2[0], type: 'update', label: 'Update Household (TV) 📺' };
 
-  // Priority 4: plain text netflix link with nftoken
-  const plainMatch = body.match(/https:\/\/[^\s<>"']*netflix\.com[^\s<>"']*nftoken[^\s<>"']*/i);
-  if (plainMatch) return plainMatch[0].replace(/&amp;/g, '&');
+  // 3. Any netflix account link with nftoken inside href
+  const m3 = b.match(/href=["'](https:\/\/[^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
+  if (m3) {
+    const link = m3[1].replace(/&amp;/g, '&');
+    const isUpdate = link.includes('update-primary') || link.includes('update-household');
+    return { link, type: isUpdate ? 'update' : 'household', label: isUpdate ? 'Update Household (TV) 📺' : 'Temporary Access Code 📱' };
+  }
+
+  // 4. Plain text nftoken link
+  const m4 = b.match(/https:\/\/[^\s<>"'\\]*netflix\.com[^\s<>"'\\]*nftoken[^\s<>"'\\]*/i);
+  if (m4) {
+    const link = m4[0].replace(/&amp;/g, '&');
+    const isUpdate = link.includes('update-primary') || link.includes('update-household');
+    return { link, type: isUpdate ? 'update' : 'household', label: isUpdate ? 'Update Household (TV) 📺' : 'Temporary Access Code 📱' };
+  }
 
   return null;
 }
 
-function classifyEmail({ subject, body, bodyHtml, bodyPlain, bodyText, toEmail, ts }) {
+function classifyEmail({ subject, bodyHtml, bodyText, toEmail, ts }) {
   const sl = subject.toLowerCase();
 
-  // ── Temporary access / household code emails ──
-  const isTempAccess = sl.includes('temporary') || sl.includes('access code') || sl.includes('travel');
-  const isHousehold = sl.includes('household');
-  const isUpdate = sl.includes('update');
+  const isRelevant = sl.includes('temporary') || sl.includes('access code') ||
+                     sl.includes('travel') || sl.includes('household') ||
+                     sl.includes('update') || sl.includes('verify');
 
-  if (isTempAccess || isHousehold || isUpdate) {
-    // Try to extract the Netflix link from both HTML and plain text
-    const link = extractNetflixLink(bodyHtml) || extractNetflixLink(bodyText) || extractNetflixLink(bodyPlain);
+  if (!isRelevant) return null;
 
-    if (link) {
-      const type = isUpdate ? 'update' : 'household';
-      const label = isUpdate ? 'Household Update' : 'Temporary Access Code';
-      console.log('Found link:', link.substring(0, 80) + '...');
-      return { type, label, link, to: toEmail, ts };
-    }
+  // Try HTML body first, then plain text
+  const result = extractLink(bodyHtml) || extractLink(bodyText);
+  if (result) return { ...result, to: toEmail, ts };
 
-  }
-
-  return null; // ignore all other emails (sign-in, numeric codes etc)
+  return null; // No link found, skip
 }
 
 // Health check
@@ -148,7 +137,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug - shows raw email data
+// Debug
 app.get('/api/debug', async (req, res) => {
   try {
     const codes = await fetchNetflixEmails('');
@@ -158,10 +147,10 @@ app.get('/api/debug', async (req, res) => {
   }
 });
 
-// Main endpoint
+// Main
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email || '').trim();
-  console.log('Request for email:', email || '(all)');
+  console.log('Request for:', email || '(all)');
   try {
     const codes = await fetchNetflixEmails(email);
     res.json({ success: true, codes, count: codes.length });
