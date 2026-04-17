@@ -9,12 +9,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── CONFIG (set these as Railway environment variables) ──
-const GMAIL_USER = process.env.GMAIL_USER;   // your Gmail address
-const GMAIL_PASS = process.env.GMAIL_PASS;   // your 16-char app password
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
 const PORT = process.env.PORT || 3000;
 
-// ── IMAP FETCH ────────────────────────────────────────────
 function fetchNetflixEmails(filterEmail) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
@@ -26,19 +24,19 @@ function fetchNetflixEmails(filterEmail) {
       tlsOptions: { rejectUnauthorized: false }
     });
 
-    const results = [];
-    const cutoff = new Date(Date.now() - 15 * 60 * 1000); // last 15 min
-
     imap.once('ready', () => {
-      imap.openBox('INBOX', true, (err, box) => {
+      imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
 
-        // Search Netflix emails since 30 min ago (wider net, filter in code)
-        const since = new Date(Date.now() - 30 * 60 * 1000);
+        // Search last 2 hours
+        const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
+
         imap.search([
-          ['FROM', 'netflix.com'],
-          ['SINCE', since]
+          ['SINCE', since],
+          ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]
         ], (err, uids) => {
+          console.log('Search results:', err ? err.message : 'ok', uids ? uids.length : 0, 'emails found');
+
           if (err || !uids || uids.length === 0) {
             imap.end();
             return resolve([]);
@@ -54,6 +52,7 @@ function fetchNetflixEmails(filterEmail) {
                   if (err) return res(null);
 
                   const to = mail.to?.text || '';
+                  const from = mail.from?.text || '';
                   const toEmail = (to.match(/<([^>]+)>/) || [, to])[1]?.toLowerCase().trim() || to.toLowerCase().trim();
                   const subject = (mail.subject || '').toLowerCase();
                   const bodyHtml = mail.html || '';
@@ -62,13 +61,12 @@ function fetchNetflixEmails(filterEmail) {
                   const bodyPlain = body.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
 
+                  console.log(`Email -> from: ${from} | to: ${toEmail} | subject: ${mail.subject}`);
+
                   // Filter by email if provided
                   if (filterEmail && !toEmail.includes(filterEmail.toLowerCase())) {
                     return res(null);
                   }
-
-                  // Filter to last 15 min
-                  if (ts < cutoff.getTime()) return res(null);
 
                   const parsed = classifyEmail({ subject, body, bodyPlain, toEmail, ts });
                   res(parsed);
@@ -81,6 +79,7 @@ function fetchNetflixEmails(filterEmail) {
           fetch.once('end', async () => {
             const items = (await Promise.all(promises)).filter(Boolean);
             imap.end();
+            console.log('Returning items:', items.length);
             resolve(items.sort((a, b) => b.ts - a.ts));
           });
 
@@ -89,7 +88,11 @@ function fetchNetflixEmails(filterEmail) {
       });
     });
 
-    imap.once('error', reject);
+    imap.once('error', (err) => {
+      console.error('IMAP error:', err.message);
+      reject(err);
+    });
+
     imap.connect();
   });
 }
@@ -99,53 +102,65 @@ function classifyEmail({ subject, body, bodyPlain, toEmail, ts }) {
 
   // Household update link
   const linkMatch = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:household|update|verify)[^"']*)/i);
-  if (sl.includes('household') && linkMatch) {
+  if (linkMatch && (sl.includes('household') || sl.includes('update'))) {
     return { type: 'update', label: 'Household Update', link: linkMatch[1], to: toEmail, ts };
   }
-
   // Household code
   if (sl.includes('household')) {
     const m = bodyPlain.match(/\b(\d{4,6})\b/);
     if (m) return { type: 'household', label: 'Household Code', code: m[1], to: toEmail, ts };
   }
-
   // Sign-in code
-  if (sl.includes('sign') || sl.includes('verify') || sl.includes('code')) {
-    const m = bodyPlain.match(/\b(\d{6})\b/);
+  if (sl.includes('sign') || sl.includes('verify') || sl.includes('code') || sl.includes('login')) {
+    const m = bodyPlain.match(/\b(\d{4,6})\b/);
     if (m) return { type: 'signin', label: 'Sign-In Code', code: m[1], to: toEmail, ts };
   }
-
-  // Generic 6-digit fallback
-  const m6 = bodyPlain.match(/\b(\d{6})\b/);
+  // Generic fallback - any 4-6 digit code
+  const m6 = bodyPlain.match(/\b(\d{4,6})\b/);
   if (m6) return { type: 'signin', label: 'Sign-In Code', code: m6[1], to: toEmail, ts };
 
   return null;
 }
 
-// ── API ROUTES ────────────────────────────────────────────
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({
+    ok: true,
+    user: GMAIL_USER ? GMAIL_USER.replace(/(.{3}).*(@.*)/, '$1***$2') : 'NOT SET',
+    pass_set: !!GMAIL_PASS,
+    pass_length: GMAIL_PASS ? GMAIL_PASS.length : 0
+  });
+});
+
+// Debug - shows ALL emails found without filter
+app.get('/api/debug', async (req, res) => {
+  try {
+    const codes = await fetchNetflixEmails('');
+    res.json({ success: true, total: codes.length, codes });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Main endpoint
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email || '').trim();
+  console.log('Request for email:', email || '(all)');
   try {
     const codes = await fetchNetflixEmails(email);
     res.json({ success: true, codes, count: codes.length });
   } catch (err) {
-    console.error('IMAP error:', err.message);
-    res.status(500).json({ success: false, error: 'Failed to fetch emails. Check Gmail credentials.' });
+    console.error('Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, user: GMAIL_USER ? GMAIL_USER.split('@')[0] + '@...' : 'NOT SET' });
-});
-
-// Serve frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
   console.log(`Netflix Code Hub running on port ${PORT}`);
-  if (!GMAIL_USER || !GMAIL_PASS) {
-    console.warn('⚠ GMAIL_USER or GMAIL_PASS not set! Set them as environment variables.');
-  }
+  console.log(`GMAIL_USER: ${GMAIL_USER ? GMAIL_USER.replace(/(.{3}).*(@.*)/, '$1***$2') : 'NOT SET'}`);
+  console.log(`GMAIL_PASS: ${GMAIL_PASS ? 'SET (' + GMAIL_PASS.length + ' chars)' : 'NOT SET'}`);
 });
