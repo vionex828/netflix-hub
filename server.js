@@ -65,7 +65,7 @@ function fetchNetflixEmails(filterEmail) {
                     return res(null);
                   }
 
-                  const parsed = classifyEmail({ subject, body, bodyHtml, bodyPlain, toEmail, ts });
+                  const parsed = classifyEmail({ subject, body, bodyHtml, bodyPlain, bodyText, toEmail, ts });
                   console.log('Classified:', parsed ? JSON.stringify(parsed) : 'null');
                   res(parsed);
                 });
@@ -94,40 +94,51 @@ function fetchNetflixEmails(filterEmail) {
   });
 }
 
-function classifyEmail({ subject, body, bodyHtml, bodyPlain, toEmail, ts }) {
+function extractNetflixLink(body) {
+  // Priority 1: exact travel/verify link with nftoken
+  const travelMatch = body.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?[^\s"'<>]+/i);
+  if (travelMatch) return travelMatch[0].replace(/&amp;/g, '&');
+
+  // Priority 2: any netflix verify/household/travel link inside href
+  const hrefMatch = body.match(/href=["']([^"']*netflix\.com\/account\/(?:travel|household)[^"']*)/i);
+  if (hrefMatch) return hrefMatch[1].replace(/&amp;/g, '&');
+
+  // Priority 3: any netflix account link
+  const accountMatch = body.match(/href=["']([^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
+  if (accountMatch) return accountMatch[1].replace(/&amp;/g, '&');
+
+  // Priority 4: plain text netflix link with nftoken
+  const plainMatch = body.match(/https:\/\/[^\s<>"']*netflix\.com[^\s<>"']*nftoken[^\s<>"']*/i);
+  if (plainMatch) return plainMatch[0].replace(/&amp;/g, '&');
+
+  return null;
+}
+
+function classifyEmail({ subject, body, bodyHtml, bodyPlain, bodyText, toEmail, ts }) {
   const sl = subject.toLowerCase();
 
-  // ── Household update link (button style like "Get code" button) ──
-  // Netflix sends a button with a link to get the code - extract that link
-  const householdLinkPatterns = [
-    /href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:household|temporary|access|getcode|get-code|tac)[^"']*)/i,
-    /href=["'](https:\/\/www\.netflix\.com\/account[^"']*)/i,
-    /href=["'](https:\/\/[^"']*netflix\.com[^"']*code[^"']*)/i,
-  ];
+  // ── Temporary access / household code emails ──
+  const isTempAccess = sl.includes('temporary') || sl.includes('access code') || sl.includes('travel');
+  const isHousehold = sl.includes('household');
+  const isUpdate = sl.includes('update');
 
-  for (const pattern of householdLinkPatterns) {
-    const linkMatch = body.match(pattern);
-    if (linkMatch && (sl.includes('household') || sl.includes('temporary') || sl.includes('access code'))) {
-      return { type: 'household', label: 'Household Code', link: linkMatch[1], to: toEmail, ts };
+  if (isTempAccess || isHousehold || isUpdate) {
+    // Try to extract the Netflix link from both HTML and plain text
+    const link = extractNetflixLink(bodyHtml) || extractNetflixLink(bodyText) || extractNetflixLink(bodyPlain);
+
+    if (link) {
+      const type = isUpdate ? 'update' : 'household';
+      const label = isUpdate ? 'Household Update' : 'Temporary Access Code';
+      console.log('Found link:', link.substring(0, 80) + '...');
+      return { type, label, link, to: toEmail, ts };
     }
-  }
 
-  // ── Household update link (update household) ──
-  const updateMatch = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*(?:update|verify)[^"']*)/i);
-  if (updateMatch && sl.includes('household')) {
-    return { type: 'update', label: 'Household Update', link: updateMatch[1], to: toEmail, ts };
-  }
-
-  // ── Household numeric code ──
-  if (sl.includes('household') || sl.includes('temporary') || sl.includes('access code')) {
+    // Fallback: numeric code
     const m = bodyPlain.match(/\b(\d{4,6})\b/);
     if (m) return { type: 'household', label: 'Household Code', code: m[1], to: toEmail, ts };
-    // If no code found but has a link button, return the first netflix link
-    const anyLink = body.match(/href=["'](https:\/\/[^"']*netflix\.com[^"']*)/i);
-    if (anyLink) return { type: 'household', label: 'Household Code', link: anyLink[1], to: toEmail, ts };
   }
 
-  return null; // Skip sign-in codes completely
+  return null; // ignore all other emails (sign-in etc)
 }
 
 // Health check
@@ -140,7 +151,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug
+// Debug - shows raw email data
 app.get('/api/debug', async (req, res) => {
   try {
     const codes = await fetchNetflixEmails('');
