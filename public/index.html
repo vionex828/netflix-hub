@@ -48,7 +48,7 @@ nav{
 
 /* ══ HERO ══ */
 .hero{
-  display:grid;grid-template-columns:1fr 460px;
+  display:flex;justify-content:center;
   gap:5rem;align-items:flex-start;
   max-width:1180px;margin:0 auto;
   padding:5rem 5% 4rem;
@@ -123,6 +123,17 @@ nav{
 }
 .email-inp:focus{border-color:rgba(255,255,255,.25)}
 .email-inp::placeholder{color:var(--muted3);font-weight:300}
+/* Shimmer + bounce arrow button */
+.get-btn .btn-arrow{display:inline-block;transition:transform .3s ease}
+.get-btn:hover .btn-arrow{animation:arrowBounce .6s ease infinite}
+@keyframes arrowBounce{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+.get-btn::before{
+  content:'';position:absolute;
+  top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);
+  animation:shimmer 2.5s ease infinite;
+}
+@keyframes shimmer{0%{left:-100%}100%{left:150%}}
 .get-btn{
   width:100%;background:var(--red);border:none;color:#fff;
   padding:14px;border-radius:5px;
@@ -418,18 +429,12 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
 <!-- TICKER -->
 <div class="ticker">
   <div class="ticker-inner">
-    <span>HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>TEMPORARY ACCESS</span><span class="sep">·</span>
-    <span>TV UPDATE LINK</span><span class="sep">·</span>
-    <span>FANFLIX BD</span><span class="sep">·</span>
-    <span>INSTANT LOOKUP</span><span class="sep">·</span>
-    <span>NO LOGIN NEEDED</span><span class="sep">·</span>
-    <span>HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>TEMPORARY ACCESS</span><span class="sep">·</span>
-    <span>TV UPDATE LINK</span><span class="sep">·</span>
-    <span>FANFLIX BD</span><span class="sep">·</span>
-    <span>INSTANT LOOKUP</span><span class="sep">·</span>
-    <span>NO LOGIN NEEDED</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
+    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
   </div>
 </div>
 
@@ -439,34 +444,19 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
     <div class="logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div>
   </a>
   <div class="nav-status">
-    <div class="status-dot"></div>
-    <span class="nav-label">Household Tool</span>
+    <div class="signal-badge" style="margin:0">
+      <div class="signal-bars">
+        <span></span><span></span><span></span><span></span>
+      </div>
+      <span class="signal-text">Netflix Household Tool</span>
+    </div>
   </div>
 </nav>
 
 <!-- HERO -->
 <div class="hero">
 
-  <!-- LEFT -->
-  <div class="hero-left">
-    <div class="signal-badge">
-      <div class="signal-bars">
-        <span></span><span></span><span></span><span></span>
-      </div>
-      <span class="signal-text">Netflix Household Tool</span>
-    </div>
-    <h1>
-      <span class="line-white">GET YOUR</span>
-      <span class="line-white">NETFLIX</span>
-      <span class="line-red">HOUSEHOLD CODE</span>
-    </h1>
-    <p class="hero-desc">Fast lookup for household access codes and TV update links.Built for instant use.</p>
-    <div class="hero-links">
-      <a href="#how" class="hero-link">How it Works</a>
-    </div>
-  </div>
-
-  <!-- RIGHT: FORM + RESULTS -->
+  <!-- FORM + RESULTS -->
   <div class="right-panel" id="fetch">
     <div class="form-card">
 
@@ -477,7 +467,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
         <label class="f-label" for="email-inp">Netflix Account Email</label>
         <input class="email-inp" id="email-inp" placeholder="name@example.com" type="email"
           onkeydown="if(event.key==='Enter') doSearch()" />
-        <button class="get-btn" onclick="doSearch()">Continue →</button>
+        <button class="get-btn" onclick="doSearch()">Continue <span class="btn-arrow">→</span></button>
         <div class="form-note">After Netflix sends the email, enter your email above and click Continue. Your <b>code or link</b> appears instantly.</div>
         <div class="chips" id="chips"></div>
       </div>
