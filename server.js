@@ -28,7 +28,7 @@ function fetchNetflixEmails(filterEmail) {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
 
-        const since = new Date(Date.now() - 2 * 60 * 60 * 1000);
+        const since = new Date(Date.now() - 20 * 60 * 1000);
         imap.search([
           ['SINCE', since],
           ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]
