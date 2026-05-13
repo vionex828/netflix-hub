@@ -13,6 +13,20 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const PORT = process.env.PORT || 3000;
 
+// Cache: store results per email for 60 seconds
+const cache = new Map();
+const CACHE_TTL = 60 * 1000; // 60 seconds
+
+function getCached(email) {
+  const entry = cache.get(email);
+  if (entry && Date.now() - entry.time < CACHE_TTL) return entry.data;
+  return null;
+}
+
+function setCache(email, data) {
+  cache.set(email, { data, time: Date.now() });
+}
+
 function fetchNetflixEmails(filterEmail) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
@@ -151,8 +165,17 @@ app.get('/api/debug', async (req, res) => {
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email || '').trim();
   console.log('Request for:', email || '(all)');
+
+  // Check cache first
+  const cached = getCached(email);
+  if (cached) {
+    console.log('Returning cached result for:', email);
+    return res.json({ success: true, codes: cached, count: cached.length, cached: true });
+  }
+
   try {
     const codes = await fetchNetflixEmails(email);
+    setCache(email, codes);
     res.json({ success: true, codes, count: codes.length });
   } catch (err) {
     console.error('Error:', err.message);
