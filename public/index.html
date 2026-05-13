@@ -210,13 +210,13 @@ nav{
 .tc{background:var(--bg5);border-radius:3px;padding:1px 5px;font-size:.58rem;color:var(--muted2);font-family:var(--f-mono);min-width:16px;text-align:center}
 .tab.active .tc{background:rgba(229,9,20,.15);color:var(--red)}
 
-.cards-wrap{padding:.8rem 1.2rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;max-height:520px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bg6) transparent}
+.cards-wrap{padding:.8rem 1.2rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;max-height:480px;overflow-y:auto;overflow-x:visible;scrollbar-width:thin;scrollbar-color:var(--bg6) transparent}
 .cards-wrap::-webkit-scrollbar{width:4px}
 .cards-wrap::-webkit-scrollbar-track{background:transparent}
 .cards-wrap::-webkit-scrollbar-thumb{background:var(--bg6);border-radius:2px}
 
 /* ══ CARDS ══ */
-.card{
+.card{isolation:isolate;
   background:var(--bg4);
   border:1px solid var(--border);
   border-radius:8px;
@@ -242,19 +242,19 @@ nav{
 }
 
 /* FRESH badge */
-.fresh-badge{
+.fresh-badge{pointer-events:none;
   position:absolute;top:8px;right:9px;
   font-family:var(--f-mono);font-size:.5rem;letter-spacing:2px;
   padding:2px 7px;border-radius:3px;font-weight:500;text-transform:uppercase;
   animation:freshGlow 2s ease infinite;
 }
-.household .fresh-badge{background:var(--green);color:#000}
-.update .fresh-badge{background:var(--amber);color:#000}
+.household .fresh-badge{pointer-events:none;background:var(--green);color:#000}
+.update .fresh-badge{pointer-events:none;background:var(--amber);color:#000}
 @keyframes freshGlow{
   0%,100%{box-shadow:none}
   50%{box-shadow:0 0 8px rgba(70,211,105,.5)}
 }
-.update .fresh-badge{animation-name:freshGlowAmber}
+.update .fresh-badge{pointer-events:none;animation-name:freshGlowAmber}
 @keyframes freshGlowAmber{
   0%,100%{box-shadow:none}
   50%{box-shadow:0 0 8px rgba(245,166,35,.5)}
@@ -296,16 +296,16 @@ nav{
 .card.update:hover .tv-scan{animation-duration:.8s}
 
 /* Fresh ring for fresh cards */
-.fresh-ring{
+.fresh-ring{pointer-events:none;
   position:absolute;inset:-2px;border-radius:10px;
   border:2px solid transparent;
   animation:none;
 }
-.card.fresh .fresh-ring{
+.card.fresh .fresh-ring{pointer-events:none;
   border-color:rgba(70,211,105,.3);
   animation:ringPulse 2s ease infinite;
 }
-.card.fresh.update .fresh-ring{
+.card.fresh.update .fresh-ring{pointer-events:none;
   border-color:rgba(245,166,35,.3);
   animation:ringPulseAmber 2s ease infinite;
 }
@@ -318,7 +318,7 @@ nav{
 .household .c-type{color:var(--green)}.update .c-type{color:var(--amber)}
 .c-to{font-family:var(--f-mono);font-size:.6rem;color:var(--muted3);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .c-code{font-family:var(--f-head);font-size:2.2rem;letter-spacing:10px;color:var(--text);line-height:1}
-.c-link{
+.c-link{pointer-events:all;cursor:pointer;z-index:10;position:relative;
   display:inline-flex;align-items:center;gap:6px;text-decoration:none;
   font-family:var(--f-body);font-size:.75rem;font-weight:500;
   border:1px solid;border-radius:4px;padding:7px 12px;margin-top:4px;transition:all .18s;
@@ -416,10 +416,10 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
   .hero{grid-template-columns:1fr;padding:2.5rem 5% 2rem;gap:2.5rem}
   .hero::before{display:none}
   .hw-grid{grid-template-columns:1fr}
-  .card{grid-template-columns:auto 1fr}
+  .card{isolation:isolate;grid-template-columns:auto 1fr}
   .cp-btn{display:none}
   .c-code{font-size:1.8rem;letter-spacing:7px}
-  .card{cursor:pointer}
+  .card{isolation:isolate;cursor:pointer}
   nav{padding:0 5%}
 }
 </style>
