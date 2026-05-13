@@ -210,7 +210,7 @@ nav{
 .tc{background:var(--bg5);border-radius:3px;padding:1px 5px;font-size:.58rem;color:var(--muted2);font-family:var(--f-mono);min-width:16px;text-align:center}
 .tab.active .tc{background:rgba(229,9,20,.15);color:var(--red)}
 
-.cards-wrap{padding:.8rem 1.2rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;max-height:550px;overflow-y:auto;overflow-x:visible;scrollbar-width:thin;scrollbar-color:var(--bg6) transparent}
+.cards-wrap{padding:.8rem 1.2rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;max-height:600px;overflow-y:auto;overflow-x:visible;scrollbar-width:thin;scrollbar-color:var(--bg6) transparent}
 .cards-wrap::-webkit-scrollbar{width:4px}
 .cards-wrap::-webkit-scrollbar-track{background:transparent}
 .cards-wrap::-webkit-scrollbar-thumb{background:var(--bg6);border-radius:2px}
@@ -325,7 +325,7 @@ nav{
 }
 .c-link.g{color:var(--green);border-color:rgba(70,211,105,.22)}.c-link.g:hover{background:rgba(70,211,105,.08);border-color:var(--green)}
 .c-link.a{color:var(--amber);border-color:rgba(245,166,35,.22)}.c-link.a:hover{background:rgba(245,166,35,.08);border-color:var(--amber)}
-.c-age{font-family:var(--f-mono);font-size:.56rem;color:var(--muted3);margin-top:5px}
+.c-age{font-family:var(--f-mono);font-size:.62rem;color:var(--muted);margin-top:6px;display:block}
 
 .cp-btn{
   background:transparent;border:1px solid var(--bg6);
@@ -574,7 +574,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
 <script>
 let allCodes=[],curTab='all';
 let savedEmails=JSON.parse(localStorage.getItem('nfx_emails')||'[]');
-let autoTimer=null,currentEmail='';
+let currentEmail='';
 window.onload=()=>{renderChips();document.getElementById('start-hint').style.display='block'};
 
 async function doSearch(){
@@ -599,8 +599,7 @@ async function doSearch(){
     document.getElementById('results-panel').style.display='block';
     updateInfo(email,data.codes.length);
     updateCounts();renderCards();
-    clearInterval(autoTimer);
-    autoTimer=setInterval(()=>doSearch(),30000);
+
   }catch(e){
     document.getElementById('progress-bar').classList.remove('active');
     document.getElementById('results-panel').style.display='block';
