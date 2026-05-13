@@ -38,16 +38,7 @@ nav{
   display:flex;align-items:center;justify-content:space-between;
 }
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none;user-select:none}
-.logo-icon{
-  width:30px;height:30px;background:var(--red);
-  border-radius:4px;display:flex;align-items:center;justify-content:center;
-  position:relative;overflow:hidden;
-}
-.logo-icon::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,.2),transparent);
-}
-.logo-icon svg{position:relative;z-index:1}
+
 .logo-text{font-family:var(--f-head);font-size:1.8rem;letter-spacing:3px;line-height:1}
 .logo-text .f{color:var(--red)}.logo-text .l{color:var(--text)}
 .nav-status{display:flex;align-items:center;gap:8px}
@@ -91,7 +82,7 @@ nav{
 
 .hero h1{
   font-family:var(--f-head);
-  font-size:clamp(3.5rem,7vw,6.8rem);
+  font-size:clamp(2.2rem,4.5vw,4.8rem);
   line-height:.92;letter-spacing:2px;
   text-transform:uppercase;margin-bottom:1.4rem;
 }
@@ -157,6 +148,14 @@ nav{
 .chip.active{border-color:var(--red);color:var(--red);background:rgba(229,9,20,.07)}
 .chip-x{opacity:.25;font-size:.55rem;transition:opacity .18s;line-height:1}
 .chip-x:hover{opacity:1;color:var(--red)}
+.form-note{
+  margin-top:.8rem;padding:.75rem;
+  background:rgba(70,211,105,.05);
+  border:1px solid rgba(70,211,105,.12);
+  border-radius:5px;
+  font-size:.75rem;font-weight:300;color:var(--muted);line-height:1.6;
+}
+.form-note b{color:var(--green);font-weight:500}
 .fc-foot{padding:.75rem 1.8rem;font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);text-align:center;letter-spacing:1.5px;text-transform:uppercase;border-top:1px solid var(--border)}
 
 /* progress bar */
@@ -381,7 +380,7 @@ nav{
   flex-shrink:0;margin-top:1px;
 }
 .red-c .hw-n{background:var(--red);color:#fff}
-.dark-c .hw-n{background:var(--bg5);color:var(--muted2);border:1px solid var(--bg6)}
+.dark-c .hw-n{background:var(--green);color:#000;border:none}
 .hw-st{font-size:.82rem;font-weight:600;color:var(--text2);line-height:1.3}
 .hw-sd{font-size:.74rem;font-weight:300;color:var(--muted2);margin-top:2px;line-height:1.55}
 .hw-sd b{color:var(--muted);font-weight:500}
@@ -437,9 +436,6 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
 <!-- NAV -->
 <nav>
   <a class="logo" href="/">
-    <div class="logo-icon">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 3h3v18H4V3zm13 0v18h-3V3h3z" fill="white"/></svg>
-    </div>
     <div class="logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div>
   </a>
   <div class="nav-status">
@@ -462,12 +458,11 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
     <h1>
       <span class="line-white">GET YOUR</span>
       <span class="line-white">NETFLIX</span>
-      <span class="line-red">HOUSEHOLD CODE &amp; LINK</span>
+      <span class="line-red">HOUSEHOLD CODE</span>
     </h1>
-    <p class="hero-desc">Fast lookup for household access codes and TV update links.Built for instant use.</p>
+    <p class="hero-desc">Fast lookup for household access codes and TV update links. Clean interface. Mobile friendly. Built for instant use.</p>
     <div class="hero-links">
       <a href="#how" class="hero-link">How it Works</a>
-      <a href="#results-anchor" class="hero-link">See Results ↓</a>
     </div>
   </div>
 
@@ -483,6 +478,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
         <input class="email-inp" id="email-inp" placeholder="name@example.com" type="email"
           onkeydown="if(event.key==='Enter') doSearch()" />
         <button class="get-btn" onclick="doSearch()">Continue →</button>
+        <div class="form-note">After Netflix sends the email, enter your email above and click Continue. Your <b>code or link</b> appears instantly.</div>
         <div class="chips" id="chips"></div>
       </div>
 
@@ -522,20 +518,6 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
 
 </div>
 
-<!-- SHOW TICKER -->
-<div class="show-ticker">
-  <div class="st-inner">
-    <span>Stranger Things</span><span> · </span><span>Squid Game</span><span> · </span>
-    <span>Wednesday</span><span> · </span><span>Money Heist</span><span> · </span>
-    <span>Bridgerton</span><span> · </span><span>Dark</span><span> · </span>
-    <span>Arcane</span><span> · </span><span>Outer Banks</span><span> · </span>
-    <span>Ozark</span><span> · </span><span>You</span><span> · </span>
-    <span>Narcos</span><span> · </span><span>1899</span><span> · </span>
-    <span>Stranger Things</span><span> · </span><span>Squid Game</span><span> · </span>
-    <span>Wednesday</span><span> · </span><span>Money Heist</span><span> · </span>
-    <span>Bridgerton</span><span> · </span><span>Dark</span><span> · </span>
-    <span>Arcane</span><span> · </span><span>Outer Banks</span><span> · </span>
-  </div>
 </div>
 
 <!-- HOW IT WORKS -->
@@ -588,10 +570,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
     </div>
   </div>
 
-  <div class="hw-note">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" style="flex-shrink:0;margin-top:3px"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-    <p>After Netflix sends the email, come here and enter your Netflix account email. Your <b>code or update link</b> appears within seconds — no login needed.</p>
-  </div>
+
 </div>
 
 <!-- FOOTER -->
