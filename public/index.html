@@ -45,6 +45,11 @@ nav{
 .status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:statusPulse 2s ease infinite}
 @keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 6px rgba(70,211,105,0)}}
 .nav-label{font-family:var(--f-mono);font-size:.6rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase}
+.nav-stats{display:flex;align-items:center;gap:.5rem;margin-left:.8rem}
+.nav-stat{font-family:var(--f-mono);font-size:.58rem;color:var(--muted2);letter-spacing:1px;display:flex;align-items:center;gap:4px}
+.nav-stat-divider{width:1px;height:10px;background:var(--bg6)}
+.ns-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+.live-dot{background:var(--green);animation:statusPulse 2s ease infinite}
 
 /* ══ HERO ══ */
 .hero{
@@ -182,6 +187,7 @@ nav{
 }
 .res-info{font-family:var(--f-mono);font-size:.6rem;color:var(--muted2);letter-spacing:.5px}
 .res-info b{color:var(--text)}.res-info em{color:var(--red);font-style:normal}
+.fetch-time{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-spacing:1px;margin-bottom:.3rem}
 .ref-btn{
   display:flex;align-items:center;gap:5px;
   background:transparent;border:1px solid var(--bg6);
@@ -449,6 +455,11 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
       </div>
       <span class="signal-text">Netflix Household Tool</span>
     </div>
+    <div class="nav-stats">
+      <div class="nav-stat"><span class="ns-dot live-dot"></span><span id="live-count">-</span> online</div>
+      <div class="nav-stat-divider"></div>
+      <div class="nav-stat"><span id="today-count">-</span> today</div>
+    </div>
   </div>
 </nav>
 
@@ -479,7 +490,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
       <!-- RESULTS PANEL (inside card) -->
       <div class="results-panel" id="results-panel" style="display:none">
         <div class="res-bar">
-          <div class="res-info" id="res-info"></div>
+          <div class="res-info" id="res-info"></div><div class="fetch-time" id="fetch-time"></div>
           <button class="ref-btn" id="ref-btn" onclick="doSearch()">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             Refresh
@@ -501,7 +512,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
         </div>
       </div>
 
-      <div class="fc-foot">Last 20 min · No login · Auto-refreshes every 30s</div>
+      <div class="fc-foot">Last 20 min · No login · Instant results</div>
     </div>
   </div>
 
@@ -574,7 +585,21 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
 let allCodes=[],curTab='all';
 let savedEmails=JSON.parse(localStorage.getItem('nfx_emails')||'[]');
 let currentEmail='';
-window.onload=()=>{renderChips();document.getElementById('start-hint').style.display='block'};
+window.onload=()=>{
+  renderChips();
+  document.getElementById('start-hint').style.display='block';
+  fetchStats();
+  setInterval(fetchStats, 30000);
+};
+
+async function fetchStats(){
+  try{
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+    document.getElementById('live-count').textContent = d.live;
+    document.getElementById('today-count').textContent = d.today;
+  }catch(e){}
+}
 
 async function doSearch(){
   const email=document.getElementById('email-inp').value.trim().toLowerCase();
@@ -596,7 +621,7 @@ async function doSearch(){
     allCodes=data.codes;
     document.getElementById('progress-bar').classList.remove('active');
     document.getElementById('results-panel').style.display='block';
-    updateInfo(email,data.codes.length);
+    updateInfo(email,data.codes.length,data.fetchTime,data.cached);
     updateCounts();renderCards();
 
   }catch(e){
@@ -623,7 +648,11 @@ function renderChips(){
   if(!savedEmails.length){c.innerHTML='';return;}
   c.innerHTML=savedEmails.map(e=>`<div class="chip ${currentEmail===e?'active':''}" onclick="selectChip('${esc(e)}')">${esc(e)}<span class="chip-x" onclick="removeChip('${esc(e)}',event)">✕</span></div>`).join('');
 }
-function updateInfo(email,count){document.getElementById('res-info').innerHTML=`<b>${count}</b> result${count!==1?'s':''} for <em>${esc(email)}</em>`;}
+function updateInfo(email,count,fetchTime,cached){
+  document.getElementById('res-info').innerHTML=`<b>${count}</b> result${count!==1?'s':''} for <em>${esc(email)}</em>`;
+  const ft = document.getElementById('fetch-time');
+  if(ft) ft.textContent = cached ? '⚡ Cached result' : fetchTime ? `⏱ Fetched in ${fetchTime}s` : '';
+}
 function switchTab(t){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');renderCards();}
 function updateCounts(){
   document.getElementById('cnt-all').textContent=allCodes.length;
