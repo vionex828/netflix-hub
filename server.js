@@ -12,21 +12,61 @@ app.use(express.static(path.join(__dirname, 'public')));
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const PORT = process.env.PORT || 3000;
+const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
+const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
 
-// Cache: store results per email for 60 seconds
+// ── STATS ─────────────────────────────────────────────────
+let totalToday = 0;
+let lastReset = new Date().toDateString();
+const visitors = new Map(); // ip -> last seen timestamp
+
+function resetDailyIfNeeded() {
+  const today = new Date().toDateString();
+  if (today !== lastReset) { totalToday = 0; lastReset = today; }
+}
+
+function trackVisitor(ip) {
+  visitors.set(ip, Date.now());
+  // Clean up old visitors (inactive > 5 min)
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  for (const [k, v] of visitors) { if (v < cutoff) visitors.delete(k); }
+}
+
+function getLiveVisitors() {
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  return [...visitors.values()].filter(v => v > cutoff).length;
+}
+
+// ── CACHE ─────────────────────────────────────────────────
 const cache = new Map();
-const CACHE_TTL = 60 * 1000; // 60 seconds
+const CACHE_TTL = 60 * 1000;
 
 function getCached(email) {
   const entry = cache.get(email);
   if (entry && Date.now() - entry.time < CACHE_TTL) return entry.data;
   return null;
 }
-
 function setCache(email, data) {
   cache.set(email, { data, time: Date.now() });
 }
 
+// ── TELEGRAM ──────────────────────────────────────────────
+async function sendTelegram(msg) {
+  try {
+    const url = `https://api.telegram.org/bot${TG_TOKEN}/sendMessage`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TG_CHAT,
+        text: msg,
+        parse_mode: 'HTML'
+      })
+    });
+  } catch(e) { console.error('Telegram error:', e.message); }
+}
+
+// ── IMAP FETCH ────────────────────────────────────────────
 function fetchNetflixEmails(filterEmail) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
@@ -65,12 +105,9 @@ function fetchNetflixEmails(filterEmail) {
                   const bodyText = mail.text || '';
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
 
-                  console.log('Email -> to:', toEmail, '| subject:', mail.subject);
-
                   if (filterEmail && !toEmail.includes(filterEmail.toLowerCase())) return res(null);
 
                   const parsed = classifyEmail({ subject, bodyHtml, bodyText, toEmail, ts });
-                  console.log('Result:', parsed ? parsed.type + ' link=' + (parsed.link||'').substring(0,60) : 'null');
                   res(parsed);
                 });
               });
@@ -95,53 +132,40 @@ function fetchNetflixEmails(filterEmail) {
 }
 
 function extractLink(body) {
-  // Fix HTML encoding first
   const b = body.replace(/&amp;/g, '&').replace(/&#38;/g, '&');
-
-  // 1. Mobile/Tablet: travel/verify link
   const m1 = b.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?nftoken=[^\s"'<>\\]+/i);
   if (m1) return { link: m1[0], type: 'household', label: 'Temporary Access Code 📱' };
-
-  // 2. TV: update-primary-location link
   const m2 = b.match(/https:\/\/www\.netflix\.com\/account\/update-primary-location\?nftoken=[^\s"'<>\\]+/i);
   if (m2) return { link: m2[0], type: 'update', label: 'Update Household (TV) 📺' };
-
-  // 3. Any netflix account link with nftoken inside href
   const m3 = b.match(/href=["'](https:\/\/[^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
   if (m3) {
     const link = m3[1].replace(/&amp;/g, '&');
     const isUpdate = link.includes('update-primary') || link.includes('update-household');
     return { link, type: isUpdate ? 'update' : 'household', label: isUpdate ? 'Update Household (TV) 📺' : 'Temporary Access Code 📱' };
   }
-
-  // 4. Plain text nftoken link
-  const m4 = b.match(/https:\/\/[^\s<>"'\\]*netflix\.com[^\s<>"'\\]*nftoken[^\s<>"'\\]*/i);
-  if (m4) {
-    const link = m4[0].replace(/&amp;/g, '&');
-    const isUpdate = link.includes('update-primary') || link.includes('update-household');
-    return { link, type: isUpdate ? 'update' : 'household', label: isUpdate ? 'Update Household (TV) 📺' : 'Temporary Access Code 📱' };
-  }
-
   return null;
 }
 
 function classifyEmail({ subject, bodyHtml, bodyText, toEmail, ts }) {
   const sl = subject.toLowerCase();
-
   const isRelevant = sl.includes('temporary') || sl.includes('access code') ||
                      sl.includes('travel') || sl.includes('household') ||
                      sl.includes('update') || sl.includes('verify');
-
   if (!isRelevant) return null;
-
-  // Try HTML body first, then plain text
   const result = extractLink(bodyHtml) || extractLink(bodyText);
   if (result) return { ...result, to: toEmail, ts };
-
-  return null; // No link found, skip
+  return null;
 }
 
-// Health check
+// ── STATS API ─────────────────────────────────────────────
+app.get('/api/stats', (req, res) => {
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  trackVisitor(ip);
+  resetDailyIfNeeded();
+  res.json({ live: getLiveVisitors(), today: totalToday });
+});
+
+// ── HEALTH ────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({
     ok: true,
@@ -151,7 +175,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Debug
+// ── DEBUG ─────────────────────────────────────────────────
 app.get('/api/debug', async (req, res) => {
   try {
     const codes = await fetchNetflixEmails('');
@@ -161,24 +185,48 @@ app.get('/api/debug', async (req, res) => {
   }
 });
 
-// Main
+// ── MAIN CODES API ────────────────────────────────────────
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email || '').trim();
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  trackVisitor(ip);
+  resetDailyIfNeeded();
+
   console.log('Request for:', email || '(all)');
 
-  // Check cache first
+  // Cache check
   const cached = getCached(email);
   if (cached) {
-    console.log('Returning cached result for:', email);
-    return res.json({ success: true, codes: cached, count: cached.length, cached: true });
+    console.log('Cache hit for:', email);
+    return res.json({ success: true, codes: cached, count: cached.length, cached: true, fetchTime: 0 });
   }
 
+  const start = Date.now();
   try {
     const codes = await fetchNetflixEmails(email);
+    const fetchTime = ((Date.now() - start) / 1000).toFixed(1);
     setCache(email, codes);
-    res.json({ success: true, codes, count: codes.length });
+    totalToday += codes.length;
+
+    // Telegram notification
+    if (email) {
+      const resultSummary = codes.length > 0
+        ? codes.map(c => `• ${c.label} → ${c.to} (${c.link ? 'link' : c.code})`).join('\n')
+        : 'No codes found';
+      await sendTelegram(
+        `🔍 <b>FanFlix Household Search</b>\n\n` +
+        `📧 Email: <code>${email}</code>\n` +
+        `📊 Results: ${codes.length} code(s)\n` +
+        `⏱ Fetch time: ${fetchTime}s\n` +
+        `👥 Live visitors: ${getLiveVisitors()}\n\n` +
+        `${resultSummary}`
+      );
+    }
+
+    res.json({ success: true, codes, count: codes.length, fetchTime });
   } catch (err) {
     console.error('Error:', err.message);
+    await sendTelegram(`❌ <b>FanFlix Error</b>\n\nEmail: <code>${email}</code>\nError: ${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -188,7 +236,8 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Netflix Code Hub running on port ${PORT}`);
+  console.log(`FanFlix Household Hub running on port ${PORT}`);
   console.log(`GMAIL_USER: ${GMAIL_USER ? GMAIL_USER.replace(/(.{3}).*(@.*)/, '$1***$2') : 'NOT SET'}`);
   console.log(`GMAIL_PASS: ${GMAIL_PASS ? 'SET (' + GMAIL_PASS.length + ' chars)' : 'NOT SET'}`);
+  sendTelegram('🟢 <b>FanFlix Household Hub Started</b>\nServer is online and ready!');
 });
