@@ -631,46 +631,7 @@ window.onload=()=>{
   }
 };
 
-async function loadCustomerLink(token) {
-  // Hide email form, show loading
-  document.getElementById('form-top').style.display='none';
-  document.querySelector('.fc-foot') && (document.querySelector('.fc-foot').style.display='none');
-  document.getElementById('results-panel').style.display='block';
-  document.getElementById('start-hint').style.display='none';
-  document.getElementById('progress-bar').classList.add('active');
-  setCards('<div class="loading-wrap"><div class="spin-ring"></div><p>Loading your codes...</p></div>');
 
-  try {
-    const res = await fetch(\`/api/link/${token}\`);
-    const data = await res.json();
-    document.getElementById('progress-bar').classList.remove('active');
-
-    if (!data.success) {
-      const msg = data.error === 'expired'
-        ? '⏰ Your link has expired. Contact FanFlix BD to renew.'
-        : data.error === 'revoked'
-        ? '🚫 Access revoked. Contact FanFlix BD.'
-        : '❌ Invalid link.';
-      setCards(\`<div class="empty"><div class="empty-ico">⚠️</div><h3>${data.error === 'expired' ? 'Link Expired' : 'Access Denied'}</h3><p>${msg}</p><a href="https://wa.me/8801928382918" style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;background:#25D366;color:#000;padding:10px 20px;border-radius:5px;text-decoration:none;font-weight:600;font-size:.85rem">💬 Contact on WhatsApp</a></div>\`);
-      return;
-    }
-
-    // Show signin tab for customer links
-    document.getElementById('tab-signin').style.display='flex';
-
-    // Update header to show customer name
-    document.querySelector('.fc-title').textContent = \`Hi, ${data.name}!\`;
-    document.querySelector('.fc-sub').textContent = \`Showing codes for ${data.email}\`;
-
-    allCodes = data.codes;
-    updateInfo(data.email, data.codes.length, null, data.cached);
-    updateCounts();
-    renderCards();
-  } catch(e) {
-    document.getElementById('progress-bar').classList.remove('active');
-    setCards('<div class="empty"><div class="empty-ico">⚠️</div><h3>Error</h3><p>Could not load your codes. Try again.</p></div>');
-  }
-}
 
 async function fetchStats(){
   try{
