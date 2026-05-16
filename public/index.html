@@ -494,7 +494,7 @@ footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-s
     <div class="form-card">
 
       <!-- FORM TOP -->
-      <div class="form-top">
+      <div class="form-top" id="form-top">
         <div class="fc-title">Enter Netflix Email</div>
         <div class="fc-sub">Get your household code or update link in one click.</div>
         <label class="f-label" for="email-inp">Netflix Account Email</label>
@@ -617,10 +617,58 @@ let savedEmails=JSON.parse(localStorage.getItem('nfx_emails')||'[]');
 let currentEmail='';
 window.onload=()=>{
   renderChips();
-  document.getElementById('start-hint').style.display='block';
   fetchStats();
   setInterval(fetchStats, 30000);
+
+  // Check if customer link
+  const path = window.location.pathname;
+  const tokenMatch = path.match(/^\/c\/([a-f0-9]+)$/);
+  if (tokenMatch) {
+    loadCustomerLink(tokenMatch[1]);
+  } else {
+    document.getElementById('start-hint').style.display='block';
+  }
 };
+
+async function loadCustomerLink(token) {
+  // Hide email form, show loading
+  document.getElementById('form-top').style.display='none';
+  document.getElementById('results-panel').style.display='block';
+  document.getElementById('start-hint').style.display='none';
+  document.getElementById('progress-bar').classList.add('active');
+  setCards('<div class="loading-wrap"><div class="spin-ring"></div><p>Loading your codes...</p></div>');
+
+  try {
+    const res = await fetch(\`/api/link/${token}\`);
+    const data = await res.json();
+    document.getElementById('progress-bar').classList.remove('active');
+
+    if (!data.success) {
+      const msg = data.error === 'expired'
+        ? '⏰ Your link has expired. Contact FanFlix BD to renew.'
+        : data.error === 'revoked'
+        ? '🚫 Access revoked. Contact FanFlix BD.'
+        : '❌ Invalid link.';
+      setCards(\`<div class="empty"><div class="empty-ico">⚠️</div><h3>${data.error === 'expired' ? 'Link Expired' : 'Access Denied'}</h3><p>${msg}</p><a href="https://wa.me/8801928382918" style="display:inline-flex;align-items:center;gap:8px;margin-top:1rem;background:#25D366;color:#000;padding:10px 20px;border-radius:5px;text-decoration:none;font-weight:600;font-size:.85rem">💬 Contact on WhatsApp</a></div>\`);
+      return;
+    }
+
+    // Show signin tab for customer links
+    document.getElementById('tab-signin').style.display='flex';
+
+    // Update header to show customer name
+    document.querySelector('.fc-title').textContent = \`Hi, ${data.name}!\`;
+    document.querySelector('.fc-sub').textContent = \`Showing codes for ${data.email}\`;
+
+    allCodes = data.codes;
+    updateInfo(data.email, data.codes.length, null, data.cached);
+    updateCounts();
+    renderCards();
+  } catch(e) {
+    document.getElementById('progress-bar').classList.remove('active');
+    setCards('<div class="empty"><div class="empty-ico">⚠️</div><h3>Error</h3><p>Could not load your codes. Try again.</p></div>');
+  }
+}
 
 async function fetchStats(){
   try{
@@ -683,11 +731,12 @@ function updateInfo(email,count,fetchTime,cached){
   const ft = document.getElementById('fetch-time');
   if(ft) ft.textContent = cached ? '⚡ Cached result' : fetchTime ? `⏱ Fetched in ${fetchTime}s` : '';
 }
-function switchTab(t){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+t).classList.add('active');renderCards();}
+function switchTab(t){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+t) && document.getElementById('tab-'+t).classList.add('active');renderCards();}
 function updateCounts(){
   document.getElementById('cnt-all').textContent=allCodes.length;
   document.getElementById('cnt-household').textContent=allCodes.filter(i=>i.type==='household').length;
   document.getElementById('cnt-update').textContent=allCodes.filter(i=>i.type==='update').length;
+  document.getElementById('cnt-signin').textContent=allCodes.filter(i=>i.type==='signin').length;
 }
 function renderCards(){
   const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
@@ -739,6 +788,11 @@ function cardHtml(item,i){
   const fresh=(Date.now()-item.ts)<15*60*1000;
   const freshClass=fresh?' fresh':'';
   const freshBadge=fresh?'<span class="fresh-badge">Fresh</span>':'';
+
+  // Sign-in code card
+  if(item.type === 'signin') {
+    return `<div class="card signin${freshClass}" style="${delay}" data-code="${esc(item.code)}">${freshBadge}<div class="fresh-ring"></div><div class="c-ico" style="position:relative;background:rgba(77,166,255,.1)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="c-body"><div class="c-type" style="color:var(--blue)">Sign-in Code</div><div class="c-to">→ ${esc(item.to)}</div><div class="c-code">${item.code}</div><div class="c-age">${age}</div>${item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : ''}</div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this)">Copy</button></div>`;
+  }
 
   const countdown = item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : '';
   const phoneIco = `<div class="c-ico" style="position:relative"><svg class="phone-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"/></svg><div class="phone-dot"></div></div>`;
