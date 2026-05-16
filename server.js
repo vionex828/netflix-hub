@@ -357,7 +357,7 @@ app.get('/admin', (req, res) => {
 
 // ── CUSTOMER LINK PAGE ──────────────────────────────────────
 app.get('/c/:token', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'customer.html'));
 });
 
 app.get('*', (req, res) => {
