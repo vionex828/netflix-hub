@@ -622,17 +622,19 @@ window.onload=()=>{
 
   // Check if customer link
   const path = window.location.pathname;
-  const tokenMatch = path.match(/^\/c\/([a-f0-9]+)$/);
+  const tokenMatch = path.match(/^\/c\/([a-f0-9]{8,})/i);
   if (tokenMatch) {
     loadCustomerLink(tokenMatch[1]);
   } else {
     document.getElementById('start-hint').style.display='block';
+  document.getElementById('results-panel').style.display='none';
   }
 };
 
 async function loadCustomerLink(token) {
   // Hide email form, show loading
   document.getElementById('form-top').style.display='none';
+  document.querySelector('.fc-foot') && (document.querySelector('.fc-foot').style.display='none');
   document.getElementById('results-panel').style.display='block';
   document.getElementById('start-hint').style.display='none';
   document.getElementById('progress-bar').classList.add('active');
