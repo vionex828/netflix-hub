@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
 const ADMIN_PASS = process.env.ADMIN_PASS || '@Orsha420@';
-const LINKS_FILE = path.join(__dirname, 'links.json');
+const LINKS_FILE = '/app/data/links.json';
 
 // ── LINKS DB ───────────────────────────────────────────────
 function loadLinks() {
@@ -363,6 +363,9 @@ app.get('/c/:token', (req, res) => {
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Ensure data directory exists
+try { require('fs').mkdirSync('/app/data', { recursive: true }); } catch(e) {}
 
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
