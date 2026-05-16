@@ -637,8 +637,10 @@ async function fetchStats(){
   try{
     const r = await fetch('/api/stats');
     const d = await r.json();
-    document.getElementById('live-count').textContent = d.live;
-    document.getElementById('today-count').textContent = d.today;
+    const lc=document.getElementById('live-count');
+    const tc=document.getElementById('today-count');
+    if(lc) lc.textContent = d.live;
+    if(tc) tc.textContent = d.today;
   }catch(e){}
 }
 
@@ -690,16 +692,18 @@ function renderChips(){
   c.innerHTML=savedEmails.map(e=>`<div class="chip ${currentEmail===e?'active':''}" onclick="selectChip('${esc(e)}')">${esc(e)}<span class="chip-x" onclick="removeChip('${esc(e)}',event)">✕</span></div>`).join('');
 }
 function updateInfo(email,count,fetchTime,cached){
-  document.getElementById('res-info').innerHTML=`<b>${count}</b> result${count!==1?'s':''} for <em>${esc(email)}</em>`;
+  const ri = document.getElementById('res-info');
+  if(ri) ri.innerHTML=`<b>${count}</b> result${count!==1?'s':''} for <em>${esc(email)}</em>`;
   const ft = document.getElementById('fetch-time');
   if(ft) ft.textContent = cached ? '⚡ Cached result' : fetchTime ? `⏱ Fetched in ${fetchTime}s` : '';
 }
 function switchTab(t){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+t) && document.getElementById('tab-'+t).classList.add('active');renderCards();}
 function updateCounts(){
-  document.getElementById('cnt-all').textContent=allCodes.length;
-  document.getElementById('cnt-household').textContent=allCodes.filter(i=>i.type==='household').length;
-  document.getElementById('cnt-update').textContent=allCodes.filter(i=>i.type==='update').length;
-  document.getElementById('cnt-signin').textContent=allCodes.filter(i=>i.type==='signin').length;
+  const safe=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
+  safe('cnt-all',allCodes.length);
+  safe('cnt-household',allCodes.filter(i=>i.type==='household').length);
+  safe('cnt-update',allCodes.filter(i=>i.type==='update').length);
+  safe('cnt-signin',allCodes.filter(i=>i.type==='signin').length);
 }
 function renderCards(){
   const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
