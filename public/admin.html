@@ -7,141 +7,272 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --red:#E50914;--bg:#080808;--s1:#111;--s2:#161616;--s3:#1e1e1e;--s4:#252525;--s5:#2e2e2e;
-  --border:rgba(255,255,255,.07);--text:#f0f0f0;--muted:#888;--muted2:#555;
-  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;--red2:#ff1e2b;
+  --red:#E50914;--red2:#c8000e;--red-dim:rgba(229,9,20,.1);
+  --bg:#07080a;--s1:#0e1014;--s2:#141619;--s3:#1a1d22;--s4:#22252b;--s5:#2a2e36;
+  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.1);
+  --text:#f0f1f3;--text2:#c8cad0;--muted:#7a7f8a;--muted2:#4a4f5a;--muted3:#2a2e36;
+  --green:#46d369;--green-dim:rgba(70,211,105,.1);
+  --amber:#f5a623;--amber-dim:rgba(245,166,35,.1);
+  --blue:#4da6ff;--blue-dim:rgba(77,166,255,.1);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.1);
   --f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;
+  --sidebar:220px;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;-webkit-font-smoothing:antialiased}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-webkit-font-smoothing:antialiased}
 
-/* LOGIN */
-#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
-.login-box{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:2.5rem;width:100%;max-width:360px}
-.login-logo{font-family:var(--m);font-size:1.3rem;font-weight:500;letter-spacing:3px;margin-bottom:1.5rem;text-align:center}
-.login-logo span{color:var(--red)}
-.login-box h2{font-size:1.1rem;font-weight:600;margin-bottom:.3rem}
-.login-box p{font-size:.82rem;color:var(--muted);margin-bottom:1.4rem}
-.inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 14px;border-radius:7px;font-family:var(--m);font-size:.85rem;outline:none;transition:border-color .2s;margin-bottom:.7rem}
-.inp:focus{border-color:rgba(255,255,255,.2)}
-.inp::placeholder{color:var(--muted2)}
-.btn-red{width:100%;background:var(--red);border:none;color:#fff;padding:12px;border-radius:7px;font-family:var(--f);font-size:.9rem;font-weight:600;cursor:pointer;transition:background .15s}
-.btn-red:hover{background:var(--red2)}
-.err-msg{font-family:var(--m);font-size:.72rem;color:var(--red);margin-top:.5rem;display:none}
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--s1);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;height:100vh;
+  position:sticky;top:0;
+}
+.sb-logo{padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-logo-text{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:500;letter-spacing:2px;line-height:1}
+.sb-logo-text .f{color:var(--red)}.sb-logo-text .l{color:var(--text)}
+.sb-logo-sub{font-size:.55rem;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;font-family:var(--m);margin-top:2px}
 
-/* DASHBOARD */
-#dashboard{display:none}
+.sb-nav{flex:1;padding:.8rem 0;overflow-y:auto;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-section{font-family:var(--m);font-size:.52rem;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;padding:.4rem 1.4rem;margin-top:.5rem}
+.sb-item{
+  display:flex;align-items:center;gap:.75rem;
+  padding:.6rem 1.4rem;cursor:pointer;
+  transition:all .18s;position:relative;
+  border-left:2px solid transparent;
+  color:var(--muted);font-size:.82rem;font-weight:500;
+}
+.sb-item:hover{background:var(--s2);color:var(--text)}
+.sb-item.active{background:rgba(229,9,20,.08);border-left-color:var(--red);color:var(--red)}
+.sb-item svg{flex-shrink:0;transition:transform .2s}
+.sb-item:hover svg{transform:scale(1.1)}
+.sb-item.active svg{color:var(--red)}
+.sb-badge{background:var(--red);color:#fff;font-family:var(--m);font-size:.55rem;padding:2px 6px;border-radius:100px;margin-left:auto;font-weight:500}
 
-/* NAV */
-.anav{background:rgba(8,8,8,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
-.anav-logo{font-family:var(--m);font-size:1.1rem;letter-spacing:2px}
-.anav-logo span{color:var(--red)}
-.anav-right{display:flex;align-items:center;gap:.8rem}
-.anav-stat{font-family:var(--m);font-size:.62rem;color:var(--muted);display:flex;align-items:center;gap:5px}
-.anav-stat b{color:var(--text)}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 5px rgba(70,211,105,0)}}
-.logout-btn{font-family:var(--m);font-size:.62rem;letter-spacing:1px;color:var(--muted);background:transparent;border:1px solid var(--s4);padding:5px 12px;border-radius:4px;cursor:pointer;transition:all .2s;text-transform:uppercase}
-.logout-btn:hover{border-color:#333;color:var(--text)}
+.sb-user{border-top:1px solid var(--border);padding:1rem 1.4rem;display:flex;align-items:center;gap:.75rem}
+.sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0}
+.sb-uname{font-size:.8rem;font-weight:600;color:var(--text)}
+.sb-uemail{font-family:var(--m);font-size:.58rem;color:var(--muted2)}
+.sb-logout{margin-left:auto;background:transparent;border:none;color:var(--muted2);cursor:pointer;padding:4px;transition:color .18s;flex-shrink:0}
+.sb-logout:hover{color:var(--red)}
 
-/* MAIN */
-.amain{max-width:1100px;margin:0 auto;padding:1.5rem 1.2rem 4rem}
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0}
 
-/* STATS */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:1.5rem}
-.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.1rem}
-.stat-val{font-size:1.7rem;font-weight:700;margin-bottom:.2rem}
-.stat-lbl{font-family:var(--m);font-size:.58rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
-.stat-card.green .stat-val{color:var(--green)}
-.stat-card.amber .stat-val{color:var(--amber)}
-.stat-card.red .stat-val{color:var(--red)}
-.stat-card.blue .stat-val{color:var(--blue)}
+/* TOPBAR */
+.topbar{
+  background:var(--s1);border-bottom:1px solid var(--border);
+  padding:0 1.8rem;height:58px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.topbar-left h1{font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:1px}
+.topbar-left p{font-size:.72rem;color:var(--muted);font-weight:400}
+.topbar-left p span{color:var(--red);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:1rem}
+.tb-stat{display:flex;align-items:center;gap:6px;font-family:var(--m);font-size:.65rem;color:var(--muted)}
+.tb-stat b{color:var(--text)}
+.tb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:tbpulse 2s ease infinite}
+@keyframes tbpulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 4px rgba(70,211,105,0)}}
+.tb-date{font-family:var(--m);font-size:.62rem;color:var(--muted2);border-left:1px solid var(--border);padding-left:1rem}
 
-/* SLOTS */
-.slots-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1.5rem}
-.slots-title{font-size:.85rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:7px}
-.slots-title::before{content:'';width:3px;height:14px;background:var(--blue);border-radius:2px;display:block}
-.slot-item{display:flex;align-items:center;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--border)}
-.slot-item:last-child{border-bottom:none}
-.slot-email{font-family:var(--m);font-size:.72rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.slot-bar-wrap{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
-.slot-bar{display:flex;gap:2px}
-.slot-bar span{width:14px;height:14px;border-radius:2px}
-.slot-bar .used{background:var(--red)}
-.slot-bar .free{background:var(--s4)}
-.slot-count{font-family:var(--m);font-size:.65rem;color:var(--muted);width:36px;text-align:right}
-.slot-count.full{color:var(--red)}
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:1.4rem 1.8rem 2rem;scrollbar-width:thin;scrollbar-color:var(--s4) transparent}
+.content::-webkit-scrollbar{width:4px}
+.content::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px}
 
-/* CREATE */
-.create-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1.5rem}
-.sec-title{font-size:.88rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:7px}
-.sec-title::before{content:'';width:3px;height:14px;background:var(--red);border-radius:2px;display:block}
-.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.6rem;align-items:end}
-.field label{font-family:var(--m);font-size:.57rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:.4rem}
-.field .inp{margin-bottom:0}
-.select{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 10px;border-radius:7px;font-family:var(--m);font-size:.78rem;outline:none;cursor:pointer}
-.btn-create{background:var(--red);border:none;color:#fff;padding:11px 18px;border-radius:7px;font-family:var(--f);font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;height:42px}
-.btn-create:hover{background:var(--red2)}
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 320px;gap:1.2rem;margin-bottom:1.2rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.2rem}
 
-/* TABLE */
-.links-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.links-header{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap}
-.search-inp{background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:7px 12px;border-radius:6px;font-family:var(--m);font-size:.73rem;outline:none;width:200px;transition:border-color .2s}
-.search-inp:focus{border-color:rgba(255,255,255,.18)}
-.search-inp::placeholder{color:var(--muted2)}
+/* STAT CARDS */
+.stat-card{
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;
+  transition:border-color .2s,box-shadow .2s;cursor:default;
+}
+.stat-card:hover{border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.stat-card-top{display:flex;align-items:center;justify-content:space-between}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.green{background:var(--green-dim)}.stat-icon.amber{background:var(--amber-dim)}.stat-icon.red{background:var(--red-dim)}.stat-icon.blue{background:var(--blue-dim)}
+.stat-num{font-size:2rem;font-weight:700;color:var(--text);line-height:1}
+.stat-lbl{font-size:.78rem;color:var(--muted);font-weight:400;margin-top:2px}
+.stat-link{font-family:var(--m);font-size:.6rem;color:var(--muted2);display:flex;align-items:center;gap:4px;cursor:pointer;transition:color .2s;text-decoration:none;margin-top:.3rem}
+.stat-link:hover{color:var(--text)}
+
+/* SLOTS CARD */
+.slots-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem;margin-bottom:1.2rem}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.card-title{font-size:.9rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.card-badge{font-family:var(--m);font-size:.58rem;padding:3px 9px;border-radius:100px;font-weight:500}
+.card-badge.full{background:rgba(229,9,20,.15);color:var(--red);border:1px solid rgba(229,9,20,.2)}
+.card-badge.ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(70,211,105,.2)}
+
+.slot-row{display:flex;align-items:center;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
+.slot-row:last-child{border-bottom:none}
+.slot-email{font-family:var(--m);font-size:.72rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-avatars{display:flex;gap:4px;align-items:center}
+.slot-avatar{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.7rem;font-weight:700;color:#fff;
+  border:2px solid var(--bg);position:relative;
+  flex-shrink:0;
+}
+.slot-avatar.active::after{
+  content:'';position:absolute;bottom:-1px;right:-1px;
+  width:8px;height:8px;border-radius:50%;
+  background:var(--green);border:1.5px solid var(--bg);
+}
+.slot-avatar.empty{background:var(--s4);border-color:var(--s5)}
+.slot-avatar svg{color:var(--muted2)}
+.slot-ring{position:relative;flex-shrink:0}
+.slot-ring svg{transform:rotate(-90deg)}
+.slot-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.65rem;font-weight:600;color:var(--text)}
+
+/* PROFILE COLORS */
+.pa{background:#E50914}.pb{background:#f5a623}.pc{background:#46d369}.pd{background:#4da6ff}.pe{background:#a78bfa}
+
+/* CREATE FORM */
+.create-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem;margin-bottom:1.2rem}
+.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.7rem;align-items:end}
+.field-label{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.4rem}
+.field-inp{
+  width:100%;background:var(--s3);border:1px solid var(--s4);
+  color:var(--text);padding:9px 12px;border-radius:7px;
+  font-family:var(--m);font-size:.78rem;outline:none;
+  transition:border-color .18s;
+}
+.field-inp:focus{border-color:rgba(255,255,255,.2)}
+.field-inp::placeholder{color:var(--muted2)}
+.field-select{
+  width:100%;background:var(--s3);border:1px solid var(--s4);
+  color:var(--text);padding:9px 12px;border-radius:7px;
+  font-family:var(--m);font-size:.75rem;outline:none;cursor:pointer;
+  appearance:none;
+}
+.create-btn{
+  background:var(--red);border:none;color:#fff;
+  padding:9px 18px;border-radius:7px;
+  font-family:var(--f);font-size:.82rem;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .15s;
+  display:flex;align-items:center;gap:6px;height:38px;
+}
+.create-btn:hover{background:var(--red2)}
+
+/* RIGHT PANEL */
+.right-panel{display:flex;flex-direction:column;gap:1.2rem}
+
+/* OVERVIEW CHART */
+.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem}
+.chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
+.chart-num{font-size:1.6rem;font-weight:700;color:var(--text);line-height:1}
+.chart-growth{font-family:var(--m);font-size:.62rem;color:var(--green);margin-top:2px}
+.chart-area{height:70px;position:relative;overflow:hidden}
+.chart-svg{width:100%;height:100%}
+
+/* RECENT ACTIVITY */
+.activity-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem}
+.act-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.act-header h3{font-size:.88rem;font-weight:600}
+.act-viewall{font-family:var(--m);font-size:.6rem;color:var(--red);cursor:pointer;text-decoration:none}
+.act-item{display:flex;align-items:flex-start;gap:.7rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.03)}
+.act-item:last-child{border-bottom:none}
+.act-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.act-icon.green{background:var(--green-dim)}.act-icon.red{background:var(--red-dim)}.act-icon.amber{background:var(--amber-dim)}.act-icon.blue{background:var(--blue-dim)}
+.act-title{font-size:.78rem;font-weight:500;color:var(--text)}
+.act-sub{font-family:var(--m);font-size:.62rem;color:var(--muted2);margin-top:1px}
+.act-time{font-family:var(--m);font-size:.58rem;color:var(--muted2);margin-left:auto;flex-shrink:0;padding-top:2px}
+.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.act-dot.green{background:var(--green)}.act-dot.red{background:var(--red)}.act-dot.amber{background:var(--amber)}.act-dot.blue{background:var(--blue)}
+
+/* LINKS TABLE */
+.table-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.table-header{padding:1rem 1.3rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+.table-title{font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:.6rem}
+.search-wrap{display:flex;align-items:center;gap:.5rem;background:var(--s3);border:1px solid var(--s4);border-radius:7px;padding:7px 12px;flex:1;max-width:280px;margin-left:auto}
+.search-wrap input{background:transparent;border:none;color:var(--text);font-family:var(--m);font-size:.73rem;outline:none;width:100%}
+.search-wrap input::placeholder{color:var(--muted2)}
 
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-family:var(--m);font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.03);font-size:.8rem;vertical-align:middle}
+th{
+  font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--muted2);
+  padding:.75rem 1rem;text-align:left;
+  border-bottom:1px solid var(--border);white-space:nowrap;
+  background:var(--s2);
+}
+td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.025);font-size:.8rem;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.015)}
 
-.badge{font-family:var(--m);font-size:.56rem;letter-spacing:1px;padding:3px 7px;border-radius:3px;font-weight:500;text-transform:uppercase;white-space:nowrap}
-.badge.active{background:rgba(70,211,105,.1);color:var(--green);border:1px solid rgba(70,211,105,.18)}
-.badge.revoked{background:rgba(229,9,20,.08);color:var(--red);border:1px solid rgba(229,9,20,.18)}
-.badge.expired{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
-.badge.expiring{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.18)}
-
-.copy-link-btn{font-family:var(--m);font-size:.62rem;color:var(--blue);background:rgba(77,166,255,.07);border:1px solid rgba(77,166,255,.15);padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;white-space:nowrap}
-.copy-link-btn:hover{background:rgba(77,166,255,.14);border-color:var(--blue)}
-.copy-link-btn.copied{color:var(--green);background:rgba(70,211,105,.07);border-color:rgba(70,211,105,.2)}
-
-.copy-msg-btn{font-family:var(--m);font-size:.62rem;color:var(--amber);background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.15);padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;white-space:nowrap}
-.copy-msg-btn:hover{background:rgba(245,166,35,.14);border-color:var(--amber)}
-.copy-msg-btn.copied{color:var(--green);background:rgba(70,211,105,.07);border-color:rgba(70,211,105,.2)}
-
-.action-btns{display:flex;gap:.35rem;flex-wrap:wrap}
-.btn-sm{font-family:var(--m);font-size:.58rem;padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;border:1px solid;white-space:nowrap;text-transform:uppercase}
-.btn-revoke{color:var(--amber);border-color:rgba(245,166,35,.18);background:transparent}
-.btn-revoke:hover{background:rgba(245,166,35,.07);border-color:var(--amber)}
-.btn-activate{color:var(--green);border-color:rgba(70,211,105,.18);background:transparent}
-.btn-activate:hover{background:rgba(70,211,105,.07);border-color:var(--green)}
-.btn-extend{color:var(--blue);border-color:rgba(77,166,255,.18);background:transparent}
-.btn-extend:hover{background:rgba(77,166,255,.07);border-color:var(--blue)}
-.btn-delete{color:var(--red);border-color:rgba(229,9,20,.18);background:transparent}
-.btn-delete:hover{background:rgba(229,9,20,.07);border-color:var(--red)}
-
-.email-cell{font-family:var(--m);font-size:.72rem}
-.mono-cell{font-family:var(--m);font-size:.72rem;color:var(--muted)}
-.uses-cell{font-family:var(--m);font-size:.75rem;text-align:center}
-.days-cell{font-family:var(--m);font-size:.7rem}
+.profile-cell{display:flex;align-items:center;gap:.5rem}
+.profile-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;flex-shrink:0}
+.email-cell{font-family:var(--m);font-size:.7rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mono-cell{font-family:var(--m);font-size:.72rem;color:var(--text2)}
+.link-cell{display:flex;align-items:center;gap:.4rem}
+.link-text{font-family:var(--m);font-size:.7rem;color:var(--blue)}
+.days-cell{font-family:var(--m);font-size:.72rem;font-weight:500}
 .days-ok{color:var(--green)}.days-warn{color:var(--amber)}.days-exp{color:var(--red)}
+.uses-cell{font-family:var(--m);font-size:.72rem;text-align:center}
+.uses-today{font-size:.6rem;color:var(--muted2)}
+.time-cell{font-family:var(--m);font-size:.67rem;color:var(--muted2)}
 
-.analytics-mini{font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px}
+.status-badge{font-family:var(--m);font-size:.56rem;letter-spacing:1px;padding:3px 8px;border-radius:4px;font-weight:500;text-transform:uppercase;white-space:nowrap}
+.status-badge.active{background:var(--green-dim);color:var(--green);border:1px solid rgba(70,211,105,.2)}
+.status-badge.revoked{background:var(--red-dim);color:var(--red);border:1px solid rgba(229,9,20,.15)}
+.status-badge.expired{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+.status-badge.expiring{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.2)}
 
-.empty-table{text-align:center;padding:2.5rem;color:var(--muted)}
-.empty-table p{font-family:var(--m);font-size:.72rem}
+.action-btns{display:flex;align-items:center;gap:.3rem}
+.icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--s4);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;color:var(--muted2);flex-shrink:0}
+.icon-btn:hover{border-color:var(--border2);color:var(--text);background:var(--s3)}
+.icon-btn.danger:hover{border-color:rgba(229,9,20,.3);color:var(--red);background:var(--red-dim)}
+.icon-btn.success:hover{border-color:rgba(70,211,105,.3);color:var(--green);background:var(--green-dim)}
+.wa-icon-btn{width:28px;height:28px;border-radius:6px;background:#25D366;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;flex-shrink:0;border:none}
+.wa-icon-btn:hover{background:#1ebe5d;transform:scale(1.05)}
+
+.empty-row td{text-align:center;padding:2.5rem;color:var(--muted);font-family:var(--m);font-size:.75rem}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-box{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:2.5rem;width:360px}
+.login-logo{font-family:var(--m);font-size:1.2rem;font-weight:500;letter-spacing:2px;margin-bottom:1.5rem;text-align:center}
+.login-logo .f{color:var(--red)}.login-logo .l{color:var(--text)}
+.login-logo sub{font-size:.45rem;display:block;letter-spacing:3px;color:var(--muted2);margin-top:2px;text-transform:uppercase}
+.login-box h2{font-size:1rem;font-weight:600;margin-bottom:.3rem}
+.login-box p{font-size:.78rem;color:var(--muted);margin-bottom:1.3rem}
+.login-inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 14px;border-radius:8px;font-family:var(--m);font-size:.83rem;outline:none;transition:border-color .2s;margin-bottom:.7rem}
+.login-inp:focus{border-color:rgba(255,255,255,.2)}
+.login-inp::placeholder{color:var(--muted2)}
+.login-btn{width:100%;background:var(--red);border:none;color:#fff;padding:11px;border-radius:8px;font-family:var(--f);font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s}
+.login-btn:hover{background:var(--red2)}
+.login-err{font-family:var(--m);font-size:.7rem;color:var(--red);margin-top:.5rem;display:none}
 
 /* TOAST */
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--green);color:#000;font-family:var(--m);font-size:.7rem;padding:9px 20px;border-radius:100px;letter-spacing:1px;opacity:0;transition:all .28s;pointer-events:none;z-index:999;white-space:nowrap;font-weight:500}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;background:var(--green);color:#000;font-family:var(--m);font-size:.72rem;padding:10px 18px;border-radius:8px;letter-spacing:1px;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap;font-weight:500;box-shadow:0 4px 20px rgba(70,211,105,.3)}
+#toast.show{opacity:1}
+#toast.err{background:var(--red);color:#fff;box-shadow:0 4px 20px rgba(229,9,20,.3)}
 
-@media(max-width:768px){
-  .stats-row{grid-template-columns:1fr 1fr}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px}
+
+/* GEAR SPIN */
+@keyframes gear{to{transform:rotate(360deg)}}
+.sb-item:hover .gear-icon{animation:gear .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:1024px){
+  .sidebar{display:none}
+  .grid-2{grid-template-columns:1fr}
+  .grid-4{grid-template-columns:1fr 1fr}
   .form-row{grid-template-columns:1fr 1fr}
-  .amain{padding:1.2rem .8rem 4rem}
-  th,td{padding:.65rem .7rem}
+  .content{padding:1rem}
 }
 </style>
 </head>
@@ -150,83 +281,284 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo"><span>FAN</span>FLIX ADMIN</div>
-    <h2>Admin Access</h2>
-    <p>Enter password to continue</p>
-    <input class="inp" type="password" id="pass-inp" placeholder="Admin password" onkeydown="if(event.key==='Enter')login()"/>
-    <button class="btn-red" onclick="login()">Login</button>
-    <div class="err-msg" id="err-msg">Wrong password. Try again.</div>
+    <div class="login-logo"><span class="f">FAN</span><span class="l">FLIX</span><sub>Admin Panel</sub></div>
+    <h2>Welcome back</h2>
+    <p>Enter your admin password to access the dashboard</p>
+    <input class="login-inp" type="password" id="pass-inp" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err" id="login-err">Wrong password. Try again.</div>
   </div>
 </div>
 
 <!-- DASHBOARD -->
-<div id="dashboard">
-  <nav class="anav">
-    <div class="anav-logo"><span>FAN</span>FLIX ADMIN</div>
-    <div class="anav-right">
-      <div class="anav-stat"><div class="live-dot"></div><b id="nav-live">-</b> online</div>
-      <div class="anav-stat">📊 <b id="nav-today">-</b> today</div>
-      <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-  </nav>
+<div id="dashboard" style="display:none;width:100%;display:flex;flex:1">
 
-  <div class="amain">
-
-    <!-- STATS -->
-    <div class="stats-row">
-      <div class="stat-card green"><div class="stat-val" id="s-active">-</div><div class="stat-lbl">Active Links</div></div>
-      <div class="stat-card amber"><div class="stat-val" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div>
-      <div class="stat-card red"><div class="stat-val" id="s-expired">-</div><div class="stat-lbl">Expired</div></div>
-      <div class="stat-card blue"><div class="stat-val" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div>
-    </div>
-
-    <!-- SLOTS -->
-    <div class="slots-section">
-      <div class="slots-title">Netflix Account Slots</div>
-      <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
-    </div>
-
-    <!-- CREATE -->
-    <div class="create-section">
-      <div class="sec-title">Create Customer Link</div>
-      <div class="form-row">
-        <div class="field"><label>Netflix Email</label><input class="inp" id="c-email" placeholder="mehedishimanto995@gmail.com" type="email"/></div>
-        <div class="field"><label>Profile</label><input class="inp" id="c-profile" placeholder="Profile 2"/></div>
-        <div class="field"><label>PIN</label><input class="inp" id="c-pin" placeholder="1234"/></div>
-        <div class="field"><label>Expiry</label><select class="select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
-        <button class="btn-create" onclick="createLink()">+ Create</button>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div>
+        <div class="sb-logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div>
+        <div class="sb-logo-sub">Admin Panel</div>
       </div>
     </div>
 
-    <!-- LINKS TABLE -->
-    <div class="links-section">
-      <div class="links-header">
-        <div class="sec-title" style="margin-bottom:0">Customer Links</div>
-        <input class="search-inp" id="search-inp" placeholder="Search email or profile..." oninput="filterLinks()"/>
+    <nav class="sb-nav">
+      <div class="sb-section">Main</div>
+      <div class="sb-item active" onclick="showSection('dashboard')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Profile</th>
-              <th>PIN</th>
-              <th>Link</th>
-              <th>Message</th>
-              <th>Days Left</th>
-              <th>Uses</th>
-              <th>Last Used</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="links-tbody">
-            <tr><td colspan="10" class="empty-table"><p>Loading...</p></td></tr>
-          </tbody>
-        </table>
+      <div class="sb-item" onclick="showSection('links')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Customer Links
+        <span class="sb-badge" id="sb-active-count">0</span>
+      </div>
+      <div class="sb-item" onclick="showSection('create')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        Create Link
+      </div>
+
+      <div class="sb-section">Monitor</div>
+      <div class="sb-item" onclick="filterByStatus('expiring')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Expiring Soon
+      </div>
+      <div class="sb-item" onclick="filterByStatus('expired')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        Expired Links
+      </div>
+      <div class="sb-item" onclick="filterByStatus('active')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Analytics
+      </div>
+
+      <div class="sb-section">System</div>
+      <div class="sb-item">
+        <svg class="gear-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M20 12h2M2 12h2M12 20v2M12 2v2"/></svg>
+        Settings
+      </div>
+      <div class="sb-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Support
+      </div>
+    </nav>
+
+    <div class="sb-user">
+      <div class="sb-avatar">A</div>
+      <div>
+        <div class="sb-uname">Admin</div>
+        <div class="sb-uemail">fanflixbd.com</div>
+      </div>
+      <button class="sb-logout" onclick="doLogout()" title="Logout">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>Dashboard</h1>
+        <p>Welcome back, <span>Admin</span></p>
+      </div>
+      <div class="topbar-right">
+        <div class="tb-stat"><div class="tb-dot"></div><b id="tb-live">-</b> online</div>
+        <div class="tb-stat">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <b id="tb-today">-</b> today
+        </div>
+        <div class="tb-date" id="tb-date"></div>
       </div>
     </div>
 
+    <!-- CONTENT -->
+    <div class="content" id="content">
+
+      <!-- STAT CARDS -->
+      <div class="grid-4">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-active">-</div>
+              <div class="stat-lbl">Active Links</div>
+            </div>
+            <div class="stat-icon green">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+          </div>
+          <div class="stat-link" onclick="filterByStatus('active')">View all active links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-expiring">-</div>
+              <div class="stat-lbl">Expiring Soon</div>
+            </div>
+            <div class="stat-icon amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+          </div>
+          <div class="stat-link" onclick="filterByStatus('expiring')">View expiring links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-expired">-</div>
+              <div class="stat-lbl">Expired</div>
+            </div>
+            <div class="stat-icon red">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            </div>
+          </div>
+          <div class="stat-link" onclick="filterByStatus('expired')">View expired links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-uses">-</div>
+              <div class="stat-lbl">Total Uses</div>
+            </div>
+            <div class="stat-icon blue">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+          </div>
+          <div class="stat-link">View usage analytics <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+
+      <!-- SLOTS + RIGHT PANEL -->
+      <div class="grid-2">
+        <div>
+          <!-- SLOTS -->
+          <div class="slots-card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+                Netflix Account Slots
+              </div>
+              <span class="card-badge ok" id="slots-badge">Loading...</span>
+            </div>
+            <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">Loading slots...</p></div>
+          </div>
+
+          <!-- CREATE FORM -->
+          <div class="create-card" id="create-section">
+            <div class="card-header" style="margin-bottom:.8rem">
+              <div class="card-title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Create Customer Link
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label class="field-label">Netflix Email</label>
+                <input class="field-inp" id="c-email" placeholder="email@gmail.com" type="email"/>
+              </div>
+              <div>
+                <label class="field-label">Profile</label>
+                <input class="field-inp" id="c-profile" placeholder="Profile A"/>
+              </div>
+              <div>
+                <label class="field-label">PIN</label>
+                <input class="field-inp" id="c-pin" placeholder="5651"/>
+              </div>
+              <div>
+                <label class="field-label">Expiry</label>
+                <select class="field-select" id="c-days">
+                  <option value="28">1 Month (28d)</option>
+                  <option value="85">3 Months (85d)</option>
+                </select>
+              </div>
+              <div style="display:flex;flex-direction:column;justify-content:flex-end">
+                <button class="create-btn" onclick="doCreate()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT -->
+        <div class="right-panel">
+          <!-- CHART -->
+          <div class="chart-card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                Account Overview
+              </div>
+              <span style="font-family:var(--m);font-size:.6rem;color:var(--muted2)">Last 7 days</span>
+            </div>
+            <div>
+              <div class="chart-num" id="chart-total">-</div>
+              <div class="chart-growth">Total Uses</div>
+            </div>
+            <div class="chart-area" style="margin-top:.8rem">
+              <svg class="chart-svg" viewBox="0 0 300 70" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#a78bfa" stop-opacity=".3"/>
+                    <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path id="chart-path" d="M0 70 L300 70" fill="url(#chartGrad)" stroke="#a78bfa" stroke-width="2" fill-opacity="0.3"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- RECENT ACTIVITY -->
+          <div class="activity-card">
+            <div class="act-header">
+              <h3>Recent Activity</h3>
+              <span class="act-viewall">View all</span>
+            </div>
+            <div id="activity-feed">
+              <p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LINKS TABLE -->
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            Customer Links
+            <span class="card-badge ok" id="active-badge">-</span>
+          </div>
+          <div class="search-wrap" style="margin-left:auto">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="search-inp" placeholder="Search email, profile or /c/token..." oninput="filterLinks()"/>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Profile</th>
+                <th>PIN</th>
+                <th>Link</th>
+                <th>Message</th>
+                <th>Days Left</th>
+                <th>Uses</th>
+                <th>Last Used</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="links-tbody">
+              <tr class="empty-row"><td colspan="10">Loading links...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
@@ -234,24 +566,34 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script>
 const SITE = window.location.origin;
+const PROFILE_COLORS = {A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
 let adminToken = sessionStorage.getItem('fanflix_admin');
-let allLinks = {};
+let allLinks = {}, activityLog = [], curFilter = '';
 
-window.onload = () => { if (adminToken) showDashboard(); };
+window.onload = () => {
+  updateDate();
+  setInterval(updateDate, 60000);
+  if (adminToken) showDashboard();
+};
 
-async function login() {
-  const pass = document.getElementById('pass-inp').value;
-  const r = await fetch('/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pass}) });
-  const d = await r.json();
-  if (d.success) { adminToken = d.token; sessionStorage.setItem('fanflix_admin', adminToken); showDashboard(); }
-  else document.getElementById('err-msg').style.display = 'block';
+function updateDate() {
+  const now = new Date();
+  document.getElementById('tb-date').textContent = now.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + ' ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 }
 
-function logout() { sessionStorage.removeItem('fanflix_admin'); location.reload(); }
+async function doLogin() {
+  const pass = document.getElementById('pass-inp').value;
+  const r = await fetch('/api/admin/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});
+  const d = await r.json();
+  if (d.success) { adminToken = d.token; sessionStorage.setItem('fanflix_admin', adminToken); showDashboard(); }
+  else { document.getElementById('login-err').style.display = 'block'; }
+}
+
+function doLogout() { sessionStorage.removeItem('fanflix_admin'); location.reload(); }
 
 function showDashboard() {
   document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('dashboard').style.display = 'flex';
   loadAll();
   setInterval(loadStats, 30000);
   setInterval(loadAll, 60000);
@@ -263,164 +605,281 @@ async function loadStats() {
   try {
     const r = await fetch('/api/stats');
     const d = await r.json();
-    const lc = document.getElementById('nav-live');
-    const tc = document.getElementById('nav-today');
-    if(lc) lc.textContent = d.live;
-    if(tc) tc.textContent = d.today;
-  } catch(e) {}
+    const el = document.getElementById('tb-live');
+    const et = document.getElementById('tb-today');
+    if(el) el.textContent = d.live;
+    if(et) et.textContent = d.today;
+  } catch(e){}
 }
 
 async function loadSlots() {
   try {
-    const r = await fetch('/api/admin/slots', { headers:{'x-admin-token':adminToken} });
+    const r = await fetch('/api/admin/slots', {headers:{'x-admin-token':adminToken}});
     const d = await r.json();
     const slots = d.slots || {};
     const container = document.getElementById('slots-list');
-    if (!Object.keys(slots).length) { container.innerHTML = '<p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">No accounts yet</p>'; return; }
-    container.innerHTML = Object.entries(slots).map(([email, info]) => `
-      <div class="slot-item">
+    const badge = document.getElementById('slots-badge');
+
+    if (!Object.keys(slots).length) {
+      container.innerHTML = '<p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">No accounts yet</p>';
+      if(badge){badge.textContent='Empty';badge.className='card-badge ok';}
+      return;
+    }
+
+    const totalActive = Object.values(slots).reduce((s,v)=>s+v.active,0);
+    const totalSlots = Object.keys(slots).length * 8;
+    if(badge){
+      badge.textContent = totalActive >= totalSlots ? 'Full' : `${totalActive}/${totalSlots} Used`;
+      badge.className = 'card-badge ' + (totalActive >= totalSlots ? 'full' : 'ok');
+    }
+
+    container.innerHTML = Object.entries(slots).map(([email, info]) => {
+      const pColors = ['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
+      const avatars = Array.from({length:8},(_,i) => {
+        const isUsed = i < info.active;
+        const letter = String.fromCharCode(65+i);
+        const col = pColors[i] || '#888';
+        return isUsed
+          ? `<div class="slot-avatar active" style="background:${col}" title="Profile ${letter}">${letter}</div>`
+          : `<div class="slot-avatar empty"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
+      }).join('');
+
+      const pct = (info.active/8)*100;
+      const circumference = 2*Math.PI*18;
+      const offset = circumference - (pct/100)*circumference;
+      const ringColor = info.active >= 8 ? '#E50914' : info.active >= 6 ? '#f5a623' : '#46d369';
+
+      return `<div class="slot-row">
         <div class="slot-email">${esc(email)}</div>
-        <div class="slot-bar-wrap">
-          <div class="slot-bar">
-            ${Array.from({length:8},(_,i)=>`<span class="${i<info.active?'used':'free'}"></span>`).join('')}
-          </div>
-          <div class="slot-count ${info.active>=8?'full':''}">${info.active}/8</div>
+        <div class="slot-avatars">${avatars}</div>
+        <div class="slot-ring" style="width:46px;height:46px">
+          <svg width="46" height="46" viewBox="0 0 46 46">
+            <circle cx="23" cy="23" r="18" fill="none" stroke="#1a1d22" stroke-width="4"/>
+            <circle cx="23" cy="23" r="18" fill="none" stroke="${ringColor}" stroke-width="4" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s ease"/>
+          </svg>
+          <div class="slot-ring-label" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.6rem;font-weight:600">${info.active}/8</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch(e) {}
 }
 
 async function loadLinks() {
   try {
-    const r = await fetch('/api/admin/links', { headers:{'x-admin-token':adminToken} });
+    const r = await fetch('/api/admin/links', {headers:{'x-admin-token':adminToken}});
     const d = await r.json();
     allLinks = d.links || {};
     renderLinks(allLinks);
     updateStats(allLinks);
-  } catch(e) {}
+    updateActivity(allLinks);
+    updateChart(allLinks);
+    const active = Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;
+    const sbb = document.getElementById('sb-active-count');
+    if(sbb) sbb.textContent = active;
+  } catch(e){}
 }
 
 function updateStats(links) {
   const arr = Object.values(links);
-  const now = Date.now();
-  const threeDays = 3*24*60*60*1000;
-  document.getElementById('s-active').textContent = arr.filter(l=>l.active&&l.expiresAt>now).length;
-  document.getElementById('s-expiring').textContent = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length;
-  document.getElementById('s-expired').textContent = arr.filter(l=>l.expiresAt<=now).length;
-  document.getElementById('s-uses').textContent = arr.reduce((s,l)=>s+l.uses,0);
+  const now = Date.now(), threeDays = 3*24*60*60*1000;
+  const safe = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  safe('s-active', arr.filter(l=>l.active&&l.expiresAt>now).length);
+  safe('s-expiring', arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length);
+  safe('s-expired', arr.filter(l=>l.expiresAt<=now).length);
+  safe('s-uses', arr.reduce((s,l)=>s+l.uses,0));
+  const active = arr.filter(l=>l.active&&l.expiresAt>now).length;
+  const ab = document.getElementById('active-badge');
+  if(ab){ab.textContent=`${active} Active`;ab.className='card-badge ok';}
+}
+
+function updateActivity(links) {
+  const arr = Object.values(links).filter(l=>l.lastUsed).sort((a,b)=>b.lastUsed-a.lastUsed).slice(0,5);
+  const feed = document.getElementById('activity-feed');
+  if(!feed)return;
+  if(!arr.length){feed.innerHTML='<p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">No activity yet</p>';return;}
+  const icons = {
+    active: `<div class="act-icon green"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`,
+    expired: `<div class="act-icon red"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>`,
+    default: `<div class="act-icon blue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`
+  };
+  feed.innerHTML = arr.map(l => {
+    const ico = l.active && l.expiresAt > Date.now() ? icons.active : l.expiresAt <= Date.now() ? icons.expired : icons.default;
+    return `<div class="act-item">${ico}<div><div class="act-title">Link used</div><div class="act-sub">${esc(l.profile||l.email)}</div></div><div class="act-time">${timeAgo(l.lastUsed)}</div></div>`;
+  }).join('');
+}
+
+function updateChart(links) {
+  const arr = Object.values(links);
+  const total = arr.reduce((s,l)=>s+l.uses,0);
+  const ct = document.getElementById('chart-total');
+  if(ct) ct.textContent = total;
+  // Simple sparkline
+  const days = Array.from({length:7},(_,i)=>{
+    const d = new Date(); d.setDate(d.getDate()-6+i);
+    const key = d.toISOString().split('T')[0];
+    return arr.reduce((s,l)=>s+(l.analytics?.daily?.[key]||0),0);
+  });
+  const max = Math.max(...days,1);
+  const pts = days.map((v,i)=>`${(i/6)*300},${70-(v/max)*60}`).join(' L');
+  const path = document.getElementById('chart-path');
+  if(path) path.setAttribute('d',`M${pts} L300,70 L0,70 Z`);
 }
 
 function filterLinks() {
-  const q = document.getElementById('search-inp').value.toLowerCase();
+  const q = document.getElementById('search-inp').value.toLowerCase().replace('/c/','');
   const filtered = {};
-  for (const [k,v] of Object.entries(allLinks)) {
-    if (v.email.includes(q) || (v.profile||'').toLowerCase().includes(q)) filtered[k] = v;
+  for(const[k,v] of Object.entries(allLinks)){
+    if(v.email.includes(q)||(v.profile||'').toLowerCase().includes(q)||k.includes(q)) filtered[k]=v;
   }
   renderLinks(filtered);
+}
+
+function filterByStatus(status) {
+  const now = Date.now(), threeDays=3*24*60*60*1000;
+  const filtered = {};
+  for(const[k,v] of Object.entries(allLinks)){
+    if(status==='active'&&v.active&&v.expiresAt>now) filtered[k]=v;
+    else if(status==='expired'&&v.expiresAt<=now) filtered[k]=v;
+    else if(status==='expiring'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=threeDays) filtered[k]=v;
+  }
+  renderLinks(filtered);
+  // Highlight sidebar
+  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+}
+
+function showSection(s) {
+  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if(s==='create'){document.getElementById('create-section').scrollIntoView({behavior:'smooth'});}
+  if(s==='links'){document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});}
 }
 
 function renderLinks(links) {
   const tbody = document.getElementById('links-tbody');
   const arr = Object.values(links).sort((a,b)=>b.createdAt-a.createdAt);
-  if (!arr.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty-table"><p>No links yet. Create one above!</p></td></tr>'; return; }
-  const now = Date.now();
-  const threeDays = 3*24*60*60*1000;
+  if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="10">No links found</td></tr>';return;}
+  const now = Date.now(), threeDays=3*24*60*60*1000;
   tbody.innerHTML = arr.map(l => {
-    const expired = l.expiresAt <= now;
-    const expiring = !expired && (l.expiresAt-now) <= threeDays;
-    const status = !l.active ? 'revoked' : expired ? 'expired' : expiring ? 'expiring' : 'active';
-    const statusLabel = !l.active ? 'Revoked' : expired ? 'Expired' : expiring ? 'Expiring' : 'Active';
-    const daysLeft = Math.max(0, Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
-    const daysCls = daysLeft <= 3 ? 'days-exp' : daysLeft <= 7 ? 'days-warn' : 'days-ok';
-    const lastUsed = l.lastUsed ? timeAgo(l.lastUsed) : 'Never';
-    const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]] || 0;
+    const expired = l.expiresAt<=now;
+    const expiring = !expired&&(l.expiresAt-now)<=threeDays;
+    const status = !l.active?'revoked':expired?'expired':expiring?'expiring':'active';
+    const daysLeft = Math.max(0,Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
+    const daysCls = daysLeft<=3?'days-exp':daysLeft<=7?'days-warn':'days-ok';
+    const lastUsed = l.lastUsed?timeAgo(l.lastUsed):'Never';
     const fullLink = `${SITE}/c/${l.token}`;
+    const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
+    const pLetter = (l.profile||'?').replace('Profile ','').trim().charAt(0);
+    const pColor = PROFILE_COLORS[pLetter] || '#888';
+    const customerMsg = buildMsg(l.email,l.profile||'',l.pin||'',fullLink,daysLeft);
 
     return `<tr>
-      <td class="email-cell">${esc(l.email)}</td>
-      <td class="mono-cell">${esc(l.profile||'-')}</td>
+      <td class="email-cell" title="${esc(l.email)}">${esc(l.email)}</td>
+      <td>
+        <div class="profile-cell">
+          <div class="profile-avatar" style="background:${pColor}">${pLetter}</div>
+          <span style="font-size:.78rem">${esc(l.profile||'-')}</span>
+        </div>
+      </td>
       <td class="mono-cell">${esc(l.pin||'-')}</td>
-      <td><button class="copy-link-btn" onclick="copyText('${esc(fullLink)}',this,'${l.token.substring(0,8)}')">/c/${l.token}</button></td>
-      <td><button class="copy-msg-btn" onclick="copyCustomerMsg('${esc(l.email)}','${esc(l.profile||'')}','${esc(l.pin||'')}','${esc(fullLink)}',${daysLeft},this)">📋 Copy</button></td>
+      <td>
+        <div class="link-cell">
+          <span class="link-text">/c/${l.token}</span>
+          <button class="icon-btn" onclick="copyText('${esc(fullLink)}',this)" title="Copy link">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+      </td>
+      <td>
+        <button class="icon-btn success" onclick="copyText(${JSON.stringify(customerMsg)},this)" title="Copy customer message">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </button>
+      </td>
       <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}</td>
-      <td class="uses-cell">${l.uses}<div class="analytics-mini">today: ${todayUses}</div></td>
-      <td class="mono-cell">${lastUsed}</td>
-      <td><span class="badge ${status}">${statusLabel}</span></td>
+      <td class="uses-cell">${l.uses}<div class="uses-today">today: ${todayUses}</div></td>
+      <td class="time-cell">${lastUsed}</td>
+      <td><span class="status-badge ${status}">${status}</span></td>
       <td>
         <div class="action-btns">
-          ${l.active&&!expired ? `<button class="btn-sm btn-revoke" onclick="revokeLink('${l.token}')">Revoke</button>` : `<button class="btn-sm btn-activate" onclick="activateLink('${l.token}')">Activate</button>`}
-          <button class="btn-sm btn-extend" onclick="extendLink('${l.token}')">+28d</button>
-          <button class="btn-sm btn-delete" onclick="deleteLink('${l.token}')">Delete</button>
+          ${l.active&&!expired
+            ?`<button class="icon-btn danger" onclick="revokeLink('${l.token}')" title="Revoke"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>`
+            :`<button class="icon-btn success" onclick="activateLink('${l.token}')" title="Activate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>`
+          }
+          <button class="icon-btn success" onclick="renewLink('${l.token}')" title="Renew 28 days">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+          <button class="icon-btn danger" onclick="deleteLink('${l.token}')" title="Delete">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+          </button>
         </div>
       </td>
     </tr>`;
   }).join('');
 }
 
-async function createLink() {
-  const email = document.getElementById('c-email').value.trim();
-  const profile = document.getElementById('c-profile').value.trim();
-  const pin = document.getElementById('c-pin').value.trim();
-  const days = document.getElementById('c-days').value;
-  if (!email||!profile||!pin) return showToast('Fill all fields!', true);
-  const r = await fetch('/api/admin/create', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({email,profile,pin,days}) });
-  const d = await r.json();
-  if (d.success) {
-    const fullLink = `${SITE}/c/${d.token}`;
+async function doCreate() {
+  const email=document.getElementById('c-email').value.trim();
+  const profile=document.getElementById('c-profile').value.trim();
+  const pin=document.getElementById('c-pin').value.trim();
+  const days=document.getElementById('c-days').value;
+  if(!email||!profile||!pin)return showToast('Fill all fields!',true);
+  const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days})});
+  const d=await r.json();
+  if(d.success){
+    const fullLink=`${SITE}/c/${d.token}`;
     navigator.clipboard.writeText(fullLink);
-    if (d.existing) showToast('⚠ Existing link found & copied!');
-    else { showToast('✓ Link created & copied!'); document.getElementById('c-email').value=''; document.getElementById('c-profile').value=''; document.getElementById('c-pin').value=''; }
+    showToast(d.existing?'Existing link copied!':'Link created & copied!');
+    document.getElementById('c-email').value='';
+    document.getElementById('c-profile').value='';
+    document.getElementById('c-pin').value='';
     loadAll();
-  } else showToast('Error: '+(d.error||'Unknown'), true);
+  }else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-async function revokeLink(token) {
-  if (!confirm('Revoke this link?')) return;
-  await fetch(`/api/admin/revoke/${token}`, { method:'POST', headers:{'x-admin-token':adminToken} });
-  showToast('Link revoked'); loadAll();
+async function revokeLink(token){
+  if(!confirm('Revoke this link?'))return;
+  await fetch(`/api/admin/revoke/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});
+  showToast('Link revoked');loadAll();
+}
+async function activateLink(token){
+  await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});
+  showToast('Link activated');loadAll();
+}
+async function extendLink(token){
+  await fetch(`/api/admin/extend/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
+  showToast('+28 days added');loadAll();
+}
+async function renewLink(token){
+  // Show renewal options
+  const days = confirm('Renew for 28 days? Click OK for 28 days, Cancel to choose 85 days.') ? 28 : 85;
+  const r=await fetch(`/api/admin/renew/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days})});
+  const d=await r.json();
+  if(d.success){showToast(`Renewed for ${days} days!`);loadAll();}
+  else showToast('Error renewing',true);
 }
 
-async function activateLink(token) {
-  await fetch(`/api/admin/activate/${token}`, { method:'POST', headers:{'x-admin-token':adminToken} });
-  showToast('Link activated'); loadAll();
+async function deleteLink(token){
+  if(!confirm('Delete permanently?'))return;
+  await fetch(`/api/admin/delete/${token}`,{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  showToast('Deleted');loadAll();
 }
 
-async function extendLink(token) {
-  await fetch(`/api/admin/extend/${token}`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({days:28}) });
-  showToast('+28 days added'); loadAll();
-}
-
-async function deleteLink(token) {
-  if (!confirm('Delete permanently?')) return;
-  await fetch(`/api/admin/delete/${token}`, { method:'DELETE', headers:{'x-admin-token':adminToken} });
-  showToast('Deleted'); loadAll();
-}
-
-function copyText(text, btn, label) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = `/c/${label}`; btn.classList.remove('copied'); }, 2000);
+function copyText(text,btn){
+  navigator.clipboard.writeText(text).then(()=>{
+    if(btn){const orig=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=orig,2000);}
+    showToast('Copied!');
   });
 }
 
-function copyCustomerMsg(email, profile, pin, link, daysLeft, btn) {
-  const msg = `🎬 FanFlix BD\n\n📧 Email: ${email}\n👤 Profile: ${profile}\n🔑 PIN: ${pin}\n\n🔗 Household Code Link:\n${link}\n\n📺 Login Tutorial (Must Watch):\nhttps://youtu.be/PLACEHOLDER1\n\n🏠 Household Fix Tutorial:\nhttps://youtu.be/PLACEHOLDER2\n\n⚠️ Important:\n• Any changes to the account are not allowed\n• Streaming is allowed on 1 device at a time\n• Do not use it from outside BD\n• You can sign in anytime if it shows signed out\n\n✅ Valid for ${daysLeft} days`;
-  navigator.clipboard.writeText(msg).then(() => {
-    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
-    showToast('✓ Customer message copied!');
-  });
+function buildMsg(email,profile,pin,link,days){
+  return `FanFlix BD\n\nEmail: ${email}\nProfile: ${profile}\nPIN: ${pin}\n\nHousehold Code Link:\n${link}\n\nLogin Tutorial (Must Watch):\nhttps://youtu.be/PLACEHOLDER1\n\nHousehold Fix Tutorial:\nhttps://youtu.be/PLACEHOLDER2\n\nImportant:\n- Any changes to the account are not allowed\n- Streaming is allowed on 1 device at a time\n- Do not use it from outside BD\n- You can sign in anytime if it shows signed out\n\nValid for ${days} days`;
 }
 
-function showToast(msg, err=false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.style.background = err ? 'var(--red)' : 'var(--green)'; t.style.color = err ? '#fff' : '#000';
-  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500);
+function showToast(msg,err=false){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=err?'err show':'show';
+  setTimeout(()=>t.className='',2500);
 }
-function timeAgo(ts) {
-  const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);
-  if(m<1)return'Just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';
-}
+function timeAgo(ts){const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);if(m<1)return'Just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
