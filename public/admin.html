@@ -7,128 +7,141 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --red:#E50914;--bg:#080808;--s1:#111;--s2:#161616;--s3:#1e1e1e;--s4:#252525;
+  --red:#E50914;--bg:#080808;--s1:#111;--s2:#161616;--s3:#1e1e1e;--s4:#252525;--s5:#2e2e2e;
   --border:rgba(255,255,255,.07);--text:#f0f0f0;--muted:#888;--muted2:#555;
-  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;
+  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;--red2:#ff1e2b;
   --f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;-webkit-font-smoothing:antialiased}
 
 /* LOGIN */
-#login-screen{
-  display:flex;flex-direction:column;align-items:center;
-  justify-content:center;min-height:100vh;gap:1.5rem;
-}
-.login-box{
-  background:var(--s1);border:1px solid var(--border);
-  border-radius:12px;padding:2.5rem;width:100%;max-width:380px;
-}
-.login-logo{font-family:var(--m);font-size:1.4rem;font-weight:500;letter-spacing:3px;margin-bottom:1.5rem;text-align:center}
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:2.5rem;width:100%;max-width:360px}
+.login-logo{font-family:var(--m);font-size:1.3rem;font-weight:500;letter-spacing:3px;margin-bottom:1.5rem;text-align:center}
 .login-logo span{color:var(--red)}
-.login-box h2{font-size:1.1rem;font-weight:600;margin-bottom:.4rem}
-.login-box p{font-size:.82rem;color:var(--muted);margin-bottom:1.5rem}
-.inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 14px;border-radius:7px;font-family:var(--m);font-size:.85rem;outline:none;transition:border-color .2s;margin-bottom:.8rem}
+.login-box h2{font-size:1.1rem;font-weight:600;margin-bottom:.3rem}
+.login-box p{font-size:.82rem;color:var(--muted);margin-bottom:1.4rem}
+.inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 14px;border-radius:7px;font-family:var(--m);font-size:.85rem;outline:none;transition:border-color .2s;margin-bottom:.7rem}
 .inp:focus{border-color:rgba(255,255,255,.2)}
 .inp::placeholder{color:var(--muted2)}
 .btn-red{width:100%;background:var(--red);border:none;color:#fff;padding:12px;border-radius:7px;font-family:var(--f);font-size:.9rem;font-weight:600;cursor:pointer;transition:background .15s}
-.btn-red:hover{background:#f40612}
-.err{font-family:var(--m);font-size:.72rem;color:var(--red);margin-top:.5rem;display:none}
+.btn-red:hover{background:var(--red2)}
+.err-msg{font-family:var(--m);font-size:.72rem;color:var(--red);margin-top:.5rem;display:none}
 
 /* DASHBOARD */
-#dashboard{display:none;min-height:100vh}
+#dashboard{display:none}
 
 /* NAV */
-.anav{
-  background:rgba(8,8,8,.97);backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--border);
-  padding:0 2rem;height:58px;
-  display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:100;
-}
+.anav{background:rgba(8,8,8,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
 .anav-logo{font-family:var(--m);font-size:1.1rem;letter-spacing:2px}
 .anav-logo span{color:var(--red)}
-.anav-right{display:flex;align-items:center;gap:1rem}
-.anav-stat{font-family:var(--m);font-size:.65rem;color:var(--muted);letter-spacing:1px}
+.anav-right{display:flex;align-items:center;gap:.8rem}
+.anav-stat{font-family:var(--m);font-size:.62rem;color:var(--muted);display:flex;align-items:center;gap:5px}
 .anav-stat b{color:var(--text)}
-.logout-btn{font-family:var(--m);font-size:.65rem;letter-spacing:1px;color:var(--muted);background:transparent;border:1px solid var(--s4);padding:5px 12px;border-radius:4px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s ease infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 5px rgba(70,211,105,0)}}
+.logout-btn{font-family:var(--m);font-size:.62rem;letter-spacing:1px;color:var(--muted);background:transparent;border:1px solid var(--s4);padding:5px 12px;border-radius:4px;cursor:pointer;transition:all .2s;text-transform:uppercase}
 .logout-btn:hover{border-color:#333;color:var(--text)}
 
 /* MAIN */
-.amain{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.amain{max-width:1100px;margin:0 auto;padding:1.5rem 1.2rem 4rem}
 
-/* STATS CARDS */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:2rem}
-.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.2rem}
-.stat-val{font-size:1.8rem;font-weight:700;margin-bottom:.2rem}
-.stat-lbl{font-family:var(--m);font-size:.62rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
-.stat-card.red .stat-val{color:var(--red)}
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:1.5rem}
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.1rem}
+.stat-val{font-size:1.7rem;font-weight:700;margin-bottom:.2rem}
+.stat-lbl{font-family:var(--m);font-size:.58rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
 .stat-card.green .stat-val{color:var(--green)}
 .stat-card.amber .stat-val{color:var(--amber)}
+.stat-card.red .stat-val{color:var(--red)}
 .stat-card.blue .stat-val{color:var(--blue)}
 
-/* CREATE FORM */
-.create-section{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:2rem}
-.sec-title{font-size:.95rem;font-weight:600;margin-bottom:1.2rem;display:flex;align-items:center;gap:8px}
-.sec-title::before{content:'';width:3px;height:16px;background:var(--red);border-radius:2px;display:block}
-.form-grid{display:grid;grid-template-columns:1fr 1fr auto auto;gap:.7rem;align-items:end}
-.field label{font-family:var(--m);font-size:.58rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:.4rem}
-.field .inp{margin-bottom:0}
-.select{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 14px;border-radius:7px;font-family:var(--m);font-size:.82rem;outline:none;cursor:pointer;appearance:none}
-.btn-create{background:var(--red);border:none;color:#fff;padding:11px 20px;border-radius:7px;font-family:var(--f);font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;height:42px}
-.btn-create:hover{background:#f40612}
+/* SLOTS */
+.slots-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1.5rem}
+.slots-title{font-size:.85rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:7px}
+.slots-title::before{content:'';width:3px;height:14px;background:var(--blue);border-radius:2px;display:block}
+.slot-item{display:flex;align-items:center;gap:1rem;padding:.5rem 0;border-bottom:1px solid var(--border)}
+.slot-item:last-child{border-bottom:none}
+.slot-email{font-family:var(--m);font-size:.72rem;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-bar-wrap{display:flex;align-items:center;gap:.5rem;flex-shrink:0}
+.slot-bar{display:flex;gap:2px}
+.slot-bar span{width:14px;height:14px;border-radius:2px}
+.slot-bar .used{background:var(--red)}
+.slot-bar .free{background:var(--s4)}
+.slot-count{font-family:var(--m);font-size:.65rem;color:var(--muted);width:36px;text-align:right}
+.slot-count.full{color:var(--red)}
 
-/* LINKS TABLE */
-.links-section{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-.links-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.links-header .sec-title{margin-bottom:0}
-.search-inp{background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:7px 12px;border-radius:6px;font-family:var(--m);font-size:.75rem;outline:none;width:220px;transition:border-color .2s}
-.search-inp:focus{border-color:rgba(255,255,255,.2)}
+/* CREATE */
+.create-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.2rem;margin-bottom:1.5rem}
+.sec-title{font-size:.88rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:7px}
+.sec-title::before{content:'';width:3px;height:14px;background:var(--red);border-radius:2px;display:block}
+.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.6rem;align-items:end}
+.field label{font-family:var(--m);font-size:.57rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;display:block;margin-bottom:.4rem}
+.field .inp{margin-bottom:0}
+.select{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:11px 10px;border-radius:7px;font-family:var(--m);font-size:.78rem;outline:none;cursor:pointer}
+.btn-create{background:var(--red);border:none;color:#fff;padding:11px 18px;border-radius:7px;font-family:var(--f);font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;height:42px}
+.btn-create:hover{background:var(--red2)}
+
+/* TABLE */
+.links-section{background:var(--s1);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.links-header{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap}
+.search-inp{background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:7px 12px;border-radius:6px;font-family:var(--m);font-size:.73rem;outline:none;width:200px;transition:border-color .2s}
+.search-inp:focus{border-color:rgba(255,255,255,.18)}
 .search-inp::placeholder{color:var(--muted2)}
 
+.table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{font-family:var(--m);font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:.8rem 1.2rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
-td{padding:.85rem 1.2rem;border-bottom:1px solid rgba(255,255,255,.03);font-size:.82rem;vertical-align:middle}
+th{font-family:var(--m);font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:.8rem 1rem;border-bottom:1px solid rgba(255,255,255,.03);font-size:.8rem;vertical-align:middle}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:rgba(255,255,255,.02)}
+tr:hover td{background:rgba(255,255,255,.015)}
 
-.badge{font-family:var(--m);font-size:.58rem;letter-spacing:1px;padding:3px 8px;border-radius:3px;font-weight:500;text-transform:uppercase}
-.badge.active{background:rgba(70,211,105,.12);color:var(--green);border:1px solid rgba(70,211,105,.2)}
-.badge.revoked{background:rgba(229,9,20,.1);color:var(--red);border:1px solid rgba(229,9,20,.2)}
-.badge.expired{background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border)}
+.badge{font-family:var(--m);font-size:.56rem;letter-spacing:1px;padding:3px 7px;border-radius:3px;font-weight:500;text-transform:uppercase;white-space:nowrap}
+.badge.active{background:rgba(70,211,105,.1);color:var(--green);border:1px solid rgba(70,211,105,.18)}
+.badge.revoked{background:rgba(229,9,20,.08);color:var(--red);border:1px solid rgba(229,9,20,.18)}
+.badge.expired{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
+.badge.expiring{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.18)}
 
-.copy-link{font-family:var(--m);font-size:.65rem;color:var(--blue);background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.15);padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .18s;text-decoration:none;display:inline-block;white-space:nowrap}
-.copy-link:hover{background:rgba(77,166,255,.15);border-color:var(--blue)}
-.copy-link.copied{color:var(--green);background:rgba(70,211,105,.08);border-color:rgba(70,211,105,.2)}
+.copy-link-btn{font-family:var(--m);font-size:.62rem;color:var(--blue);background:rgba(77,166,255,.07);border:1px solid rgba(77,166,255,.15);padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.copy-link-btn:hover{background:rgba(77,166,255,.14);border-color:var(--blue)}
+.copy-link-btn.copied{color:var(--green);background:rgba(70,211,105,.07);border-color:rgba(70,211,105,.2)}
 
-.action-btns{display:flex;gap:.4rem}
-.btn-sm{font-family:var(--m);font-size:.6rem;letter-spacing:.5px;padding:4px 10px;border-radius:4px;cursor:pointer;transition:all .18s;border:1px solid;white-space:nowrap;text-transform:uppercase}
-.btn-revoke{background:transparent;color:var(--amber);border-color:rgba(245,166,35,.2)}
-.btn-revoke:hover{background:rgba(245,166,35,.08);border-color:var(--amber)}
-.btn-activate{background:transparent;color:var(--green);border-color:rgba(70,211,105,.2)}
-.btn-activate:hover{background:rgba(70,211,105,.08);border-color:var(--green)}
-.btn-delete{background:transparent;color:var(--red);border-color:rgba(229,9,20,.2)}
-.btn-delete:hover{background:rgba(229,9,20,.08);border-color:var(--red)}
+.copy-msg-btn{font-family:var(--m);font-size:.62rem;color:var(--amber);background:rgba(245,166,35,.07);border:1px solid rgba(245,166,35,.15);padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;white-space:nowrap}
+.copy-msg-btn:hover{background:rgba(245,166,35,.14);border-color:var(--amber)}
+.copy-msg-btn.copied{color:var(--green);background:rgba(70,211,105,.07);border-color:rgba(70,211,105,.2)}
 
-.email-cell{font-family:var(--m);font-size:.75rem;color:var(--text)}
-.name-cell{font-weight:500}
-.date-cell{font-family:var(--m);font-size:.7rem;color:var(--muted)}
-.uses-cell{font-family:var(--m);font-size:.78rem;color:var(--text);text-align:center}
+.action-btns{display:flex;gap:.35rem;flex-wrap:wrap}
+.btn-sm{font-family:var(--m);font-size:.58rem;padding:4px 9px;border-radius:3px;cursor:pointer;transition:all .18s;border:1px solid;white-space:nowrap;text-transform:uppercase}
+.btn-revoke{color:var(--amber);border-color:rgba(245,166,35,.18);background:transparent}
+.btn-revoke:hover{background:rgba(245,166,35,.07);border-color:var(--amber)}
+.btn-activate{color:var(--green);border-color:rgba(70,211,105,.18);background:transparent}
+.btn-activate:hover{background:rgba(70,211,105,.07);border-color:var(--green)}
+.btn-extend{color:var(--blue);border-color:rgba(77,166,255,.18);background:transparent}
+.btn-extend:hover{background:rgba(77,166,255,.07);border-color:var(--blue)}
+.btn-delete{color:var(--red);border-color:rgba(229,9,20,.18);background:transparent}
+.btn-delete:hover{background:rgba(229,9,20,.07);border-color:var(--red)}
 
-.empty-table{text-align:center;padding:3rem;color:var(--muted)}
-.empty-table p{font-family:var(--m);font-size:.75rem}
+.email-cell{font-family:var(--m);font-size:.72rem}
+.mono-cell{font-family:var(--m);font-size:.72rem;color:var(--muted)}
+.uses-cell{font-family:var(--m);font-size:.75rem;text-align:center}
+.days-cell{font-family:var(--m);font-size:.7rem}
+.days-ok{color:var(--green)}.days-warn{color:var(--amber)}.days-exp{color:var(--red)}
+
+.analytics-mini{font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px}
+
+.empty-table{text-align:center;padding:2.5rem;color:var(--muted)}
+.empty-table p{font-family:var(--m);font-size:.72rem}
 
 /* TOAST */
-#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--green);color:#000;font-family:var(--m);font-size:.72rem;padding:9px 20px;border-radius:100px;letter-spacing:1px;opacity:0;transition:all .28s;pointer-events:none;z-index:999;white-space:nowrap;font-weight:500}
+#toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--green);color:#000;font-family:var(--m);font-size:.7rem;padding:9px 20px;border-radius:100px;letter-spacing:1px;opacity:0;transition:all .28s;pointer-events:none;z-index:999;white-space:nowrap;font-weight:500}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 @media(max-width:768px){
   .stats-row{grid-template-columns:1fr 1fr}
-  .form-grid{grid-template-columns:1fr 1fr}
-  .anav{padding:0 1rem}
-  .amain{padding:1.5rem 1rem 4rem}
-  table{font-size:.75rem}
-  th,td{padding:.7rem .8rem}
+  .form-row{grid-template-columns:1fr 1fr}
+  .amain{padding:1.2rem .8rem 4rem}
+  th,td{padding:.65rem .7rem}
 }
 </style>
 </head>
@@ -139,20 +152,19 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="login-box">
     <div class="login-logo"><span>FAN</span>FLIX ADMIN</div>
     <h2>Admin Access</h2>
-    <p>Enter your admin password to continue</p>
-    <input class="inp" type="password" id="pass-inp" placeholder="Admin password" onkeydown="if(event.key==='Enter') login()" />
+    <p>Enter password to continue</p>
+    <input class="inp" type="password" id="pass-inp" placeholder="Admin password" onkeydown="if(event.key==='Enter')login()"/>
     <button class="btn-red" onclick="login()">Login</button>
-    <div class="err" id="err-msg">Wrong password. Try again.</div>
+    <div class="err-msg" id="err-msg">Wrong password. Try again.</div>
   </div>
 </div>
 
 <!-- DASHBOARD -->
 <div id="dashboard">
-
   <nav class="anav">
     <div class="anav-logo"><span>FAN</span>FLIX ADMIN</div>
     <div class="anav-right">
-      <div class="anav-stat">🟢 <b id="nav-live">-</b> online</div>
+      <div class="anav-stat"><div class="live-dot"></div><b id="nav-live">-</b> online</div>
       <div class="anav-stat">📊 <b id="nav-today">-</b> today</div>
       <button class="logout-btn" onclick="logout()">Logout</button>
     </div>
@@ -162,61 +174,46 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
     <!-- STATS -->
     <div class="stats-row">
-      <div class="stat-card green">
-        <div class="stat-val" id="stat-active">-</div>
-        <div class="stat-lbl">Active Links</div>
-      </div>
-      <div class="stat-card amber">
-        <div class="stat-val" id="stat-expired">-</div>
-        <div class="stat-lbl">Expired</div>
-      </div>
-      <div class="stat-card red">
-        <div class="stat-val" id="stat-revoked">-</div>
-        <div class="stat-lbl">Revoked</div>
-      </div>
-      <div class="stat-card blue">
-        <div class="stat-val" id="stat-total-uses">-</div>
-        <div class="stat-lbl">Total Uses</div>
-      </div>
+      <div class="stat-card green"><div class="stat-val" id="s-active">-</div><div class="stat-lbl">Active Links</div></div>
+      <div class="stat-card amber"><div class="stat-val" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div>
+      <div class="stat-card red"><div class="stat-val" id="s-expired">-</div><div class="stat-lbl">Expired</div></div>
+      <div class="stat-card blue"><div class="stat-val" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div>
     </div>
 
-    <!-- CREATE LINK -->
+    <!-- SLOTS -->
+    <div class="slots-section">
+      <div class="slots-title">Netflix Account Slots</div>
+      <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
+    </div>
+
+    <!-- CREATE -->
     <div class="create-section">
       <div class="sec-title">Create Customer Link</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Customer Name</label>
-          <input class="inp" id="c-name" placeholder="e.g. John Doe" />
-        </div>
-        <div class="field">
-          <label>Netflix Email</label>
-          <input class="inp" id="c-email" placeholder="customer@gmail.com" type="email" />
-        </div>
-        <div class="field">
-          <label>Expiry</label>
-          <select class="select" id="c-days">
-            <option value="28">1 Month (28 days)</option>
-            <option value="85">3 Months (85 days)</option>
-          </select>
-        </div>
-        <button class="btn-create" onclick="createLink()">+ Create Link</button>
+      <div class="form-row">
+        <div class="field"><label>Netflix Email</label><input class="inp" id="c-email" placeholder="mehedishimanto995@gmail.com" type="email"/></div>
+        <div class="field"><label>Profile</label><input class="inp" id="c-profile" placeholder="Profile 2"/></div>
+        <div class="field"><label>PIN</label><input class="inp" id="c-pin" placeholder="1234"/></div>
+        <div class="field"><label>Expiry</label><select class="select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
+        <button class="btn-create" onclick="createLink()">+ Create</button>
       </div>
     </div>
 
     <!-- LINKS TABLE -->
     <div class="links-section">
       <div class="links-header">
-        <div class="sec-title">Customer Links</div>
-        <input class="search-inp" id="search-inp" placeholder="Search name or email..." oninput="filterLinks()" />
+        <div class="sec-title" style="margin-bottom:0">Customer Links</div>
+        <input class="search-inp" id="search-inp" placeholder="Search email or profile..." oninput="filterLinks()"/>
       </div>
-      <div style="overflow-x:auto">
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Customer</th>
               <th>Email</th>
+              <th>Profile</th>
+              <th>PIN</th>
               <th>Link</th>
-              <th>Expiry</th>
+              <th>Message</th>
+              <th>Days Left</th>
               <th>Uses</th>
               <th>Last Used</th>
               <th>Status</th>
@@ -224,7 +221,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
             </tr>
           </thead>
           <tbody id="links-tbody">
-            <tr><td colspan="8" class="empty-table"><p>Loading...</p></td></tr>
+            <tr><td colspan="10" class="empty-table"><p>Loading...</p></td></tr>
           </tbody>
         </table>
       </div>
@@ -236,115 +233,123 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <div id="toast"></div>
 
 <script>
+const SITE = window.location.origin;
 let adminToken = sessionStorage.getItem('fanflix_admin');
 let allLinks = {};
 
-window.onload = () => {
-  if (adminToken) showDashboard();
-};
+window.onload = () => { if (adminToken) showDashboard(); };
 
-// ── AUTH ──────────────────────────────────────────────────
 async function login() {
   const pass = document.getElementById('pass-inp').value;
-  const r = await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: pass })
-  });
+  const r = await fetch('/api/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pass}) });
   const d = await r.json();
-  if (d.success) {
-    adminToken = d.token;
-    sessionStorage.setItem('fanflix_admin', adminToken);
-    showDashboard();
-  } else {
-    document.getElementById('err-msg').style.display = 'block';
-  }
+  if (d.success) { adminToken = d.token; sessionStorage.setItem('fanflix_admin', adminToken); showDashboard(); }
+  else document.getElementById('err-msg').style.display = 'block';
 }
 
-function logout() {
-  sessionStorage.removeItem('fanflix_admin');
-  adminToken = null;
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-}
+function logout() { sessionStorage.removeItem('fanflix_admin'); location.reload(); }
 
 function showDashboard() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  loadLinks();
-  loadStats();
+  loadAll();
   setInterval(loadStats, 30000);
+  setInterval(loadAll, 60000);
 }
 
-// ── STATS ─────────────────────────────────────────────────
+async function loadAll() { await Promise.all([loadLinks(), loadStats(), loadSlots()]); }
+
 async function loadStats() {
   try {
     const r = await fetch('/api/stats');
     const d = await r.json();
-    document.getElementById('nav-live').textContent = d.live;
-    document.getElementById('nav-today').textContent = d.today;
+    const lc = document.getElementById('nav-live');
+    const tc = document.getElementById('nav-today');
+    if(lc) lc.textContent = d.live;
+    if(tc) tc.textContent = d.today;
   } catch(e) {}
 }
 
-// ── LINKS ─────────────────────────────────────────────────
+async function loadSlots() {
+  try {
+    const r = await fetch('/api/admin/slots', { headers:{'x-admin-token':adminToken} });
+    const d = await r.json();
+    const slots = d.slots || {};
+    const container = document.getElementById('slots-list');
+    if (!Object.keys(slots).length) { container.innerHTML = '<p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">No accounts yet</p>'; return; }
+    container.innerHTML = Object.entries(slots).map(([email, info]) => `
+      <div class="slot-item">
+        <div class="slot-email">${esc(email)}</div>
+        <div class="slot-bar-wrap">
+          <div class="slot-bar">
+            ${Array.from({length:8},(_,i)=>`<span class="${i<info.active?'used':'free'}"></span>`).join('')}
+          </div>
+          <div class="slot-count ${info.active>=8?'full':''}">${info.active}/8</div>
+        </div>
+      </div>`).join('');
+  } catch(e) {}
+}
+
 async function loadLinks() {
   try {
-    const r = await fetch('/api/admin/links', { headers: { 'x-admin-token': adminToken } });
+    const r = await fetch('/api/admin/links', { headers:{'x-admin-token':adminToken} });
     const d = await r.json();
     allLinks = d.links || {};
     renderLinks(allLinks);
     updateStats(allLinks);
-  } catch(e) { console.error(e); }
+  } catch(e) {}
 }
 
 function updateStats(links) {
   const arr = Object.values(links);
   const now = Date.now();
-  document.getElementById('stat-active').textContent = arr.filter(l => l.active && l.expiresAt > now).length;
-  document.getElementById('stat-expired').textContent = arr.filter(l => l.expiresAt <= now).length;
-  document.getElementById('stat-revoked').textContent = arr.filter(l => !l.active).length;
-  document.getElementById('stat-total-uses').textContent = arr.reduce((s, l) => s + l.uses, 0);
+  const threeDays = 3*24*60*60*1000;
+  document.getElementById('s-active').textContent = arr.filter(l=>l.active&&l.expiresAt>now).length;
+  document.getElementById('s-expiring').textContent = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length;
+  document.getElementById('s-expired').textContent = arr.filter(l=>l.expiresAt<=now).length;
+  document.getElementById('s-uses').textContent = arr.reduce((s,l)=>s+l.uses,0);
 }
 
 function filterLinks() {
   const q = document.getElementById('search-inp').value.toLowerCase();
   const filtered = {};
-  for (const [k, v] of Object.entries(allLinks)) {
-    if (v.name.toLowerCase().includes(q) || v.email.toLowerCase().includes(q)) filtered[k] = v;
+  for (const [k,v] of Object.entries(allLinks)) {
+    if (v.email.includes(q) || (v.profile||'').toLowerCase().includes(q)) filtered[k] = v;
   }
   renderLinks(filtered);
 }
 
 function renderLinks(links) {
   const tbody = document.getElementById('links-tbody');
-  const arr = Object.values(links).sort((a, b) => b.createdAt - a.createdAt);
-  if (!arr.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-table"><p>No links yet. Create one above!</p></td></tr>';
-    return;
-  }
+  const arr = Object.values(links).sort((a,b)=>b.createdAt-a.createdAt);
+  if (!arr.length) { tbody.innerHTML = '<tr><td colspan="10" class="empty-table"><p>No links yet. Create one above!</p></td></tr>'; return; }
   const now = Date.now();
+  const threeDays = 3*24*60*60*1000;
   tbody.innerHTML = arr.map(l => {
     const expired = l.expiresAt <= now;
-    const status = !l.active ? 'revoked' : expired ? 'expired' : 'active';
-    const statusLabel = !l.active ? 'Revoked' : expired ? 'Expired' : 'Active';
-    const expDate = new Date(l.expiresAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    const expiring = !expired && (l.expiresAt-now) <= threeDays;
+    const status = !l.active ? 'revoked' : expired ? 'expired' : expiring ? 'expiring' : 'active';
+    const statusLabel = !l.active ? 'Revoked' : expired ? 'Expired' : expiring ? 'Expiring' : 'Active';
+    const daysLeft = Math.max(0, Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
+    const daysCls = daysLeft <= 3 ? 'days-exp' : daysLeft <= 7 ? 'days-warn' : 'days-ok';
     const lastUsed = l.lastUsed ? timeAgo(l.lastUsed) : 'Never';
-    const fullLink = `${window.location.origin}/c/${l.token}`;
+    const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]] || 0;
+    const fullLink = `${SITE}/c/${l.token}`;
 
     return `<tr>
-      <td class="name-cell">${esc(l.name)}</td>
       <td class="email-cell">${esc(l.email)}</td>
-      <td><button class="copy-link" onclick="copyLink('${esc(fullLink)}', this)">/c/${l.token.substring(0,8)}...</button></td>
-      <td class="date-cell">${expDate}<br><span style="color:${expired?'var(--red)':'var(--muted)'};font-size:.62rem">${l.days} days</span></td>
-      <td class="uses-cell">${l.uses}</td>
-      <td class="date-cell">${lastUsed}</td>
+      <td class="mono-cell">${esc(l.profile||'-')}</td>
+      <td class="mono-cell">${esc(l.pin||'-')}</td>
+      <td><button class="copy-link-btn" onclick="copyText('${esc(fullLink)}',this,'${l.token.substring(0,8)}')">/c/${l.token}</button></td>
+      <td><button class="copy-msg-btn" onclick="copyCustomerMsg('${esc(l.email)}','${esc(l.profile||'')}','${esc(l.pin||'')}','${esc(fullLink)}',${daysLeft},this)">📋 Copy</button></td>
+      <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}</td>
+      <td class="uses-cell">${l.uses}<div class="analytics-mini">today: ${todayUses}</div></td>
+      <td class="mono-cell">${lastUsed}</td>
       <td><span class="badge ${status}">${statusLabel}</span></td>
       <td>
         <div class="action-btns">
-          ${l.active && !expired
-            ? `<button class="btn-sm btn-revoke" onclick="revokeLink('${l.token}')">Revoke</button>`
-            : `<button class="btn-sm btn-activate" onclick="activateLink('${l.token}')">Activate</button>`
-          }
+          ${l.active&&!expired ? `<button class="btn-sm btn-revoke" onclick="revokeLink('${l.token}')">Revoke</button>` : `<button class="btn-sm btn-activate" onclick="activateLink('${l.token}')">Activate</button>`}
+          <button class="btn-sm btn-extend" onclick="extendLink('${l.token}')">+28d</button>
           <button class="btn-sm btn-delete" onclick="deleteLink('${l.token}')">Delete</button>
         </div>
       </td>
@@ -352,79 +357,71 @@ function renderLinks(links) {
   }).join('');
 }
 
-// ── CREATE ─────────────────────────────────────────────────
 async function createLink() {
-  const name = document.getElementById('c-name').value.trim();
   const email = document.getElementById('c-email').value.trim();
+  const profile = document.getElementById('c-profile').value.trim();
+  const pin = document.getElementById('c-pin').value.trim();
   const days = document.getElementById('c-days').value;
-  if (!name || !email) return showToast('Fill in all fields!', true);
-
-  const r = await fetch('/api/admin/create', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-admin-token': adminToken },
-    body: JSON.stringify({ name, email, days })
-  });
+  if (!email||!profile||!pin) return showToast('Fill all fields!', true);
+  const r = await fetch('/api/admin/create', { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({email,profile,pin,days}) });
   const d = await r.json();
   if (d.success) {
-    document.getElementById('c-name').value = '';
-    document.getElementById('c-email').value = '';
-    const fullLink = `${window.location.origin}/c/${d.token}`;
+    const fullLink = `${SITE}/c/${d.token}`;
     navigator.clipboard.writeText(fullLink);
-    showToast('✓ Link created & copied!');
-    loadLinks();
-  } else {
-    showToast('Error: ' + d.error, true);
-  }
+    if (d.existing) showToast('⚠ Existing link found & copied!');
+    else { showToast('✓ Link created & copied!'); document.getElementById('c-email').value=''; document.getElementById('c-profile').value=''; document.getElementById('c-pin').value=''; }
+    loadAll();
+  } else showToast('Error: '+(d.error||'Unknown'), true);
 }
 
-// ── REVOKE / ACTIVATE / DELETE ──────────────────────────────
 async function revokeLink(token) {
   if (!confirm('Revoke this link?')) return;
-  await fetch(`/api/admin/revoke/${token}`, { method: 'POST', headers: { 'x-admin-token': adminToken } });
-  showToast('Link revoked');
-  loadLinks();
+  await fetch(`/api/admin/revoke/${token}`, { method:'POST', headers:{'x-admin-token':adminToken} });
+  showToast('Link revoked'); loadAll();
 }
 
 async function activateLink(token) {
-  await fetch(`/api/admin/activate/${token}`, { method: 'POST', headers: { 'x-admin-token': adminToken } });
-  showToast('Link activated');
-  loadLinks();
+  await fetch(`/api/admin/activate/${token}`, { method:'POST', headers:{'x-admin-token':adminToken} });
+  showToast('Link activated'); loadAll();
+}
+
+async function extendLink(token) {
+  await fetch(`/api/admin/extend/${token}`, { method:'POST', headers:{'Content-Type':'application/json','x-admin-token':adminToken}, body:JSON.stringify({days:28}) });
+  showToast('+28 days added'); loadAll();
 }
 
 async function deleteLink(token) {
-  if (!confirm('Delete this link permanently?')) return;
-  await fetch(`/api/admin/delete/${token}`, { method: 'DELETE', headers: { 'x-admin-token': adminToken } });
-  showToast('Link deleted');
-  loadLinks();
+  if (!confirm('Delete permanently?')) return;
+  await fetch(`/api/admin/delete/${token}`, { method:'DELETE', headers:{'x-admin-token':adminToken} });
+  showToast('Deleted'); loadAll();
 }
 
-function copyLink(link, btn) {
-  navigator.clipboard.writeText(link).then(() => {
-    btn.textContent = '✓ Copied!';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '/c/' + link.split('/c/')[1].substring(0,8) + '...'; btn.classList.remove('copied'); }, 2000);
+function copyText(text, btn, label) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = `/c/${label}`; btn.classList.remove('copied'); }, 2000);
   });
 }
 
-// ── UTILS ──────────────────────────────────────────────────
-function showToast(msg, err = false) {
+function copyCustomerMsg(email, profile, pin, link, daysLeft, btn) {
+  const msg = `🎬 FanFlix BD\n\n📧 Email: ${email}\n👤 Profile: ${profile}\n🔑 PIN: ${pin}\n\n🔗 Household Code Link:\n${link}\n\n📺 Login Tutorial (Must Watch):\nhttps://youtu.be/PLACEHOLDER1\n\n🏠 Household Fix Tutorial:\nhttps://youtu.be/PLACEHOLDER2\n\n⚠️ Important:\n• Any changes to the account are not allowed\n• Streaming is allowed on 1 device at a time\n• Do not use it from outside BD\n• You can sign in anytime if it shows signed out\n\n✅ Valid for ${daysLeft} days`;
+  navigator.clipboard.writeText(msg).then(() => {
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
+    showToast('✓ Customer message copied!');
+  });
+}
+
+function showToast(msg, err=false) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.background = err ? 'var(--red)' : 'var(--green)';
-  t.style.color = err ? '#fff' : '#000';
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+  t.textContent = msg; t.style.background = err ? 'var(--red)' : 'var(--green)'; t.style.color = err ? '#fff' : '#000';
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500);
 }
-
 function timeAgo(ts) {
-  const d = Date.now()-ts, m = Math.floor(d/6e4), h = Math.floor(d/36e5), dy = Math.floor(d/864e5);
-  if (m < 1) return 'Just now';
-  if (m < 60) return m + 'm ago';
-  if (h < 24) return h + 'h ago';
-  return dy + 'd ago';
+  const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);
+  if(m<1)return'Just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';
 }
-
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
 </html>
