@@ -5,649 +5,624 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>FanFlix – Your Codes</title>
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --red:#E50914;--red2:#ff1e2b;--red-dim:rgba(229,9,20,.15);
-  --bg:#000;--s1:#0f0f0f;--s2:#151515;--s3:#1c1c1c;--s4:#242424;--s5:#2d2d2d;
-  --border:rgba(255,255,255,.06);--border2:rgba(255,255,255,.12);
-  --text:#fff;--text2:#e8e8e8;--muted:#999;--muted2:#666;--muted3:#3a3a3a;
-  --green:#46d369;--green-dim:rgba(70,211,105,.12);
-  --amber:#f5a623;--amber-dim:rgba(245,166,35,.12);
-  --blue:#4da6ff;--blue-dim:rgba(77,166,255,.12);
+  --red:#E50914;--red2:#c8000e;
+  --bg:#060606;--s1:#0e0e0e;--s2:#141414;--s3:#1a1a1a;--s4:#222;--s5:#2a2a2a;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#fff;--muted:#888;--muted2:#555;--muted3:#333;
+  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;
   --f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;--h:'Anton',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth;overflow-x:hidden}
-body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+html{overflow-x:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;-webkit-font-smoothing:antialiased}
 
-/* ── CINEMATIC BG ── */
-.bg-glow{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
-.bg-glow::before{content:'';position:absolute;top:-30%;left:-20%;width:70%;height:70%;background:radial-gradient(ellipse,rgba(229,9,20,.12) 0%,transparent 65%);animation:bgFloat 8s ease-in-out infinite}
-.bg-glow::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(229,9,20,.06) 0%,transparent 65%);animation:bgFloat 10s ease-in-out infinite reverse}
-@keyframes bgFloat{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(2%,3%) scale(1.05)}66%{transform:translate(-2%,-2%) scale(.97)}}
+/* BG */
+.bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+.bg::before{content:'';position:absolute;top:-30%;left:-20%;width:70%;height:70%;background:radial-gradient(ellipse,rgba(229,9,20,.09),transparent 65%);animation:bgf 12s ease-in-out infinite}
+.bg::after{content:'';position:absolute;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(229,9,20,.05),transparent 65%);animation:bgf 16s ease-in-out infinite reverse}
+@keyframes bgf{0%,100%{transform:translate(0,0)}50%{transform:translate(2%,3%)}}
 
-/* ── NOISE ── */
-body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.03'/%3E%3C/svg%3E");pointer-events:none;z-index:1;opacity:.4}
+/* PROGRESS */
+.prog{position:fixed;top:0;left:0;right:0;height:2px;z-index:1000}
+.prog-bar{height:100%;background:var(--red);width:0;box-shadow:0 0 8px var(--red);transition:width .3s}
+.prog.on .prog-bar{animation:progAnim 1.5s ease infinite}
+@keyframes progAnim{0%{width:0;margin-left:0}50%{width:60%}100%{width:0;margin-left:100%}}
 
-/* ── TOP PROGRESS BAR ── */
-.nf-progress{position:fixed;top:0;left:0;right:0;height:2px;z-index:1000;background:transparent;overflow:hidden}
-.nf-progress-fill{height:100%;background:var(--red);width:0%;transition:width .3s ease;box-shadow:0 0 8px var(--red)}
-.nf-progress.loading .nf-progress-fill{animation:progressLoad 1.5s ease infinite}
-@keyframes progressLoad{0%{width:0%;left:0}50%{width:60%;left:0}100%{width:0%;left:100%}}
-
-/* ── NAV ── */
-nav{position:sticky;top:0;z-index:100;background:rgba(0,0,0,.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 1.5rem;height:58px;display:flex;align-items:center;justify-content:space-between;animation:slideDown .5s ease}
-@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:translateY(0);opacity:1}}
-.logo{font-family:var(--h);font-size:1.7rem;letter-spacing:3px;cursor:default}
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.94);backdrop-filter:blur(24px);border-bottom:1px solid var(--border);padding:0 1.3rem;height:58px;display:flex;align-items:center;justify-content:space-between;animation:slideDown .5s ease}
+@keyframes slideDown{from{transform:translateY(-100%);opacity:0}to{transform:none;opacity:1}}
+.logo{font-family:var(--h);font-size:1.75rem;letter-spacing:3px}
 .logo .f{color:var(--red)}.logo .l{color:var(--text)}
-.nav-right{display:flex;align-items:center;gap:10px}
-.live-pill{display:flex;align-items:center;gap:6px;background:rgba(70,211,105,.08);border:1px solid rgba(70,211,105,.15);border-radius:100px;padding:4px 10px}
-.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:livePulse 2s ease infinite}
-@keyframes livePulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.5)}70%{box-shadow:0 0 0 5px rgba(70,211,105,0)}}
-.live-text{font-family:var(--m);font-size:.58rem;letter-spacing:2px;color:var(--green);text-transform:uppercase}
+.nav-right{display:flex;align-items:center;gap:.7rem}
+.live-pill{display:flex;align-items:center;gap:6px;background:rgba(70,211,105,.08);border:1px solid rgba(70,211,105,.15);border-radius:100px;padding:5px 12px}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:lpulse 2s ease infinite}
+@keyframes lpulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.5)}70%{box-shadow:0 0 0 5px rgba(70,211,105,0)}}
+.live-txt{font-family:var(--m);font-size:.58rem;letter-spacing:2px;color:var(--green);text-transform:uppercase}
+.nav-avatar{width:34px;height:34px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.95rem;color:#fff;letter-spacing:0;flex-shrink:0}
 
-/* ── MAIN ── */
-main{position:relative;z-index:2;max-width:580px;margin:0 auto;padding:1.5rem 1.2rem 6rem}
+/* PAGE */
+.page{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:1.3rem 1.2rem 6rem}
 
-/* ── SUBSCRIPTION STATUS ── */
-.sub-card{border-radius:12px;padding:1.1rem 1.3rem;margin-bottom:1.2rem;display:flex;align-items:center;gap:12px;animation:fadeUp .5s ease .1s both;position:relative;overflow:hidden}
-.sub-card.active{background:linear-gradient(135deg,rgba(70,211,105,.1),rgba(70,211,105,.03));border:1px solid rgba(70,211,105,.2)}
-.sub-card.warning{background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(245,166,35,.03));border:1px solid rgba(245,166,35,.25)}
-.sub-card.expired{background:linear-gradient(135deg,rgba(229,9,20,.1),rgba(229,9,20,.03));border:1px solid rgba(229,9,20,.25)}
-.sub-icon-wrap{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-.sub-card.active .sub-icon-wrap{background:rgba(70,211,105,.15)}
-.sub-card.warning .sub-icon-wrap{background:rgba(245,166,35,.15)}
-.sub-card.expired .sub-icon-wrap{background:rgba(229,9,20,.15)}
-.sub-title{font-size:.9rem;font-weight:600;margin-bottom:2px}
-.sub-card.active .sub-title{color:var(--green)}
-.sub-card.warning .sub-title{color:var(--amber)}
-.sub-card.expired .sub-title{color:var(--red)}
-.sub-desc{font-family:var(--m);font-size:.62rem;color:var(--muted2);letter-spacing:.3px}
-.sub-days{margin-left:auto;font-family:var(--h);font-size:1.8rem;letter-spacing:1px;flex-shrink:0;line-height:1}
-.sub-card.active .sub-days{color:var(--green)}
-.sub-card.warning .sub-days{color:var(--amber)}
+/* STATUS CARD */
+.status-card{background:linear-gradient(135deg,rgba(70,211,105,.1),rgba(70,211,105,.02));border:1px solid rgba(70,211,105,.2);border-radius:18px;padding:1.4rem 1.5rem;margin-bottom:1rem;position:relative;overflow:hidden;animation:fadeUp .6s ease .1s both}
+.status-card.warning{background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(245,166,35,.02));border-color:rgba(245,166,35,.25)}
+.status-card.danger{background:linear-gradient(135deg,rgba(229,9,20,.1),rgba(229,9,20,.02));border-color:rgba(229,9,20,.25)}
+.status-top{display:flex;align-items:center;gap:1rem;margin-bottom:.9rem}
+.shield-wrap{position:relative;width:56px;height:56px;flex-shrink:0}
+.shield-ring{position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(70,211,105,.25);animation:ringPulse 2s ease infinite}
+.shield-ring2{position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(70,211,105,.12);animation:ringPulse 2s ease .5s infinite}
+.warning .shield-ring{border-color:rgba(245,166,35,.25)}.warning .shield-ring2{border-color:rgba(245,166,35,.12)}
+.danger .shield-ring{border-color:rgba(229,9,20,.25)}.danger .shield-ring2{border-color:rgba(229,9,20,.12)}
+@keyframes ringPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.6}}
+.shield-ico{width:56px;height:56px;border-radius:16px;background:rgba(70,211,105,.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem}
+.warning .shield-ico{background:rgba(245,166,35,.15)}.danger .shield-ico{background:rgba(229,9,20,.15)}
+.status-info{flex:1;min-width:0}
+.status-title{font-size:1.05rem;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:7px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lpulse 1.5s ease infinite}
+.status-card.active .status-title{color:var(--green)}
+.status-card.warning .status-title{color:var(--amber)}.status-card.warning .status-dot{background:var(--amber)}
+.status-card.danger .status-title{color:var(--red)}.status-card.danger .status-dot{background:var(--red)}
+.status-sub{font-size:.78rem;color:var(--muted);margin-bottom:.5rem}
+.status-meta{display:flex;gap:1rem;font-family:var(--m);font-size:.6rem;color:var(--muted2)}
+.status-meta span{display:flex;align-items:center;gap:4px}
+.days-wrap{text-align:right;flex-shrink:0}
+.days-num{font-family:var(--h);font-size:3rem;line-height:1;letter-spacing:1px;color:var(--green)}
+.status-card.warning .days-num{color:var(--amber)}
+.days-lbl{font-family:var(--m);font-size:.55rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase}
+.extend-btn{margin-top:.4rem;background:transparent;border:1px solid rgba(70,211,105,.3);color:var(--green);padding:4px 12px;border-radius:100px;font-family:var(--m);font-size:.6rem;letter-spacing:1px;cursor:pointer;transition:all .2s}
+.extend-btn:hover{background:rgba(70,211,105,.1)}
 
-/* ── ACCOUNT CARD ── */
-.account-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;animation:fadeUp .5s ease .15s both}
-.acc-label{font-family:var(--m);font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px}
-.acc-val{font-family:var(--m);font-size:.8rem;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* INFO GRID */
+.info-grid{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1rem;animation:fadeUp .6s ease .15s both}
+.info-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-cell{padding:1rem 1.2rem;display:flex;align-items:center;gap:.8rem;border-right:1px solid var(--border)}
+.info-cell:last-child{border-right:none}
+.info-icon{width:36px;height:36px;border-radius:10px;background:var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem}
+.info-icon.red{background:rgba(229,9,20,.12)}
+.info-icon.green{background:rgba(70,211,105,.1)}
+.info-icon.amber{background:rgba(245,166,35,.1)}
+.info-icon.blue{background:rgba(77,166,255,.1)}
+.info-lbl{font-family:var(--m);font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:3px}
+.info-val{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.info-val.green{color:var(--green)}.info-val.amber{color:var(--amber)}
+.copy-tiny{background:transparent;border:none;color:var(--muted2);cursor:pointer;padding:2px;transition:color .2s;flex-shrink:0}
+.copy-tiny:hover{color:var(--text)}
+.pin-toggle{background:transparent;border:none;color:var(--muted2);cursor:pointer;padding:2px;transition:color .2s}
+.pin-toggle:hover{color:var(--text)}
 
-/* ── RENEWAL POPUP ── */
-.renewal-popup{background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(245,166,35,.04));border:1px solid rgba(245,166,35,.25);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.2rem;animation:fadeUp .4s ease both;display:none}
-.renewal-popup.show{display:block}
-.renewal-title{font-size:.85rem;font-weight:600;color:var(--amber);margin-bottom:.3rem}
-.renewal-desc{font-size:.78rem;color:var(--muted);line-height:1.6;margin-bottom:.8rem}
-.renewal-btn{display:inline-flex;align-items:center;gap:7px;background:#25D366;color:#000;padding:9px 18px;border-radius:6px;text-decoration:none;font-weight:600;font-size:.8rem;transition:all .2s}
-.renewal-btn:hover{background:#1ebe5d}
+/* REFRESH BTN */
+.refresh-btn-big{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));border:1px solid rgba(229,9,20,.4);border-radius:14px;padding:1.2rem;cursor:pointer;margin-bottom:1rem;animation:fadeUp .6s ease .2s both;position:relative;overflow:hidden;transition:all .2s}
+.refresh-btn-big::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);pointer-events:none}
+.refresh-btn-big::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);transition:transform .5s}
+.refresh-btn-big:hover::after{transform:translateX(100%)}
+.refresh-btn-big:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(229,9,20,.3)}
+.refresh-btn-big:active{transform:scale(.99)}
+.rbig-inner{display:flex;align-items:center;justify-content:center;gap:.7rem}
+.rbig-icon{width:24px;height:24px;animation:none}
+.rbig-icon.spinning{animation:spin 1s linear infinite}
+.rbig-title{font-family:var(--h);font-size:1.2rem;letter-spacing:3px;color:#fff;text-transform:uppercase}
+.rbig-sub{font-size:.72rem;color:rgba(255,255,255,.5);text-align:center;margin-top:.3rem;font-family:var(--m);letter-spacing:1px}
 
-/* ── TOP BAR ── */
-.top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;animation:fadeUp .5s ease .2s both}
-.result-count{font-family:var(--m);font-size:.63rem;color:var(--muted2)}
-.result-count b{color:var(--text)}
-.fetch-info{font-family:var(--m);font-size:.58rem;color:var(--muted3);margin-top:2px}
-.ref-btn{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--s5);color:var(--muted);padding:7px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.62rem;letter-spacing:1.5px;text-transform:uppercase;transition:all .2s;position:relative;overflow:hidden}
-.ref-btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.05);transform:translateX(-100%);transition:transform .3s}
-.ref-btn:hover::after{transform:translateX(0)}
-.ref-btn:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
-.ref-btn.loading svg{animation:spin 1s linear infinite}
+/* LIVE ACTIVITY */
+.activity-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.2rem;margin-bottom:1rem;animation:fadeUp .6s ease .25s both}
+.activity-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.activity-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600}
+.activity-icon{color:var(--red);font-size:.9rem}
+.activity-list{display:flex;flex-direction:column;gap:0}
+.activity-item{display:flex;gap:.8rem;align-items:flex-start;padding:.55rem 0;position:relative}
+.activity-item:not(:last-child)::after{content:'';position:absolute;left:5px;top:22px;bottom:-8px;width:1px;background:var(--s4)}
+.act-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:4px;border:2px solid var(--bg)}
+.act-dot.red{background:var(--red)}.act-dot.amber{background:var(--amber)}.act-dot.grey{background:var(--muted3)}.act-dot.green{background:var(--green)}
+.act-time{font-family:var(--m);font-size:.6rem;color:var(--muted2);flex-shrink:0;width:50px;padding-top:2px}
+.act-body{}
+.act-title{font-size:.8rem;font-weight:500;color:var(--text)}
+.act-sub{font-size:.72rem;color:var(--muted2);margin-top:1px}
 
-/* ── TABS ── */
-.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:1.1rem;overflow-x:auto;scrollbar-width:none;animation:fadeUp .5s ease .25s both}
+/* CODES SECTION */
+.codes-section{animation:fadeUp .6s ease .3s both}
+.codes-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+.codes-title{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.code-count-badge{background:var(--s3);border:1px solid var(--border);border-radius:100px;padding:2px 9px;font-family:var(--m);font-size:.6rem;color:var(--muted)}
+
+/* TABS pill */
+.tabs{display:flex;gap:.4rem;margin-bottom:.9rem;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{padding:10px 16px;background:transparent;border:none;color:var(--muted2);font-family:var(--f);font-size:.8rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:6px}
-.tab:hover{color:var(--muted)}
-.tab.active{color:var(--text);border-bottom-color:var(--red)}
-.tc{background:var(--s3);border-radius:3px;padding:1px 6px;font-size:.6rem;color:var(--muted2);font-family:var(--m);transition:all .2s}
-.tab.active .tc{background:rgba(229,9,20,.18);color:var(--red)}
+.tab{padding:6px 14px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-family:var(--f);font-size:.75rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.tab:hover{border-color:var(--border2);color:var(--text)}
+.tab.active-all{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.15);color:var(--text)}
+.tab.active-household{background:rgba(70,211,105,.1);border-color:rgba(70,211,105,.25);color:var(--green)}
+.tab.active-update{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.25);color:var(--amber)}
+.tab.active-signin{background:rgba(77,166,255,.1);border-color:rgba(77,166,255,.25);color:var(--blue)}
+.tc{font-family:var(--m);font-size:.6rem;opacity:.7}
 
-/* ── SKELETON LOADING ── */
-.skeleton-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.3rem;display:flex;align-items:center;gap:1rem;margin-bottom:.7rem;animation:fadeUp .3s ease both}
-.skel{background:linear-gradient(90deg,var(--s3) 25%,var(--s4) 50%,var(--s3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px}
-.skel-ico{width:44px;height:44px;border-radius:8px;flex-shrink:0}
-.skel-body{flex:1}
-.skel-line{height:10px;margin-bottom:8px;border-radius:3px}
-.skel-line.short{width:40%}
-.skel-line.long{width:70%}
-.skel-code{height:36px;width:55%;border-radius:4px}
-@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* ── CARDS ── */
+/* CODE CARDS */
 .cards{display:flex;flex-direction:column;gap:.7rem}
-
-.card{
-  background:var(--s1);
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:1.1rem 1.3rem;
-  display:grid;grid-template-columns:auto 1fr auto;
-  align-items:center;gap:1rem;
-  position:relative;overflow:hidden;
-  cursor:default;
-  animation:cardEntrance .4s cubic-bezier(.34,1.56,.64,1) both;
-  transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease;
-}
-@keyframes cardEntrance{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
-.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0}
-.card.household::before{background:linear-gradient(180deg,var(--green),rgba(70,211,105,.3))}
-.card.update::before{background:linear-gradient(180deg,var(--amber),rgba(245,166,35,.3))}
-.card.signin::before{background:linear-gradient(180deg,var(--blue),rgba(77,166,255,.3))}
-
-/* shimmer overlay on hover */
-.card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.02) 50%,transparent 60%);transform:translateX(-100%);transition:transform .5s ease;pointer-events:none}
+.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.4rem;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;position:relative;overflow:hidden;animation:cardIn .5s cubic-bezier(.34,1.56,.64,1) both;transition:transform .2s,border-color .2s,box-shadow .2s}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px) scale(.96)}to{opacity:1;transform:none}}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.card.household::before{background:linear-gradient(180deg,var(--green),rgba(70,211,105,.2))}
+.card.update::before{background:linear-gradient(180deg,var(--amber),rgba(245,166,35,.2))}
+.card.signin::before{background:linear-gradient(180deg,var(--blue),rgba(77,166,255,.2))}
+.card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.015) 50%,transparent 60%);transform:translateX(-100%);transition:transform .5s;pointer-events:none}
 .card:hover::after{transform:translateX(100%)}
-.card:hover{border-color:var(--border2);transform:translateX(3px) translateY(-1px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.card.fresh.household{border-color:rgba(70,211,105,.2);background:linear-gradient(135deg,rgba(70,211,105,.06),var(--s1) 50%)}
+.card.fresh.update{border-color:rgba(245,166,35,.2);background:linear-gradient(135deg,rgba(245,166,35,.06),var(--s1) 50%)}
+.card.fresh.signin{border-color:rgba(77,166,255,.2);background:linear-gradient(135deg,rgba(77,166,255,.06),var(--s1) 50%)}
 
-.card.fresh{border-color:rgba(70,211,105,.25);background:linear-gradient(135deg,rgba(70,211,105,.07),var(--s1) 60%)}
-.card.fresh.update{border-color:rgba(245,166,35,.25);background:linear-gradient(135deg,rgba(245,166,35,.07),var(--s1) 60%)}
-.card.fresh.signin{border-color:rgba(77,166,255,.25);background:linear-gradient(135deg,rgba(77,166,255,.07),var(--s1) 60%)}
+.fresh-badge{position:absolute;top:9px;right:11px;font-family:var(--m);font-size:.5rem;letter-spacing:2px;padding:2px 8px;border-radius:3px;font-weight:500;text-transform:uppercase}
+.household .fresh-badge{background:var(--green);color:#000;animation:fglow 2s ease infinite}
+.update .fresh-badge{background:var(--amber);color:#000}
+.signin .fresh-badge{background:var(--blue);color:#fff}
+@keyframes fglow{0%,100%{box-shadow:0 0 6px rgba(70,211,105,.3)}50%{box-shadow:0 0 16px rgba(70,211,105,.7)}}
 
-/* ── FRESH BADGE ── */
-.fresh-badge{
-  position:absolute;top:8px;right:9px;
-  font-family:var(--m);font-size:.5rem;letter-spacing:2px;
-  padding:2px 8px;border-radius:3px;font-weight:500;text-transform:uppercase;
-}
-.household .fresh-badge{background:var(--green);color:#000;box-shadow:0 0 10px rgba(70,211,105,.4);animation:badgePulse 2s ease infinite}
-.update .fresh-badge{background:var(--amber);color:#000;box-shadow:0 0 10px rgba(245,166,35,.4);animation:badgePulseAmber 2s ease infinite}
-.signin .fresh-badge{background:var(--blue);color:#fff;box-shadow:0 0 10px rgba(77,166,255,.4)}
-@keyframes badgePulse{0%,100%{box-shadow:0 0 6px rgba(70,211,105,.3)}50%{box-shadow:0 0 16px rgba(70,211,105,.7)}}
-@keyframes badgePulseAmber{0%,100%{box-shadow:0 0 6px rgba(245,166,35,.3)}50%{box-shadow:0 0 16px rgba(245,166,35,.7)}}
-
-/* ── ICONS ── */
-.c-ico{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;transition:transform .2s}
-.card:hover .c-ico{transform:scale(1.05)}
-.household .c-ico{background:var(--green-dim)}
-.update .c-ico{background:var(--amber-dim)}
-.signin .c-ico{background:var(--blue-dim)}
-
+.c-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .2s;position:relative}
+.card:hover .c-ico{transform:scale(1.06)}
+.household .c-ico{background:rgba(70,211,105,.1)}.update .c-ico{background:rgba(245,166,35,.1)}.signin .c-ico{background:rgba(77,166,255,.1)}
 .phone-icon{transition:transform .1s}
-.card.household:hover .phone-icon,.card.signin:hover .phone-icon{animation:phoneVibrate .4s ease}
-@keyframes phoneVibrate{0%,100%{transform:rotate(0) scale(1)}15%{transform:rotate(-10deg) scale(1.05)}30%{transform:rotate(10deg) scale(1.05)}45%{transform:rotate(-7deg)}60%{transform:rotate(7deg)}75%{transform:rotate(-3deg)}90%{transform:rotate(3deg)}}
-
-.phone-dot{position:absolute;top:5px;right:5px;width:9px;height:9px;border-radius:50%;background:var(--red);border:1.5px solid var(--s1);animation:dotPulse 1.5s ease infinite}
-@keyframes dotPulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(229,9,20,.4)}50%{transform:scale(1.2);box-shadow:0 0 0 4px rgba(229,9,20,0)}}
-
+.card.household:hover .phone-icon,.card.signin:hover .phone-icon{animation:vib .4s ease}
+@keyframes vib{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
+.pdot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--s1);animation:dotpop 1.5s ease infinite}
+@keyframes dotpop{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
 .tv-wrap{position:relative;width:28px;height:22px}
-.tv-body{width:28px;height:18px}
 .tv-screen{position:absolute;inset:3px 4px 5px;background:rgba(245,166,35,.15);border-radius:1px;overflow:hidden}
-.tv-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.9),transparent);animation:tvScan 2s ease infinite}
-.card.update:hover .tv-scan{animation-duration:.6s}
-@keyframes tvScan{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:calc(100% + 2px);opacity:0}}
+.tv-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(245,166,35,.9),transparent);animation:scan 2s ease infinite}
+.card.update:hover .tv-scan{animation-duration:.5s}
+@keyframes scan{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:110%;opacity:0}}
 
-/* ── CARD CONTENT ── */
-.c-body{min-width:0}
-.c-type{font-family:var(--m);font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:5px;transition:color .2s}
+.c-type{font-family:var(--m);font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:5px}
 .household .c-type{color:var(--green)}.update .c-type{color:var(--amber)}.signin .c-type{color:var(--blue)}
-
-.c-code{
-  font-family:var(--h);
-  font-size:2.4rem;
-  letter-spacing:12px;
-  color:var(--text);
-  line-height:1;
-  transition:color .2s;
-}
+.c-code{font-family:var(--h);font-size:2.6rem;letter-spacing:12px;color:var(--text);line-height:1;transition:color .2s}
 .card:active .c-code{color:var(--green)}
-
-.c-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:var(--f);font-size:.78rem;font-weight:500;border:1px solid;border-radius:6px;padding:9px 15px;margin-top:4px;transition:all .2s;position:relative;overflow:hidden}
-.c-link::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.05);transform:translateX(-100%);transition:transform .3s}
-.c-link:hover::after{transform:translateX(0)}
+.c-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:var(--f);font-size:.78rem;font-weight:500;border:1px solid;border-radius:7px;padding:9px 15px;margin-top:5px;transition:all .2s;position:relative;overflow:hidden}
 .c-link.g{color:var(--green);border-color:rgba(70,211,105,.22)}.c-link.g:hover{background:rgba(70,211,105,.08);border-color:var(--green)}
 .c-link.a{color:var(--amber);border-color:rgba(245,166,35,.22)}.c-link.a:hover{background:rgba(245,166,35,.08);border-color:var(--amber)}
-
-.c-age{font-family:var(--m);font-size:.58rem;color:var(--muted3);margin-top:5px}
-
-/* ── COUNTDOWN (flip style) ── */
-.c-countdown{font-family:var(--m);font-size:.65rem;margin-top:5px;display:inline-flex;align-items:center;gap:5px;transition:color .3s}
+.c-meta{display:flex;align-items:center;gap:.7rem;margin-top:5px}
+.c-age{font-family:var(--m);font-size:.58rem;color:var(--muted3)}
+.c-countdown{font-family:var(--m);font-size:.6rem}
 .countdown-ok{color:var(--green)}.countdown-warn{color:var(--amber)}.countdown-exp{color:var(--red)}
-.countdown-time{font-weight:500;letter-spacing:1px;display:inline-block;transition:transform .15s,opacity .15s}
-.countdown-flip{animation:flip .2s ease}
-@keyframes flip{0%{transform:translateY(-4px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.countdown-time{font-weight:500;letter-spacing:1px}
+.cflip{animation:cflip .15s ease}
+@keyframes cflip{0%{opacity:0;transform:translateY(-4px)}100%{opacity:1;transform:none}}
 
-/* ── COPY BUTTON ── */
-.cp-btn{
-  background:transparent;border:1px solid var(--s5);
-  color:var(--muted2);padding:9px 16px;border-radius:7px;
-  cursor:pointer;font-family:var(--m);font-size:.65rem;
-  letter-spacing:1px;text-transform:uppercase;
-  transition:all .2s;white-space:nowrap;flex-shrink:0;
-  position:relative;overflow:hidden;
-}
-.cp-btn::before{content:'';position:absolute;inset:0;background:rgba(255,255,255,.06);transform:scale(0);border-radius:50%;transition:transform .3s,opacity .3s;opacity:0}
-.cp-btn:active::before{transform:scale(3);opacity:0;transition:none}
-.cp-btn:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
-.cp-btn.ok{border-color:var(--green)!important;color:var(--green)!important;background:rgba(70,211,105,.08)!important}
+.cp-btn{background:var(--s3);border:1px solid var(--s5);color:var(--muted2);padding:9px 15px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.63rem;letter-spacing:1px;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
+.cp-btn:hover{border-color:var(--border2);color:var(--text);background:var(--s4)}
+.cp-btn.ok{border-color:var(--green)!important;color:var(--green)!important;background:rgba(70,211,105,.07)!important}
 
-/* ── COPY SUCCESS OVERLAY ── */
-.copy-success{
-  position:fixed;inset:0;z-index:500;
-  display:flex;align-items:center;justify-content:center;
-  pointer-events:none;opacity:0;
-  transition:opacity .3s;
-}
-.copy-success.show{opacity:1}
-.copy-success-inner{
-  background:rgba(0,0,0,.9);border:1px solid rgba(70,211,105,.3);
-  border-radius:16px;padding:1.5rem 2.5rem;
-  display:flex;flex-direction:column;align-items:center;gap:.8rem;
-  transform:scale(.8);transition:transform .3s cubic-bezier(.34,1.56,.64,1);
-  backdrop-filter:blur(20px);
-}
-.copy-success.show .copy-success-inner{transform:scale(1)}
-.copy-check{width:50px;height:50px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;animation:checkPop .4s cubic-bezier(.34,1.56,.64,1)}
-@keyframes checkPop{from{transform:scale(0)}to{transform:scale(1)}}
-.copy-label{font-family:var(--h);font-size:1.1rem;letter-spacing:2px;color:var(--text);text-transform:uppercase}
+/* QUICK TIP */
+.tip-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.3rem;margin-top:1rem;display:flex;align-items:center;gap:1rem;animation:fadeUp .6s ease .35s both}
+.tip-ico{width:44px;height:44px;border-radius:12px;background:rgba(229,9,20,.1);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.tip-title{font-size:.82rem;font-weight:600;margin-bottom:3px}
+.tip-desc{font-size:.73rem;color:var(--muted);line-height:1.5}
+.tip-visual{flex-shrink:0;display:flex;align-items:center;gap:.3rem;opacity:.4}
 
-/* ── EMPTY ── */
-.empty{text-align:center;padding:3rem 1rem;color:var(--muted2);animation:fadeUp .4s ease}
-.empty-ico{font-size:2.5rem;margin-bottom:.8rem;opacity:.25;filter:grayscale(1)}
-.empty h3{font-family:var(--h);font-size:1.1rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
-.empty p{font-size:.82rem;font-weight:300;line-height:1.8;color:var(--muted2)}
+/* COPY OVERLAY */
+.copy-overlay{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .25s}
+.copy-overlay.show{opacity:1}
+.copy-box{background:rgba(0,0,0,.92);border:1px solid rgba(70,211,105,.3);border-radius:20px;padding:1.8rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:.7rem;backdrop-filter:blur(20px);transform:scale(.8);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.copy-overlay.show .copy-box{transform:scale(1)}
+.copy-check{width:52px;height:52px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;animation:cbounce .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes cbounce{from{transform:scale(0)}to{transform:scale(1)}}
+.copy-lbl{font-family:var(--h);font-size:1.1rem;letter-spacing:3px;color:var(--text);text-transform:uppercase}
 
-/* ── EXPIRED PAGE ── */
-.expired-page{text-align:center;padding:3rem 1.5rem;animation:fadeUp .5s ease}
-.expired-logo{font-family:var(--h);font-size:2rem;letter-spacing:3px;margin-bottom:2rem}
-.expired-logo .f{color:var(--red)}.expired-logo .l{color:var(--muted3)}
-.expired-box{background:var(--s1);border:1px solid rgba(229,9,20,.2);border-radius:16px;padding:2.5rem 2rem}
-.expired-ico{font-size:3rem;margin-bottom:1rem;display:block;animation:shake 1s ease .5s}
-@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-10deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}80%{transform:rotate(6deg)}}
-.expired-title{font-family:var(--h);font-size:2.2rem;letter-spacing:2px;color:var(--red);margin-bottom:.6rem;text-transform:uppercase}
-.expired-msg{font-size:.9rem;color:var(--muted);line-height:1.8;margin-bottom:2rem}
-.wa-btn-big{display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#000;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem;transition:all .25s;box-shadow:0 4px 20px rgba(37,211,102,.3)}
-.wa-btn-big:hover{background:#1ebe5d;transform:translateY(-2px);box-shadow:0 8px 30px rgba(37,211,102,.4)}
+/* SKELETON */
+.skel-wrap{display:flex;flex-direction:column;gap:.7rem}
+.skel-card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.4rem;display:flex;gap:1rem;align-items:center}
+.sk{background:linear-gradient(90deg,var(--s3) 25%,var(--s4) 50%,var(--s3) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+.sk-i{width:48px;height:48px;border-radius:12px;flex-shrink:0}
+.sk-b{flex:1}
+.sk-l{height:9px;margin-bottom:10px;border-radius:3px}
+.sk-c{height:38px;width:55%;border-radius:4px}
+.sk-s{height:7px;width:28%;margin-top:8px;border-radius:3px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-/* ── WA FLOAT ── */
-.wa-float{position:fixed;bottom:1.5rem;right:1.5rem;z-index:200;width:52px;height:52px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,.4);text-decoration:none;transition:all .2s;animation:waPulse 3s ease infinite}
-.wa-float:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(37,211,102,.6)}
-@keyframes waPulse{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,.3)}50%{box-shadow:0 4px 30px rgba(37,211,102,.6)}}
+/* EMPTY */
+.empty{text-align:center;padding:3rem 1rem}
+.empty-ico{font-size:2.5rem;margin-bottom:.8rem;opacity:.2;display:block}
+.empty h3{font-family:var(--h);font-size:1.2rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+.empty p{font-size:.8rem;color:var(--muted2);line-height:1.8}
 
-/* ── TOAST ── */
-#toast{
-  position:fixed;bottom:2rem;left:50%;
-  transform:translateX(-50%) translateY(20px);
-  background:var(--green);color:#000;
-  font-family:var(--h);font-size:.9rem;
-  padding:10px 24px;border-radius:6px;letter-spacing:3px;
-  opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);
-  pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase;
-  box-shadow:0 4px 20px rgba(70,211,105,.4);
-}
+/* EXPIRED */
+.exp-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:2rem;text-align:center}
+.exp-logo{font-family:var(--h);font-size:2rem;letter-spacing:3px;margin-bottom:2rem}
+.exp-logo .f{color:var(--red)}.exp-logo .l{color:var(--muted3)}
+.exp-box{background:var(--s1);border:1px solid rgba(229,9,20,.2);border-radius:20px;padding:2.5rem 2rem;max-width:380px;width:100%}
+.exp-ico{font-size:3rem;display:block;margin-bottom:1rem;animation:shake 1s ease .5s}
+@keyframes shake{0%,100%{transform:rotate(0)}20%,60%{transform:rotate(-10deg)}40%,80%{transform:rotate(10deg)}}
+.exp-title{font-family:var(--h);font-size:1.8rem;letter-spacing:2px;color:var(--red);margin-bottom:.5rem;text-transform:uppercase}
+.exp-msg{font-size:.85rem;color:var(--muted);line-height:1.8;margin-bottom:1.8rem}
+.wa-big{display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#000;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.9rem;transition:all .25s;box-shadow:0 4px 20px rgba(37,211,102,.3)}
+.wa-big:hover{background:#1ebe5d;transform:translateY(-2px)}
+
+/* WA FLOAT */
+.wa-float{position:fixed;bottom:1.4rem;right:1.4rem;z-index:200;width:50px;height:50px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 4px 20px rgba(37,211,102,.35);animation:waf 3s ease infinite}
+.wa-float:hover{transform:scale(1.1)}
+@keyframes waf{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,.3)}50%{box-shadow:0 4px 30px rgba(37,211,102,.6)}}
+
+#toast{position:fixed;bottom:1.8rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:var(--h);font-size:.88rem;padding:10px 24px;border-radius:6px;letter-spacing:3px;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:480px){
-  .card{grid-template-columns:auto 1fr}
-  .cp-btn{display:none}
-  .c-code{font-size:2rem;letter-spacing:8px}
+  .card{grid-template-columns:auto 1fr;padding:1rem 1.1rem}
+  .cp-btn{display:none}.c-code{font-size:2.1rem;letter-spacing:9px}
   .card{cursor:pointer}
-  .account-card{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
 <body>
 
-<div class="bg-glow"></div>
-<div class="nf-progress" id="progress"><div class="nf-progress-fill" id="progress-fill"></div></div>
+<div class="bg"></div>
+<div class="prog" id="prog"><div class="prog-bar" id="pbar"></div></div>
 
 <nav>
   <div class="logo"><span class="f">FAN</span><span class="l">FLIX</span></div>
   <div class="nav-right">
-    <div class="live-pill">
-      <div class="live-dot"></div>
-      <span class="live-text">Live</span>
-    </div>
+    <div class="live-pill"><div class="ldot"></div><span class="live-txt">Live</span></div>
+    <div class="nav-avatar" id="nav-avatar">?</div>
   </div>
 </nav>
 
-<main id="main">
-  <!-- Skeleton loading -->
-  <div id="skeleton">
-    <div class="skeleton-card" style="animation-delay:.05s"><div class="skel skel-ico"></div><div class="skel-body"><div class="skel skel-line short" style="margin-bottom:10px"></div><div class="skel skel-code"></div><div class="skel skel-line" style="width:30%;margin-top:8px;height:8px"></div></div></div>
-    <div class="skeleton-card" style="animation-delay:.1s"><div class="skel skel-ico"></div><div class="skel-body"><div class="skel skel-line short" style="margin-bottom:10px"></div><div class="skel skel-code"></div><div class="skel skel-line" style="width:30%;margin-top:8px;height:8px"></div></div></div>
-  </div>
-</main>
-
-<!-- Copy success overlay -->
-<div class="copy-success" id="copy-success">
-  <div class="copy-success-inner">
-    <div class="copy-check">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+<div id="page">
+  <!-- Loading skeleton -->
+  <div class="page">
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:18px;height:110px;margin-bottom:1rem" class="sk"></div>
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;height:180px;margin-bottom:1rem" class="sk"></div>
+    <div style="background:linear-gradient(135deg,rgba(229,9,20,.15),rgba(229,9,20,.05));border:1px solid rgba(229,9,20,.2);border-radius:14px;height:72px;margin-bottom:1rem" class="sk"></div>
+    <div class="skel-wrap">
+      <div class="skel-card"><div class="sk sk-i"></div><div class="sk-b"><div class="sk sk-l" style="width:40%"></div><div class="sk sk-c"></div><div class="sk sk-s"></div></div></div>
+      <div class="skel-card"><div class="sk sk-i"></div><div class="sk-b"><div class="sk sk-l" style="width:40%"></div><div class="sk sk-c"></div><div class="sk sk-s"></div></div></div>
     </div>
-    <div class="copy-label">Copied!</div>
+  </div>
+</div>
+
+<div class="copy-overlay" id="copy-overlay">
+  <div class="copy-box">
+    <div class="copy-check"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <div class="copy-lbl">Copied!</div>
   </div>
 </div>
 
 <a class="wa-float" href="https://wa.me/8801928382918" target="_blank">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
 </a>
-
 <div id="toast"></div>
 
 <script>
-let allCodes = [], curTab = 'all', prevCounts = {}, countdownInterval = null;
+let allCodes=[],curTab='all',pinShown=false,activityLog=[],refreshTimer=null,cdTimer=null;
+const BLOCKED=['2023','2024','2025','2026','2027','2028','0000'];
 
-window.onload = () => {
-  const token = window.location.pathname.match(/\/c\/([a-zA-Z0-9]+)/)?.[1];
-  if (!token) { showExpiredPage('invalid', 'Invalid link. Contact FanFlix BD.'); return; }
-  startProgress();
-  loadCodes(token);
+window.onload=()=>{
+  const token=window.location.pathname.match(/\/c\/([a-zA-Z0-9]+)/)?.[1];
+  if(!token){showError('invalid','Invalid link.');return;}
+  window._tok=token;
+  startProg();
+  fetchCodes(token);
 };
 
-function startProgress() {
-  document.getElementById('progress').classList.add('loading');
-}
-function stopProgress() {
-  const p = document.getElementById('progress');
-  p.classList.remove('loading');
-  document.getElementById('progress-fill').style.width = '100%';
-  setTimeout(() => { document.getElementById('progress-fill').style.width = '0%'; }, 400);
+function startProg(){document.getElementById('prog').classList.add('on')}
+function stopProg(){
+  const p=document.getElementById('prog');p.classList.remove('on');
+  const b=document.getElementById('pbar');b.style.width='100%';
+  setTimeout(()=>{b.style.width='0';},400);
 }
 
-async function loadCodes(token, isRefresh = false) {
-  if (isRefresh) {
-    startProgress();
-    const btn = document.getElementById('ref-btn');
-    if (btn) btn.classList.add('loading');
+async function fetchCodes(token,isRefresh=false){
+  if(isRefresh){
+    startProg();
+    const rb=document.getElementById('rbig-icon');if(rb)rb.classList.add('spinning');
+    addActivity('red','Scanning...','Checking inbox for new codes');
   }
-
-  try {
-    const res = await fetch(`/api/link/${token}`);
-    const data = await res.json();
-    stopProgress();
-
-    if (!data.success) {
-      if (data.error === 'expired') showExpiredPage('expired');
-      else if (data.error === 'revoked') showExpiredPage('revoked', 'Your access has been revoked. Contact FanFlix BD.');
-      else showExpiredPage('invalid', 'Invalid link. Contact FanFlix BD.');
+  try{
+    const res=await fetch(`/api/link/${token}`);
+    const data=await res.json();
+    stopProg();
+    if(!data.success){
+      if(data.error==='expired')showExpired();
+      else showError(data.error,data.message);
       return;
     }
-
-    // Filter out expired codes and fake codes
-    const now = Date.now();
-    const blocked = ['2023','2024','2025','2026','2027','2028','0000'];
-    data.codes = data.codes.filter(c => {
-      if (c.code && blocked.includes(c.code)) return false;
-      if (c.expiresAt && c.expiresAt < now) return false;
+    const now=Date.now();
+    data.codes=data.codes.filter(c=>{
+      if(c.code&&BLOCKED.includes(c.code))return false;
+      if(c.expiresAt&&c.expiresAt<now)return false;
       return true;
     });
+    const seen=new Set();
+    data.codes=data.codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
+    allCodes=data.codes;
+    window._ld=data;
 
-    // Deduplicate by code value
-    const seen = new Set();
-    data.codes = data.codes.filter(c => {
-      const key = c.code || c.link;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    const isFirstLoad = !document.getElementById('sub-card');
-    allCodes = data.codes;
-    window._token = token;
-    window._linkData = data;
-
-    if (isFirstLoad) {
-      renderPage(data);
+    if(!isRefresh){
+      buildPage(data);
+      addActivity('green','Ready','System is active and monitoring');
     } else {
-      // Smooth update
-      updateCounts(data);
-      renderCards(true);
+      updatePage(data);
+      const rb=document.getElementById('rbig-icon');if(rb)rb.classList.remove('spinning');
+      if(data.codes.length>0){
+        addActivity('green',`${data.codes.length} code(s) found`,'Codes are ready to copy');
+      } else {
+        addActivity('grey','No codes found','Inbox is clear');
+      }
     }
 
-    if (countdownInterval) clearInterval(countdownInterval);
-    countdownInterval = setInterval(updateCountdowns, 1000);
+    if(refreshTimer)clearInterval(refreshTimer);
+    refreshTimer=setInterval(()=>fetchCodes(token,true),2*60*1000);
+    if(cdTimer)clearInterval(cdTimer);
+    cdTimer=setInterval(tickCd,1000);
 
-    if (isRefresh) {
-      const btn = document.getElementById('ref-btn');
-      if (btn) btn.classList.remove('loading');
+    if(data.daysLeft<=3&&data.daysLeft>0){
+      setTimeout(()=>{const p=document.getElementById('renewal-popup');if(p){p.style.display='flex';setTimeout(()=>p.style.opacity='1',50);}},1500);
     }
-
-    // Show renewal popup if expiring soon
-    if (data.daysLeft <= 3 && data.daysLeft > 0) {
-      const popup = document.getElementById('renewal-popup');
-      if (popup) setTimeout(() => popup.classList.add('show'), 1000);
-    }
-
-  } catch(e) {
-    stopProgress();
-    showExpiredPage('error', 'Could not connect. Please try again.');
+  }catch(e){
+    stopProg();
+    const rb=document.getElementById('rbig-icon');if(rb)rb.classList.remove('spinning');
+    if(!isRefresh)showError('error','Could not connect.');
+    addActivity('red','Error','Connection failed');
   }
 }
 
-function renderPage(data) {
-  const days = data.daysLeft || 0;
-  const subClass = days <= 0 ? 'expired' : days <= 3 ? 'warning' : 'active';
-  const subIco = days <= 0 ? '⏰' : days <= 3 ? '⚠️' : '✅';
-  const subTitle = days <= 0 ? 'Subscription Expired' : days <= 3 ? `Expiring in ${days} day${days!==1?'s':''}!` : `Active`;
-  const subDesc = `Netflix: ${data.email}`;
+function buildPage(data){
+  const days=data.daysLeft||0;
+  const statusCls=days<=0?'danger':days<=3?'warning':'active';
+  const ico=days<=0?'⏰':days<=3?'⚠️':'🛡️';
+  const statusTitle=days<=0?'Account Expired':days<=3?'Expiring Soon':'Account Active';
+  const statusSub=days<=0?'Please renew your subscription':days<=3?`Only ${days} days remaining — renew now`:'Your household automation is running smoothly.';
+  const pLetter=(data.profile||'?').replace('Profile ','');
+  const now=new Date();
+  const timeStr=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
-  const h = allCodes.filter(c=>c.type==='household').length;
-  const u = allCodes.filter(c=>c.type==='update').length;
-  const s = allCodes.filter(c=>c.type==='signin').length;
+  // Update nav avatar
+  const av=document.getElementById('nav-avatar');
+  if(av)av.textContent=pLetter;
 
-  document.getElementById('skeleton').style.display = 'none';
+  const h=allCodes.filter(c=>c.type==='household').length;
+  const u=allCodes.filter(c=>c.type==='update').length;
+  const s=allCodes.filter(c=>c.type==='signin').length;
 
-  document.getElementById('main').innerHTML = `
-    <div class="sub-card ${subClass}" id="sub-card" style="animation-delay:.05s">
-      <div class="sub-icon-wrap">${subIco}</div>
-      <div>
-        <div class="sub-title">${subTitle}</div>
-        <div class="sub-desc">${subDesc}</div>
+  document.getElementById('page').innerHTML=`
+  <div class="page">
+
+    <!-- STATUS CARD -->
+    <div class="status-card ${statusCls}">
+      <div class="status-top">
+        <div class="shield-wrap">
+          <div class="shield-ring"></div><div class="shield-ring2"></div>
+          <div class="shield-ico">${ico}</div>
+        </div>
+        <div class="status-info">
+          <div class="status-title"><div class="status-dot"></div>${statusTitle}</div>
+          <div class="status-sub">${statusSub}</div>
+          <div class="status-meta">
+            <span>🕐 Last synced: ${timeStr}</span>
+            <span>⚡ Live monitoring</span>
+          </div>
+        </div>
+        ${days>0?`<div class="days-wrap"><div class="days-num">${days}</div><div class="days-lbl">days left</div></div>`:''}
       </div>
-      ${days > 0 ? `<div class="sub-days">${days}<span style="font-family:var(--f);font-size:.6rem;font-weight:300;color:var(--muted2);display:block;letter-spacing:0;margin-top:-2px">days left</span></div>` : ''}
     </div>
 
-    <div class="renewal-popup" id="renewal-popup">
-      <div class="renewal-title">⚠️ Subscription Expiring Soon!</div>
-      <div class="renewal-desc">Your FanFlix subscription expires in <b>${days} day${days!==1?'s':''}</b>. Renew now to avoid interruption.</div>
-      <a class="renewal-btn" href="https://wa.me/8801928382918" target="_blank">💬 Renew on WhatsApp</a>
+    <!-- RENEWAL POPUP -->
+    <div id="renewal-popup" style="display:none;opacity:0;transition:opacity .4s;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;align-items:center;gap:.8rem">
+      <span style="font-size:1.3rem">⚠️</span>
+      <div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:var(--amber);margin-bottom:2px">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.73rem;color:var(--muted)">Renew now to avoid losing access.</div></div>
+      <a href="https://wa.me/8801928382918" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#000;padding:7px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:.75rem;white-space:nowrap">💬 Renew</a>
     </div>
 
-    <div class="account-card" style="animation-delay:.1s">
-      <div><div class="acc-label">Netflix Email</div><div class="acc-val" style="font-size:.68rem">${esc(data.email)}</div></div>
-      <div><div class="acc-label">Profile</div><div class="acc-val">${esc(data.profile||'-')}</div></div>
-      <div><div class="acc-label">PIN</div><div class="acc-val">${esc(data.pin||'-')}</div></div>
-    </div>
-
-    <div class="top-bar" style="animation-delay:.15s">
-      <div>
-        <div class="result-count"><b id="code-count">${allCodes.length}</b> code${allCodes.length!==1?'s':''} found</div>
+    <!-- INFO GRID -->
+    <div class="info-grid">
+      <div class="info-row">
+        <div class="info-cell">
+          <div class="info-icon red">📧</div>
+          <div><div class="info-lbl">Netflix Email</div>
+          <div class="info-val" style="font-size:.75rem">${esc(data.email)}<button class="copy-tiny" onclick="doCopy('${esc(data.email)}',null,false)" title="Copy email"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>
+        </div>
+        <div class="info-cell">
+          <div class="info-icon blue">👤</div>
+          <div><div class="info-lbl">Profile</div><div class="info-val">${esc(data.profile||'-')}</div></div>
+        </div>
       </div>
-      <button class="ref-btn" id="ref-btn" onclick="loadCodes('${window._token}', true)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-        Refresh
-      </button>
+      <div class="info-row">
+        <div class="info-cell">
+          <div class="info-icon amber">🔒</div>
+          <div><div class="info-lbl">PIN</div>
+          <div class="info-val"><span id="pin-display">••••</span><button class="pin-toggle" onclick="togglePin()" id="pin-btn" title="Show/hide PIN"><svg id="eye-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+        </div>
+        <div class="info-cell">
+          <div class="info-icon green">🛡️</div>
+          <div><div class="info-lbl">Account Status</div><div class="info-val green">Secure</div></div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-cell">
+          <div class="info-icon" style="background:var(--s3)">🖥️</div>
+          <div><div class="info-lbl">Device Status</div><div class="info-val green">Active<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Last active: just now</span></div></div>
+        </div>
+        <div class="info-cell">
+          <div class="info-icon" style="background:var(--s3)">📅</div>
+          <div><div class="info-lbl">Membership</div><div class="info-val" style="flex-direction:column;align-items:flex-start">Standard<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Renews in ${days} days</span></div></div>
+        </div>
+      </div>
     </div>
 
-    <div class="tabs" style="animation-delay:.2s" id="tabs-wrap">
-      <button class="tab active" id="tab-all" onclick="switchTab('all')">All <span class="tc" id="cnt-all">${allCodes.length}</span></button>
-      <button class="tab" id="tab-household" onclick="switchTab('household')">📱 Household <span class="tc" id="cnt-household">${h}</span></button>
-      <button class="tab" id="tab-update" onclick="switchTab('update')">📺 TV Update <span class="tc" id="cnt-update">${u}</span></button>
-      ${s > 0 ? `<button class="tab" id="tab-signin" onclick="switchTab('signin')">🔑 Sign-in <span class="tc" id="cnt-signin">${s}</span></button>` : ''}
+    <!-- REFRESH BTN -->
+    <button class="refresh-btn-big" onclick="fetchCodes('${window._tok}',true)">
+      <div class="rbig-inner">
+        <svg class="rbig-icon" id="rbig-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        <span class="rbig-title">Refresh Codes</span>
+      </div>
+      <div class="rbig-sub">Scan inbox and get new codes</div>
+    </button>
+
+    <!-- LIVE ACTIVITY -->
+    <div class="activity-card">
+      <div class="activity-header">
+        <div class="activity-title"><span class="activity-icon">📊</span> Live Activity</div>
+      </div>
+      <div class="activity-list" id="activity-list">
+        <div class="activity-item"><div class="act-dot green"></div><div class="act-time">${timeStr}</div><div class="act-body"><div class="act-title">Ready for refresh</div><div class="act-sub">System is active</div></div></div>
+      </div>
     </div>
 
-    <div class="cards" id="cards"></div>
-  `;
+    <!-- CODES -->
+    <div class="codes-section">
+      <div class="codes-header">
+        <div class="codes-title">📬 Your Codes <span class="code-count-badge" id="code-badge">${allCodes.length}</span></div>
+      </div>
+      <div class="tabs" id="tabs">
+        <button class="tab active-all" id="tab-all" onclick="switchTab('all')">All <span class="tc">${allCodes.length}</span></button>
+        <button class="tab" id="tab-household" onclick="switchTab('household')">📱 Household <span class="tc">${h}</span></button>
+        <button class="tab" id="tab-update" onclick="switchTab('update')">📺 TV Update <span class="tc">${u}</span></button>
+        ${s>0?`<button class="tab" id="tab-signin" onclick="switchTab('signin')">🔑 Sign-in <span class="tc">${s}</span></button>`:''}
+      </div>
+      <div class="cards" id="cards"></div>
+    </div>
 
+    <!-- QUICK TIP -->
+    <div class="tip-card">
+      <div class="tip-ico">💡</div>
+      <div>
+        <div class="tip-title">Quick Tip</div>
+        <div class="tip-desc">Request a Netflix code on your TV or device first, then tap 'Refresh Codes'.</div>
+      </div>
+      <div class="tip-visual">
+        <svg width="32" height="24" viewBox="0 0 32 24" fill="none"><rect x="0" y="0" width="32" height="20" rx="3" fill="#E50914" opacity=".3"/><text x="8" y="15" font-size="14" fill="#E50914" font-weight="bold">N</text></svg>
+      </div>
+    </div>
+
+  </div>`;
+
+  renderCards();
+}
+
+function updatePage(data){
+  allCodes=data.codes;
+  const h=allCodes.filter(c=>c.type==='household').length;
+  const u=allCodes.filter(c=>c.type==='update').length;
+  const s=allCodes.filter(c=>c.type==='signin').length;
+  const safe=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  safe('code-badge',allCodes.length);
+  renderCards(true);
+}
+
+function addActivity(dotCls,title,sub){
+  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  activityLog.unshift({dotCls,title,sub,time:now});
+  if(activityLog.length>4)activityLog=activityLog.slice(0,4);
+  const list=document.getElementById('activity-list');
+  if(!list)return;
+  list.innerHTML=activityLog.map(a=>`
+    <div class="activity-item">
+      <div class="act-dot ${a.dotCls}"></div>
+      <div class="act-time">${a.time}</div>
+      <div class="act-body"><div class="act-title">${a.title}</div><div class="act-sub">${a.sub}</div></div>
+    </div>`).join('');
+}
+
+function togglePin(){
+  pinShown=!pinShown;
+  const d=document.getElementById('pin-display');
+  if(d)d.textContent=pinShown?(window._ld?.pin||'----'):'••••';
+}
+
+function switchTab(t){
+  curTab=t;
+  document.querySelectorAll('.tab').forEach(x=>{x.className='tab';});
+  const el=document.getElementById('tab-'+t);if(el)el.classList.add('tab','active-'+t);
   renderCards(false);
 }
 
-function updateCounts(data) {
-  const h = allCodes.filter(c=>c.type==='household').length;
-  const u = allCodes.filter(c=>c.type==='update').length;
-  const s = allCodes.filter(c=>c.type==='signin').length;
-  const safe = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
-  safe('code-count', allCodes.length);
-  safe('cnt-all', allCodes.length);
-  safe('cnt-household', h);
-  safe('cnt-update', u);
-  safe('cnt-signin', s);
-}
-
-function switchTab(t) {
-  curTab = t;
-  document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
-  const el = document.getElementById('tab-'+t);
-  if (el) el.classList.add('active');
-  renderCards(false);
-}
-
-function renderCards(smooth) {
-  const list = curTab === 'all' ? allCodes : allCodes.filter(i => i.type === curTab);
-  const container = document.getElementById('cards');
-  if (!container) return;
-
-  if (!list.length) {
-    container.innerHTML = `<div class="empty"><div class="empty-ico">📭</div><h3>No Codes Found</h3><p>No Netflix codes in the last 20 minutes.<br>Request a code on your device then tap Refresh.</p></div>`;
+function renderCards(smooth=false){
+  const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
+  const c=document.getElementById('cards');if(!c)return;
+  if(!list.length){
+    c.innerHTML=`<div class="empty"><span class="empty-ico">📭</span><h3>No Codes Found</h3><p>No Netflix codes in the last 20 minutes.<br>Request a code on your device,<br>then tap Refresh Codes.</p></div>`;
     return;
   }
-
-  if (smooth) {
-    container.style.opacity = '0';
-    container.style.transform = 'translateY(8px)';
-    container.style.transition = 'opacity .3s ease, transform .3s ease';
-    setTimeout(() => {
-      container.innerHTML = list.map((item, i) => cardHtml(item, i)).join('');
-      container.style.opacity = '1';
-      container.style.transform = 'translateY(0)';
-      attachCardListeners();
-    }, 200);
-  } else {
-    container.innerHTML = list.map((item, i) => cardHtml(item, i)).join('');
-    attachCardListeners();
-  }
+  const html=list.map((item,i)=>cardHtml(item,i)).join('');
+  if(smooth){
+    c.style.opacity='0';c.style.transform='translateY(8px)';c.style.transition='opacity .25s,transform .25s';
+    setTimeout(()=>{c.innerHTML=html;c.style.opacity='1';c.style.transform='none';attachL();},200);
+  }else{c.innerHTML=html;attachL();}
 }
 
-function attachCardListeners() {
-  document.querySelectorAll('.card[data-code]').forEach(c => {
-    c.addEventListener('click', () => doCopy(c.dataset.code, null, true));
+function attachL(){
+  document.querySelectorAll('.card[data-code]').forEach(c=>{
+    c.addEventListener('click',()=>doCopy(c.dataset.code,null,true));
   });
 }
 
-function cardHtml(item, i) {
-  const delay = `animation-delay:${i * 0.07}s`;
-  const age = timeAgo(item.ts);
-  const now = Date.now();
-  const fresh = (now - item.ts) < 10 * 60 * 1000;
-  const freshClass = fresh ? ' fresh' : '';
-  const freshBadge = fresh ? '<span class="fresh-badge">Fresh</span>' : '';
-  const countdown = item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : '';
+function cardHtml(item,i){
+  const delay=`animation-delay:${i*.08}s`;
+  const age=timeAgo(item.ts);
+  const fresh=(Date.now()-item.ts)<10*60*1000;
+  const fc=fresh?' fresh':'';
+  const fb=fresh?'<span class="fresh-badge">Fresh</span>':'';
+  const cd=item.expiresAt?`<span class="countdown-wrap" data-exp="${item.expiresAt}">${fmtCd(item.expiresAt)}</span>`:'';
 
-  const phoneIco = `<div class="c-ico"><svg class="phone-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke-linecap="round"/></svg><div class="phone-dot"></div></div>`;
-  const tvIco = `<div class="c-ico"><div class="tv-wrap"><svg class="tv-body" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="12" y1="15" x2="12" y2="18"/></svg><div class="tv-screen"><div class="tv-scan"></div></div></div></div>`;
-  const signinIco = `<div class="c-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`;
+  const phoneIco=`<div class="c-ico" style="position:relative"><svg class="phone-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke-linecap="round"/></svg><div class="pdot"></div></div>`;
+  const tvIco=`<div class="c-ico"><div class="tv-wrap"><svg width="28" height="20" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="12" y1="15" x2="12" y2="18"/></svg><div class="tv-screen"><div class="tv-scan"></div></div></div></div>`;
+  const lockIco=`<div class="c-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`;
 
-  if (item.type === 'update') {
-    return `<div class="card update${freshClass}" style="${delay}">${freshBadge}${tvIco}<div class="c-body"><div class="c-type">TV Household Update</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="c-age">${age}</div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
-  }
-  if (item.type === 'signin') {
-    return `<div class="card signin${freshClass}" style="${delay}" data-code="${esc(item.code)}">${freshBadge}${signinIco}<div class="c-body"><div class="c-type">Sign-in Code</div><div class="c-code">${item.code}</div><div class="c-age">${age}</div>${countdown}</div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  }
-  if (item.code) {
-    return `<div class="card household${freshClass}" style="${delay}" data-code="${esc(item.code)}">${freshBadge}${phoneIco}<div class="c-body"><div class="c-type">Temporary Access Code</div><div class="c-code">${item.code}</div><div class="c-age">${age}</div>${countdown}</div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  }
-  return `<div class="card household${freshClass}" style="${delay}">${freshBadge}${phoneIco}<div class="c-body"><div class="c-type">Temporary Access Code</div><a class="c-link g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="c-age">${age}</div>${countdown}</div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
+  if(item.type==='update')return`<div class="card update${fc}" style="${delay}">${fb}${tvIco}<div class="c-type" style="margin-bottom:5px">TV Household Update</div>... <div style="min-width:0"><div class="c-type">TV Household Update</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="c-meta"><span class="c-age">${age}</span></div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
+
+  if(item.type==='signin')return`<div class="card signin${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${lockIco}<div style="min-width:0"><div class="c-type">Sign-in Code</div><div class="c-code">${item.code}</div><div class="c-meta"><span class="c-age">${age}</span>${cd}</div></div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
+
+  if(item.code)return`<div class="card household${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${phoneIco}<div style="min-width:0"><div class="c-type">Temporary Access Code</div><div class="c-code">${item.code}</div><div class="c-meta"><span class="c-age">${age}</span>${cd}</div></div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
+
+  return`<div class="card household${fc}" style="${delay}">${fb}${phoneIco}<div style="min-width:0"><div class="c-type">Temporary Access Code</div><a class="c-link g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="c-meta"><span class="c-age">${age}</span>${cd}</div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
 }
 
-function showExpiredPage(type, msg) {
-  document.getElementById('skeleton').style.display = 'none';
-  const icons = { expired:'⏰', revoked:'🚫', invalid:'❌', error:'⚠️' };
-  const titles = { expired:'Subscription Expired', revoked:'Access Revoked', invalid:'Invalid Link', error:'Error' };
-  const msgs = {
-    expired: 'Your FanFlix subscription has expired. Please renew to continue watching Netflix.',
-    revoked: msg || 'Your access has been revoked. Contact FanFlix BD.',
-    invalid: msg || 'This link is invalid. Contact FanFlix BD.',
-    error: msg || 'Something went wrong. Try again.'
-  };
-  document.getElementById('main').innerHTML = `
-    <div class="expired-page">
-      <div class="expired-logo"><span class="f">FAN</span><span class="l">FLIX</span></div>
-      <div class="expired-box">
-        <span class="expired-ico">${icons[type]||'⚠️'}</span>
-        <div class="expired-title">${titles[type]||'Error'}</div>
-        <div class="expired-msg">${msgs[type]}</div>
-        <a class="wa-btn-big" href="https://wa.me/8801928382918" target="_blank">
-          💬 Contact FanFlix BD
-        </a>
-      </div>
-    </div>`;
+function showExpired(){
+  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">⏰</span><div class="exp-title">Subscription Expired</div><div class="exp-msg">Your FanFlix subscription has expired.<br>Contact us to renew and keep watching.</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">💬 Renew on WhatsApp</a></div></div>`;
 }
 
-// ── COUNTDOWN ──────────────────────────────────────────────
-function formatCountdown(expiresAt) {
-  const remaining = expiresAt - Date.now();
-  if (remaining <= 0) return '<span class="c-countdown countdown-exp">⏱ Expired</span>';
-  const mins = Math.floor(remaining / 60000);
-  const secs = Math.floor((remaining % 60000) / 1000);
-  const cls = remaining < 2*60*1000 ? 'countdown-warn' : 'countdown-ok';
-  if (remaining < 2*60*1000 && remaining > 119000) playBeep();
-  return `<span class="c-countdown ${cls}">⏱ <span class="countdown-time">${mins}:${secs.toString().padStart(2,'0')}</span></span>`;
+function showError(type,msg){
+  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">${type==='revoked'?'🚫':'❌'}</span><div class="exp-title">${type==='revoked'?'Access Revoked':'Error'}</div><div class="exp-msg">${msg||'Contact FanFlix BD.'}</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">💬 Contact FanFlix BD</a></div></div>`;
 }
 
-function updateCountdowns() {
-  document.querySelectorAll('.countdown-wrap').forEach(el => {
-    const exp = parseInt(el.dataset.expires);
-    if (!exp) return;
-    const newHtml = formatCountdown(exp);
-    const timeEl = el.querySelector('.countdown-time');
-    const newTimeMatch = newHtml.match(/>(\d+:\d+)</);
-    if (timeEl && newTimeMatch) {
-      const newTime = newTimeMatch[1];
-      if (timeEl.textContent !== newTime) {
-        timeEl.classList.add('countdown-flip');
-        timeEl.textContent = newTime;
-        setTimeout(() => timeEl.classList.remove('countdown-flip'), 200);
-      }
-    } else {
-      el.innerHTML = newHtml;
-    }
+function fmtCd(exp){
+  const r=exp-Date.now();
+  if(r<=0)return'<span class="c-countdown countdown-exp">⏱ Expired</span>';
+  const m=Math.floor(r/60000),s=Math.floor((r%60000)/1000);
+  const cls=r<2*60*1000?'countdown-warn':'countdown-ok';
+  if(r<2*60*1000&&r>119000)playBeep();
+  return`<span class="c-countdown ${cls}">⏱ <span class="countdown-time">${m}:${s.toString().padStart(2,'0')}</span></span>`;
+}
+
+function tickCd(){
+  document.querySelectorAll('[data-exp]').forEach(el=>{
+    const exp=parseInt(el.dataset.exp);if(!exp)return;
+    const nt=fmtCd(exp);
+    const te=el.querySelector('.countdown-time');
+    const match=nt.match(/>(\d+:\d+)<\/span>/);
+    if(te&&match&&te.textContent!==match[1]){te.classList.add('cflip');te.textContent=match[1];setTimeout(()=>te.classList.remove('cflip'),150);}
+    else if(!te)el.outerHTML=nt;
   });
 }
 
-// ── COPY ───────────────────────────────────────────────────
-function doCopy(text, btn, showOverlay) {
-  navigator.clipboard.writeText(text).then(() => {
-    if (btn) {
-      btn.textContent = '✓'; btn.classList.add('ok');
-      setTimeout(() => { btn.textContent='Copy'; btn.classList.remove('ok'); }, 2000);
-    }
-    if (showOverlay) {
-      const overlay = document.getElementById('copy-success');
-      overlay.classList.add('show');
-      setTimeout(() => overlay.classList.remove('show'), 1200);
-    }
+function doCopy(text,btn,overlay){
+  navigator.clipboard.writeText(text).then(()=>{
+    if(btn){btn.textContent='✓';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},2000);}
+    if(overlay){const o=document.getElementById('copy-overlay');o.classList.add('show');setTimeout(()=>o.classList.remove('show'),1200);}
     showToast('✓ COPIED!');
   });
 }
 
-function playBeep() {
-  try {
-    const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+.3);
-    osc.start(); osc.stop(ctx.currentTime+.3);
-  } catch(e) {}
+function playBeep(){
+  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const osc=ctx.createOscillator(),g=ctx.createGain();osc.connect(g);g.connect(ctx.destination);osc.frequency.value=880;g.gain.setValueAtTime(.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.3);osc.start();osc.stop(ctx.currentTime+.3);}catch(e){}
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 1800);
-}
-
-function timeAgo(ts) {
-  const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5);
-  if(m<1)return'Just now';if(m<60)return m+'m ago';return h+'h ago';
-}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function timeAgo(ts){const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5);if(m<1)return'Just now';if(m<60)return m+'m ago';return h+'h ago';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 </script>
 </body>
