@@ -256,7 +256,7 @@ async function scrapeOTP(link) {
       }
     }
     const allMatches = [...html.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)];
-    const filtered = allMatches.filter(m => !['2023','2024','2025','2026','1080','1920'].includes(m[1]));
+    const filtered = allMatches.filter(m => !['2023','2024','2025','2026','2027','2028','1080','1920','0000','1234'].includes(m[1]));
     if (filtered.length > 0) return filtered[0][1];
     return null;
   } catch(e) { return null; }
@@ -331,7 +331,11 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   const sl = subject.toLowerCase();
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
     const m = bodyPlain.match(/\b(\d{4,6})\b/);
-    if (m) return { type: 'signin', label: 'Sign-in Code', code: m[1], to: toEmail, ts, expiresAt: ts + 15 * 60 * 1000 };
+    if (m) {
+      const blocked = ['2023','2024','2025','2026','2027','2028','0000'];
+      if (blocked.includes(m[1])) return null;
+      return { type: 'signin', label: 'Sign-in Code', code: m[1], to: toEmail, ts, expiresAt: ts + 15 * 60 * 1000 };
+    }
   }
   const isRelevant = sl.includes('temporary') || sl.includes('access code') || sl.includes('travel') || sl.includes('household') || sl.includes('update') || sl.includes('verify');
   if (!isRelevant) return null;
