@@ -17,25 +17,54 @@ const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
 const ADMIN_PASS = process.env.ADMIN_PASS || '@Orsha420@';
-const LINKS_FILE = '/app/data/links.json';
+const DATA_DIR = '/app/data';
+const LINKS_FILE = `${DATA_DIR}/links.json`;
+const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
 
-// ── LINKS DB ───────────────────────────────────────────────
+const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
+const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
+const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
+const WA_NUMBER = '8801928382918';
+const MAX_SLOTS = 8;
+
+// ── DATA ───────────────────────────────────────────────────
+function ensureDataDir() {
+  try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {}
+}
 function loadLinks() {
-  try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); }
-  catch(e) { return {}; }
+  try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); } catch(e) { return {}; }
 }
 function saveLinks(links) {
+  ensureDataDir();
   fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2));
 }
+function loadAnalytics() {
+  try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf8')); } catch(e) { return {}; }
+}
+function saveAnalytics(data) {
+  ensureDataDir();
+  fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+}
+function trackAnalytics(token) {
+  const data = loadAnalytics();
+  if (!data[token]) data[token] = { total: 0, daily: {} };
+  data[token].total += 1;
+  const today = new Date().toISOString().split('T')[0];
+  data[token].daily[today] = (data[token].daily[today] || 0) + 1;
+  saveAnalytics(data);
+}
+function getAnalytics(token) {
+  const data = loadAnalytics();
+  return data[token] || { total: 0, daily: {} };
+}
 function generateToken() {
-  return crypto.randomBytes(16).toString('hex');
+  return crypto.randomBytes(4).toString('hex'); // 8 chars
 }
 
 // ── STATS ──────────────────────────────────────────────────
 let totalToday = 0;
 let lastReset = new Date().toDateString();
 const visitors = new Map();
-
 function resetDailyIfNeeded() {
   const today = new Date().toDateString();
   if (today !== lastReset) { totalToday = 0; lastReset = today; }
@@ -50,15 +79,12 @@ function getLiveVisitors() {
   return [...visitors.values()].filter(v => v > cutoff).length;
 }
 
-// ── RATE LIMITING ──────────────────────────────────────────
+// ── RATE LIMIT ─────────────────────────────────────────────
 const rateLimitMap = new Map();
 function isRateLimited(ip) {
   const now = Date.now();
   const entry = rateLimitMap.get(ip) || { count: 0, start: now };
-  if (now - entry.start > 5 * 60 * 1000) {
-    rateLimitMap.set(ip, { count: 1, start: now });
-    return false;
-  }
+  if (now - entry.start > 5 * 60 * 1000) { rateLimitMap.set(ip, { count: 1, start: now }); return false; }
   if (entry.count >= 10) return true;
   entry.count++;
   rateLimitMap.set(ip, entry);
@@ -67,42 +93,161 @@ function isRateLimited(ip) {
 
 // ── CACHE ──────────────────────────────────────────────────
 const cache = new Map();
-function getCached(email) {
-  const entry = cache.get(email);
+function getCached(key) {
+  const entry = cache.get(key);
   if (entry && Date.now() - entry.time < 60000) return entry.data;
   return null;
 }
-function setCache(email, data) { cache.set(email, { data, time: Date.now() }); }
+function setCache(key, data) { cache.set(key, { data, time: Date.now() }); }
 
 // ── TELEGRAM ───────────────────────────────────────────────
-async function sendTelegram(msg) {
+async function sendTelegram(msg, chatId = TG_CHAT) {
   try {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: TG_CHAT, text: msg, parse_mode: 'HTML' })
+      body: JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML', disable_web_page_preview: true })
     });
-  } catch(e) { console.error('Telegram error:', e.message); }
+  } catch(e) { console.error('TG error:', e.message); }
+}
+
+// ── EXPIRY CHECKER (runs every hour) ──────────────────────
+function checkExpiringLinks() {
+  const links = loadLinks();
+  const now = Date.now();
+  const threeDays = 3 * 24 * 60 * 60 * 1000;
+  for (const link of Object.values(links)) {
+    if (!link.active) continue;
+    const remaining = link.expiresAt - now;
+    if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
+      const days = Math.ceil(remaining / (24 * 60 * 60 * 1000));
+      sendTelegram(
+        `⚠️ <b>Link Expiring Soon!</b>\n\n` +
+        `📧 ${link.email}\n👤 Profile: ${link.profile}\n` +
+        `⏳ Expires in <b>${days} day(s)</b>\n` +
+        `🔗 ${SITE_URL}/c/${link.token}\n\n` +
+        `Consider renewing this customer's subscription!`
+      );
+      links[link.token].warningSent = true;
+      saveLinks(links);
+    }
+  }
+}
+setInterval(checkExpiringLinks, 60 * 60 * 1000);
+
+// ── TELEGRAM BOT WEBHOOK ────────────────────────────────────
+app.post(`/tg-webhook`, async (req, res) => {
+  res.sendStatus(200);
+  const msg = req.body?.message;
+  if (!msg?.text) return;
+  const text = msg.text.trim();
+  const chatId = msg.chat.id;
+
+  if (text.startsWith('/create')) {
+    const parts = text.replace('/create', '').trim().split('|').map(s => s.trim());
+    if (parts.length < 4) {
+      return sendTelegram('❌ Format: /create email | Profile | PIN | days\n\nExample:\n/create mehedishimanto995@gmail.com | Profile 2 | 1234 | 28', chatId);
+    }
+    const [email, profile, pin, daysStr] = parts;
+    const days = parseInt(daysStr) || 28;
+    const links = loadLinks();
+
+    // Check if link already exists for this email
+    const existing = Object.values(links).find(l => l.email === email.toLowerCase() && l.active && l.expiresAt > Date.now());
+    if (existing) {
+      const daysLeft = Math.ceil((existing.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+      const fullLink = `${SITE_URL}/c/${existing.token}`;
+      const customerMsg = buildCustomerMessage(email, profile, pin, fullLink, daysLeft);
+      return sendTelegram(
+        `ℹ️ <b>Existing Link Found</b>\n\nThis email already has an active link (${daysLeft} days left).\n\n` +
+        `📋 <b>Customer Message:</b>\n\n${customerMsg}`, chatId
+      );
+    }
+
+    // Check slot count
+    const activeCount = Object.values(links).filter(l => l.email === email.toLowerCase() && l.active && l.expiresAt > Date.now()).length;
+    if (activeCount >= MAX_SLOTS) {
+      return sendTelegram(`❌ <b>Account Full!</b>\n\n${email} already has ${MAX_SLOTS}/${MAX_SLOTS} active links!`, chatId);
+    }
+
+    // Create new link
+    const token = generateToken();
+    const now = Date.now();
+    links[token] = {
+      token, email: email.toLowerCase(), profile, pin,
+      days, createdAt: now,
+      expiresAt: now + days * 24 * 60 * 60 * 1000,
+      uses: 0, lastUsed: null, active: true, warningSent: false
+    };
+    saveLinks(links);
+
+    const fullLink = `${SITE_URL}/c/${token}`;
+    const daysLeft = days;
+    const customerMsg = buildCustomerMessage(email, profile, pin, fullLink, daysLeft);
+
+    sendTelegram(
+      `✅ <b>Link Created!</b>\n\n` +
+      `📧 ${email}\n👤 ${profile}\n🔑 ${pin}\n⏳ ${days} days\n🔗 ${fullLink}\n\n` +
+      `📋 <b>Customer Message (copy & send):</b>\n\n${customerMsg}`, chatId
+    );
+  }
+
+  if (text === '/slots') {
+    const links = loadLinks();
+    const now = Date.now();
+    const byEmail = {};
+    for (const l of Object.values(links)) {
+      if (!byEmail[l.email]) byEmail[l.email] = 0;
+      if (l.active && l.expiresAt > now) byEmail[l.email]++;
+    }
+    let msg = '📊 <b>Slot Usage</b>\n\n';
+    for (const [email, count] of Object.entries(byEmail)) {
+      const bar = '█'.repeat(count) + '░'.repeat(MAX_SLOTS - count);
+      msg += `📧 ${email}\n${bar} ${count}/${MAX_SLOTS}\n\n`;
+    }
+    sendTelegram(msg || 'No active links.', chatId);
+  }
+
+  if (text === '/stats') {
+    const links = loadLinks();
+    const now = Date.now();
+    const active = Object.values(links).filter(l => l.active && l.expiresAt > now).length;
+    const expired = Object.values(links).filter(l => l.expiresAt <= now).length;
+    const revoked = Object.values(links).filter(l => !l.active).length;
+    const totalUses = Object.values(links).reduce((s, l) => s + l.uses, 0);
+    sendTelegram(
+      `📊 <b>FanFlix Stats</b>\n\n` +
+      `✅ Active: ${active}\n⏰ Expired: ${expired}\n🚫 Revoked: ${revoked}\n` +
+      `👁 Total uses: ${totalUses}\n👥 Live: ${getLiveVisitors()}\n📈 Today: ${totalToday}`, chatId
+    );
+  }
+});
+
+function buildCustomerMessage(email, profile, pin, link, daysLeft) {
+  return `🎬 <b>FanFlix BD</b>\n\n` +
+    `📧 Email: <code>${email}</code>\n` +
+    `👤 Profile: ${profile}\n` +
+    `🔑 PIN: ${pin}\n\n` +
+    `🔗 Household Code Link:\n${link}\n\n` +
+    `📺 Login Tutorial (Must Watch):\n${LOGIN_VIDEO}\n\n` +
+    `🏠 Household Fix Tutorial:\n${HOUSEHOLD_VIDEO}\n\n` +
+    `⚠️ Important:\n` +
+    `• Any changes to the account are not allowed\n` +
+    `• Streaming is allowed on 1 device at a time\n` +
+    `• Do not use it from outside BD\n` +
+    `• You can sign in anytime if it shows signed out\n\n` +
+    `✅ Valid for ${daysLeft} days`;
 }
 
 // ── AUTO OTP SCRAPER ───────────────────────────────────────
 async function scrapeOTP(link) {
   try {
     const res = await fetch(link, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-      },
+      headers: { 'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15', 'Accept': 'text/html' },
       redirect: 'follow'
     });
     const html = await res.text();
-    const patterns = [
-      />\s*(\d{4})\s*</g,
-      /"code"\s*:\s*"(\d{4})"/,
-      /code[^>]*>\s*(\d{4,6})\s*</i,
-      />\s*(\d{4,6})\s*<\/(?:p|h\d|div|span)/,
-    ];
+    const patterns = [/>\s*(\d{4})\s*</g, /"code"\s*:\s*"(\d{4})"/, />\s*(\d{4,6})\s*<\/(?:p|h\d|div|span)/];
     for (const pattern of patterns) {
       const match = html.match(pattern);
       if (match) {
@@ -111,16 +256,13 @@ async function scrapeOTP(link) {
       }
     }
     const allMatches = [...html.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)];
-    const filtered = allMatches.filter(m => {
-      const n = parseInt(m[1]);
-      return n > 999 && !['2023','2024','2025','2026','1080','1920'].includes(m[1]);
-    });
+    const filtered = allMatches.filter(m => !['2023','2024','2025','2026','1080','1920'].includes(m[1]));
     if (filtered.length > 0) return filtered[0][1];
     return null;
-  } catch(e) { console.error('OTP scrape error:', e.message); return null; }
+  } catch(e) { return null; }
 }
 
-// ── IMAP FETCH ─────────────────────────────────────────────
+// ── IMAP ───────────────────────────────────────────────────
 function fetchNetflixEmails(filterEmail, includeSignin = false) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
@@ -128,15 +270,11 @@ function fetchNetflixEmails(filterEmail, includeSignin = false) {
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false }
     });
-
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
         const since = new Date(Date.now() - 20 * 60 * 1000);
-        imap.search([
-          ['SINCE', since],
-          ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]
-        ], (err, uids) => {
+        imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const fetch = imap.fetch(uids, { bodies: '' });
           const promises = [];
@@ -169,13 +307,13 @@ function fetchNetflixEmails(filterEmail, includeSignin = false) {
         });
       });
     });
-    imap.once('error', (err) => { console.error('IMAP error:', err.message); reject(err); });
+    imap.once('error', (err) => { reject(err); });
     imap.connect();
   });
 }
 
 function extractLink(body) {
-  const b = body.replace(/&amp;/g, '&').replace(/&#38;/g, '&');
+  const b = body.replace(/&amp;/g, '&');
   const m1 = b.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?nftoken=[^\s"'<>\\]+/i);
   if (m1) return { link: m1[0], type: 'household', label: 'Temporary Access Code' };
   const m2 = b.match(/https:\/\/www\.netflix\.com\/account\/update-primary-location\?nftoken=[^\s"'<>\\]+/i);
@@ -183,7 +321,7 @@ function extractLink(body) {
   const m3 = b.match(/href=["'](https:\/\/[^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
   if (m3) {
     const link = m3[1].replace(/&amp;/g, '&');
-    const isUpdate = link.includes('update-primary') || link.includes('update-household');
+    const isUpdate = link.includes('update-primary');
     return { link, type: isUpdate ? 'update' : 'household', label: isUpdate ? 'Update Household (TV)' : 'Temporary Access Code' };
   }
   return null;
@@ -191,23 +329,14 @@ function extractLink(body) {
 
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
-
-  // Sign-in code (only for unique links)
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
     const m = bodyPlain.match(/\b(\d{4,6})\b/);
-    if (m) return {
-      type: 'signin', label: 'Sign-in Code', code: m[1],
-      to: toEmail, ts, expiresAt: ts + 15 * 60 * 1000
-    };
+    if (m) return { type: 'signin', label: 'Sign-in Code', code: m[1], to: toEmail, ts, expiresAt: ts + 15 * 60 * 1000 };
   }
-
-  const isRelevant = sl.includes('temporary') || sl.includes('access code') ||
-    sl.includes('travel') || sl.includes('household') || sl.includes('update') || sl.includes('verify');
+  const isRelevant = sl.includes('temporary') || sl.includes('access code') || sl.includes('travel') || sl.includes('household') || sl.includes('update') || sl.includes('verify');
   if (!isRelevant) return null;
-
   const result = extractLink(bodyHtml) || extractLink(bodyText);
   if (!result) return null;
-
   if (result.type === 'household') {
     const otp = await scrapeOTP(result.link);
     if (otp) return { type: 'household', label: 'Temporary Access Code', code: otp, to: toEmail, ts, expiresAt: ts + 15 * 60 * 1000 };
@@ -232,107 +361,142 @@ app.post('/api/admin/login', (req, res) => {
 
 app.get('/api/admin/links', adminAuth, (req, res) => {
   const links = loadLinks();
+  const analytics = loadAnalytics();
+  // Attach analytics to each link
+  for (const token of Object.keys(links)) {
+    links[token].analytics = analytics[token] || { total: 0, daily: {} };
+  }
   res.json({ success: true, links });
 });
 
 app.post('/api/admin/create', adminAuth, (req, res) => {
-  const { name, email, days } = req.body;
-  if (!name || !email || !days) return res.status(400).json({ error: 'Missing fields' });
+  const { email, profile, pin, days } = req.body;
+  if (!email || !profile || !pin || !days) return res.status(400).json({ error: 'Missing fields' });
   const links = loadLinks();
+
+  // Check existing active link for this email
+  const existing = Object.values(links).find(l => l.email === email.toLowerCase() && l.active && l.expiresAt > Date.now());
+  if (existing) {
+    return res.json({ success: true, token: existing.token, link: `/c/${existing.token}`, existing: true });
+  }
+
   const token = generateToken();
   const now = Date.now();
   links[token] = {
-    token, name, email: email.toLowerCase().trim(),
-    days: parseInt(days),
-    createdAt: now,
+    token, email: email.toLowerCase(), profile, pin,
+    days: parseInt(days), createdAt: now,
     expiresAt: now + parseInt(days) * 24 * 60 * 60 * 1000,
-    uses: 0, lastUsed: null, active: true
+    uses: 0, lastUsed: null, active: true, warningSent: false
   };
   saveLinks(links);
-  sendTelegram(`🔗 <b>New Customer Link Created</b>\n\n👤 ${name}\n📧 ${email}\n📅 ${days} days\n🔗 /c/${token}`);
+  sendTelegram(`🔗 <b>New Link Created</b>\n📧 ${email}\n👤 ${profile}\n⏳ ${days} days\n🔗 ${SITE_URL}/c/${token}`);
   res.json({ success: true, token, link: `/c/${token}` });
 });
 
 app.post('/api/admin/revoke/:token', adminAuth, (req, res) => {
   const links = loadLinks();
-  if (!links[req.params.token]) return res.status(404).json({ error: 'Link not found' });
+  if (!links[req.params.token]) return res.status(404).json({ error: 'Not found' });
   links[req.params.token].active = false;
-  saveLinks(links);
-  res.json({ success: true });
-});
-
-app.delete('/api/admin/delete/:token', adminAuth, (req, res) => {
-  const links = loadLinks();
-  if (!links[req.params.token]) return res.status(404).json({ error: 'Link not found' });
-  delete links[req.params.token];
   saveLinks(links);
   res.json({ success: true });
 });
 
 app.post('/api/admin/activate/:token', adminAuth, (req, res) => {
   const links = loadLinks();
-  if (!links[req.params.token]) return res.status(404).json({ error: 'Link not found' });
+  if (!links[req.params.token]) return res.status(404).json({ error: 'Not found' });
   links[req.params.token].active = true;
   saveLinks(links);
   res.json({ success: true });
 });
 
-// ── CUSTOMER LINK ROUTE ─────────────────────────────────────
+app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error: 'Not found' });
+  const { days } = req.body;
+  links[req.params.token].expiresAt += parseInt(days) * 24 * 60 * 60 * 1000;
+  links[req.params.token].warningSent = false;
+  saveLinks(links);
+  res.json({ success: true });
+});
+
+app.delete('/api/admin/delete/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error: 'Not found' });
+  delete links[req.params.token];
+  saveLinks(links);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/slots', adminAuth, (req, res) => {
+  const links = loadLinks();
+  const now = Date.now();
+  const byEmail = {};
+  for (const l of Object.values(links)) {
+    if (!byEmail[l.email]) byEmail[l.email] = { active: 0, total: 0 };
+    byEmail[l.email].total++;
+    if (l.active && l.expiresAt > now) byEmail[l.email].active++;
+  }
+  res.json({ success: true, slots: byEmail, maxSlots: MAX_SLOTS });
+});
+
+// ── CUSTOMER LINK ───────────────────────────────────────────
 app.get('/api/link/:token', async (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
-  if (!link) return res.status(404).json({ success: false, error: 'Invalid link' });
-  if (!link.active) return res.status(403).json({ success: false, error: 'revoked', message: 'Access revoked. Contact FanFlix BD.' });
-  if (Date.now() > link.expiresAt) return res.status(403).json({ success: false, error: 'expired', message: 'Link expired. Contact FanFlix BD to renew.' });
+  if (!link) return res.status(404).json({ success: false, error: 'invalid', message: 'Invalid link. Contact FanFlix BD.' });
+  if (!link.active) return res.status(403).json({ success: false, error: 'revoked', message: 'Your access has been revoked. Contact FanFlix BD.' });
 
-  // Update usage
+  const now = Date.now();
+  const daysLeft = Math.ceil((link.expiresAt - now) / (24 * 60 * 60 * 1000));
+
+  if (now > link.expiresAt) return res.status(403).json({
+    success: false, error: 'expired',
+    message: '⏰ Your FanFlix subscription has expired! Please renew to continue watching.',
+    daysLeft: 0
+  });
+
+  // Track usage
   link.uses += 1;
-  link.lastUsed = Date.now();
+  link.lastUsed = now;
   saveLinks(links);
+  trackAnalytics(req.params.token);
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip);
+  sendTelegram(`👤 <b>Link Opened</b>\n📧 ${link.email}\n👤 ${link.profile}\n🔢 Uses: ${link.uses}\n⏳ ${daysLeft} days left`);
 
-  // Notify on Telegram
-  sendTelegram(`👤 <b>Customer Link Used</b>\n\n👤 ${link.name}\n📧 ${link.email}\n🔢 Uses: ${link.uses}\n⏳ Expires: ${new Date(link.expiresAt).toLocaleDateString()}`);
-
-  // Fetch codes (with sign-in codes)
   const cacheKey = `link_${link.email}`;
   const cached = getCached(cacheKey);
-  if (cached) return res.json({ success: true, codes: cached, count: cached.length, cached: true, name: link.name, email: link.email });
+  if (cached) return res.json({ success: true, codes: cached, count: cached.length, cached: true, profile: link.profile, pin: link.pin, email: link.email, daysLeft });
 
   try {
     const codes = await fetchNetflixEmails(link.email, true);
     setCache(cacheKey, codes);
     if (codes.length > 0) totalToday += 1;
-    res.json({ success: true, codes, count: codes.length, name: link.name, email: link.email });
+    res.json({ success: true, codes, count: codes.length, profile: link.profile, pin: link.pin, email: link.email, daysLeft });
   } catch(err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.status(500).json({ success: false, error: 'server', message: 'Server error. Try again.' });
   }
 });
 
-// ── STATS ──────────────────────────────────────────────────
+// ── PUBLIC ROUTES ───────────────────────────────────────────
 app.get('/api/stats', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
   res.json({ live: getLiveVisitors(), today: totalToday });
 });
 
-// ── HEALTH ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, user: GMAIL_USER ? GMAIL_USER.replace(/(.{3}).*(@.*)/, '$1***$2') : 'NOT SET' });
 });
 
-// ── MAIN CODES ─────────────────────────────────────────────
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email || '').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
-  if (isRateLimited(ip)) return res.status(429).json({ success: false, error: 'Too many requests. Please wait 5 minutes.' });
-
+  if (isRateLimited(ip)) return res.status(429).json({ success: false, error: 'Too many requests. Wait 5 minutes.' });
   const cached = getCached(email);
   if (cached) return res.json({ success: true, codes: cached, count: cached.length, cached: true, fetchTime: 0 });
-
   const start = Date.now();
   try {
     const codes = await fetchNetflixEmails(email, false);
@@ -341,33 +505,20 @@ app.get('/api/codes', async (req, res) => {
     if (codes.length > 0) totalToday += 1;
     if (email) {
       const summary = codes.length > 0 ? codes.map(c => `• ${c.label}: ${c.code || 'link'}`).join('\n') : 'No codes found';
-      sendTelegram(`🔍 <b>FanFlix Search</b>\n📧 <code>${email}</code>\n📊 ${codes.length} result(s)\n⏱ ${fetchTime}s\n\n${summary}`);
+      sendTelegram(`🔍 <b>Search</b>\n📧 <code>${email}</code>\n📊 ${codes.length} result(s)\n⏱ ${fetchTime}s\n\n${summary}`);
     }
     res.json({ success: true, codes, count: codes.length, fetchTime });
   } catch(err) {
-    sendTelegram(`❌ <b>Error</b>\n<code>${email}</code>\n${err.message}`);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── SERVE ADMIN ─────────────────────────────────────────────
-app.get('/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'customer.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
-// ── CUSTOMER LINK PAGE ──────────────────────────────────────
-app.get('/c/:token', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'customer.html'));
-});
-
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Ensure data directory exists
-try { require('fs').mkdirSync('/app/data', { recursive: true }); } catch(e) {}
-
+ensureDataDir();
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
-  sendTelegram('🟢 <b>FanFlix Started</b>\nServer is online!');
+  sendTelegram('🟢 <b>FanFlix Started</b>\n\nCommands:\n/create email | Profile | PIN | days\n/slots\n/stats');
 });
