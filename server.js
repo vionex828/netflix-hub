@@ -152,6 +152,7 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
                   const xDeliveredTo = mail.headers?.get('x-delivered-to') || '';
                   // Extract all emails from these fields
                   const extractEmails = (text) => {
+                    if (!text || typeof text !== 'string') return [];
                     const matches = text.match(/[\w.-]+@[\w.-]+\.[a-z]{2,}/gi) || [];
                     return matches.map(e => e.toLowerCase().trim());
                   };
