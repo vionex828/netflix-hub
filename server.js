@@ -167,11 +167,34 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
                   const bodyText = mail.text || '';
                   const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
-                  // STRICT FILTER: email must exactly match one of the addresses
+                  // SMART EMAIL FILTER for forwarded/aliased emails
                   if (filterEmail) {
                     const filterLower = filterEmail.toLowerCase().trim();
-                    const exactMatch = allAddresses.some(a => a === filterLower);
-                    if (!exactMatch) return res(null);
+
+                    // 1. Direct To/CC match
+                    const directMatch = allAddresses.some(a => a === filterLower);
+
+                    // 2. X-Forwarded-To header (Apple Hide My Email, iCloud forwarding)
+                    const xForwardedTo = String(mail.headers?.get('x-forwarded-to') || '').toLowerCase();
+                    const forwardedMatch = xForwardedTo.includes(filterLower);
+
+                    // 3. X-Original-To header
+                    const xOriginalTo = String(mail.headers?.get('x-original-to') || '').toLowerCase();
+                    const originalToMatch = xOriginalTo.includes(filterLower);
+
+                    // 4. Envelope-To header
+                    const envelopeTo = String(mail.headers?.get('envelope-to') || '').toLowerCase();
+                    const envelopeMatch = envelopeTo.includes(filterLower);
+
+                    // 5. Check raw To header text (catches "Hide My Email <alias@icloud.com>")
+                    const rawToMatch = toText.toLowerCase().includes(filterLower);
+
+                    // 6. Check CC text
+                    const ccMatch = ccText.toLowerCase().includes(filterLower);
+
+                    if (!directMatch && !forwardedMatch && !originalToMatch && !envelopeMatch && !rawToMatch && !ccMatch) {
+                      return res(null);
+                    }
                   }
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
                   res(parsed);
