@@ -17,6 +17,15 @@ const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
 const ADMIN_PASS = process.env.ADMIN_PASS || '@Orsha420@';
+
+// Fixed Netflix profiles - hardcoded
+const FIXED_PROFILES = [
+  { profile: 'Profile A', pin: '5651', slots: 2 },
+  { profile: 'Profile B', pin: '5652', slots: 2 },
+  { profile: 'Profile C', pin: '5653', slots: 2 },
+  { profile: 'Profile D', pin: '5654', slots: 1 },
+  { profile: 'Profile E', pin: '5655', slots: 1 },
+];
 const DATA_DIR = '/app/data';
 const LINKS_FILE = `${DATA_DIR}/links.json`;
 const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
@@ -144,52 +153,56 @@ app.post(`/tg-webhook`, async (req, res) => {
   const chatId = msg.chat.id;
 
   if (text.startsWith('/create')) {
-    const parts = text.replace('/create', '').trim().split('|').map(s => s.trim());
-    if (parts.length < 4) {
-      return sendTelegram('❌ Format: /create email | Profile | PIN | days\n\nExample:\n/create mehedishimanto995@gmail.com | Profile 2 | 1234 | 28', chatId);
+    const emailRaw = text.replace('/create', '').trim();
+    if (!emailRaw || !emailRaw.includes('@')) {
+      return sendTelegram('❌ Format: /create email@gmail.com', chatId);
     }
-    const [email, profile, pin, daysStr] = parts;
-    const days = parseInt(daysStr) || 28;
+    const email = emailRaw.toLowerCase();
     const links = loadLinks();
-
-    // Check if link already exists for this email
-    const existing = Object.values(links).find(l => l.email === email.toLowerCase() && l.active && l.expiresAt > Date.now());
-    if (existing) {
-      const daysLeft = Math.ceil((existing.expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
-      const fullLink = `${SITE_URL}/c/${existing.token}`;
-      const customerMsg = buildCustomerMessage(email, profile, pin, fullLink, daysLeft);
-      return sendTelegram(
-        `ℹ️ <b>Existing Link Found</b>\n\nThis email already has an active link (${daysLeft} days left).\n\n` +
-        `📋 <b>Customer Message:</b>\n\n${customerMsg}`, chatId
-      );
-    }
-
-    // Check slot count
-    const activeCount = Object.values(links).filter(l => l.email === email.toLowerCase() && l.active && l.expiresAt > Date.now()).length;
-    if (activeCount >= MAX_SLOTS) {
-      return sendTelegram(`❌ <b>Account Full!</b>\n\n${email} already has ${MAX_SLOTS}/${MAX_SLOTS} active links!`, chatId);
-    }
-
-    // Create new link
-    const token = generateToken();
     const now = Date.now();
-    links[token] = {
-      token, email: email.toLowerCase(), profile, pin,
-      days, createdAt: now,
-      expiresAt: now + days * 24 * 60 * 60 * 1000,
-      uses: 0, lastUsed: null, active: true, warningSent: false
-    };
+
+    // Check existing active links for this email
+    const existingLinks = Object.values(links).filter(l => l.email === email && l.active && l.expiresAt > now);
+    if (existingLinks.length >= MAX_SLOTS) {
+      return sendTelegram(`❌ <b>Account Full!</b>\n\n${email} already has ${MAX_SLOTS}/${MAX_SLOTS} active links!\n\nUse /list ${email} to see them.`, chatId);
+    }
+
+    // Ask for expiry
+    const parts = emailRaw.split('|').map(s => s.trim());
+    const days = parts[1] ? parseInt(parts[1]) : 28;
+
+    // Generate all 8 links
+    const created = [];
+    for (const prof of FIXED_PROFILES) {
+      for (let i = 0; i < prof.slots; i++) {
+        const token = generateToken();
+        links[token] = {
+          token, email, profile: prof.profile, pin: prof.pin,
+          days, createdAt: now,
+          expiresAt: now + days * 24 * 60 * 60 * 1000,
+          uses: 0, lastUsed: null, active: true, warningSent: false
+        };
+        created.push({ token, profile: prof.profile, pin: prof.pin, link: `${SITE_URL}/c/${token}` });
+      }
+    }
     saveLinks(links);
 
-    const fullLink = `${SITE_URL}/c/${token}`;
-    const daysLeft = days;
-    const customerMsg = buildCustomerMessage(email, profile, pin, fullLink, daysLeft);
+    // Build response message
+    let msg = `✅ <b>8 Links Created!</b>\n📧 ${email}\n⏳ ${days} days\n\n`;
+    
+    let lastProfile = '';
+    for (const l of created) {
+      if (l.profile !== lastProfile) {
+        msg += `\n👤 <b>${l.profile}</b> | 🔑 PIN: ${l.pin}\n`;
+        lastProfile = l.profile;
+      }
+      msg += `🔗 ${l.link}\n`;
+    }
 
-    sendTelegram(
-      `✅ <b>Link Created!</b>\n\n` +
-      `📧 ${email}\n👤 ${profile}\n🔑 ${pin}\n⏳ ${days} days\n🔗 ${fullLink}\n\n` +
-      `📋 <b>Customer Message (copy & send):</b>\n\n${customerMsg}`, chatId
-    );
+    msg += `\n━━━━━━━━━━━━━━━━━━\n📋 <b>Customer Message Template:</b>\n\n`;
+    msg += buildCustomerMessage(email, '[PROFILE]', '[PIN]', '[LINK]', days);
+
+    sendTelegram(msg, chatId);
   }
 
   if (text === '/slots') {
@@ -206,6 +219,34 @@ app.post(`/tg-webhook`, async (req, res) => {
       msg += `📧 ${email}\n${bar} ${count}/${MAX_SLOTS}\n\n`;
     }
     sendTelegram(msg || 'No active links.', chatId);
+  }
+
+  if (text.startsWith('/list')) {
+    const emailFilter = text.replace('/list', '').trim().toLowerCase();
+    const links = loadLinks();
+    const now = Date.now();
+    const filtered = Object.values(links).filter(l => !emailFilter || l.email.includes(emailFilter));
+    if (!filtered.length) return sendTelegram(`No links found for: ${emailFilter}`, chatId);
+    let msg = `📋 <b>Links${emailFilter ? ' for ' + emailFilter : ''}</b>\n\n`;
+    for (const l of filtered.sort((a,b) => b.createdAt - a.createdAt)) {
+      const daysLeft = Math.ceil((l.expiresAt - now) / (24*60*60*1000));
+      const status = !l.active ? '🚫' : daysLeft <= 0 ? '⏰' : daysLeft <= 3 ? '⚠️' : '✅';
+      msg += `${status} ${l.profile} | PIN: ${l.pin}\n🔗 ${SITE_URL}/c/${l.token}\n⏳ ${daysLeft}d | Uses: ${l.uses}\n\n`;
+    }
+    return sendTelegram(msg, chatId);
+  }
+
+  if (text.startsWith('/extend')) {
+    const parts = text.replace('/extend', '').trim().split(' ');
+    if (parts.length < 2) return sendTelegram('❌ Format: /extend TOKEN days', chatId);
+    const [token, daysStr] = parts;
+    const days = parseInt(daysStr) || 28;
+    const links = loadLinks();
+    if (!links[token]) return sendTelegram('❌ Link not found', chatId);
+    links[token].expiresAt += days * 24 * 60 * 60 * 1000;
+    links[token].warningSent = false;
+    saveLinks(links);
+    sendTelegram(`✅ Extended ${token} by ${days} days`, chatId);
   }
 
   if (text === '/stats') {
@@ -467,7 +508,7 @@ app.get('/api/link/:token', async (req, res) => {
 
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip);
-  sendTelegram(`👤 <b>Link Opened</b>\n📧 ${link.email}\n👤 ${link.profile}\n🔢 Uses: ${link.uses}\n⏳ ${daysLeft} days left`);
+  // Notification removed
 
   const cacheKey = `link_${link.email}`;
   const cached = getCached(cacheKey);
@@ -507,10 +548,7 @@ app.get('/api/codes', async (req, res) => {
     const fetchTime = ((Date.now() - start) / 1000).toFixed(1);
     setCache(email, codes);
     if (codes.length > 0) totalToday += 1;
-    if (email) {
-      const summary = codes.length > 0 ? codes.map(c => `• ${c.label}: ${c.code || 'link'}`).join('\n') : 'No codes found';
-      sendTelegram(`🔍 <b>Search</b>\n📧 <code>${email}</code>\n📊 ${codes.length} result(s)\n⏱ ${fetchTime}s\n\n${summary}`);
-    }
+  // Search notification removed
     res.json({ success: true, codes, count: codes.length, fetchTime });
   } catch(err) {
     res.status(500).json({ success: false, error: err.message });
