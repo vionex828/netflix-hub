@@ -167,34 +167,31 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
                   const bodyText = mail.text || '';
                   const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
-                  // SMART EMAIL FILTER for forwarded/aliased emails
+                  // SMART EMAIL FILTER
                   if (filterEmail) {
                     const filterLower = filterEmail.toLowerCase().trim();
 
-                    // 1. Direct To/CC match
-                    const directMatch = allAddresses.some(a => a === filterLower);
+                    // Extract ALL email addresses from the full raw To header
+                    // Handles: "Hide My Email <cereals-stem6h@icloud.com>"
+                    const rawTo = mail.headerLines
+                      ?.find(h => h.key === 'to')?.line || '';
+                    const rawCc = mail.headerLines
+                      ?.find(h => h.key === 'cc')?.line || '';
 
-                    // 2. X-Forwarded-To header (Apple Hide My Email, iCloud forwarding)
-                    const xForwardedTo = String(mail.headers?.get('x-forwarded-to') || '').toLowerCase();
-                    const forwardedMatch = xForwardedTo.includes(filterLower);
+                    // Get all addresses from mailparser's parsed to/cc
+                    const toAddresses = (mail.to?.value || []).map(a => (a.address||'').toLowerCase());
+                    const ccAddresses = (mail.cc?.value || []).map(a => (a.address||'').toLowerCase());
 
-                    // 3. X-Original-To header
-                    const xOriginalTo = String(mail.headers?.get('x-original-to') || '').toLowerCase();
-                    const originalToMatch = xOriginalTo.includes(filterLower);
+                    // Also extract from raw header strings
+                    const emailRegex = /[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi;
+                    const rawToEmails = (rawTo.match(emailRegex)||[]).map(e=>e.toLowerCase());
+                    const rawCcEmails = (rawCc.match(emailRegex)||[]).map(e=>e.toLowerCase());
 
-                    // 4. Envelope-To header
-                    const envelopeTo = String(mail.headers?.get('envelope-to') || '').toLowerCase();
-                    const envelopeMatch = envelopeTo.includes(filterLower);
+                    // Combine all found addresses
+                    const allFound = [...toAddresses, ...ccAddresses, ...rawToEmails, ...rawCcEmails, ...allAddresses];
 
-                    // 5. Check raw To header text (catches "Hide My Email <alias@icloud.com>")
-                    const rawToMatch = toText.toLowerCase().includes(filterLower);
-
-                    // 6. Check CC text
-                    const ccMatch = ccText.toLowerCase().includes(filterLower);
-
-                    if (!directMatch && !forwardedMatch && !originalToMatch && !envelopeMatch && !rawToMatch && !ccMatch) {
-                      return res(null);
-                    }
+                    const matched = allFound.some(a => a === filterLower);
+                    if (!matched) return res(null);
                   }
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
                   res(parsed);
