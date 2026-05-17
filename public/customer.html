@@ -68,8 +68,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.94);backdrop-filter
 .status-card.warning .status-title{color:var(--amber)}.status-card.warning .status-dot{background:var(--amber)}
 .status-card.danger .status-title{color:var(--red)}.status-card.danger .status-dot{background:var(--red)}
 .status-sub{font-size:.78rem;color:var(--muted);margin-bottom:.5rem}
-.status-meta{display:flex;gap:1rem;font-family:var(--m);font-size:.6rem;color:var(--muted2)}
-.status-meta span{display:flex;align-items:center;gap:4px}
+
+
 .days-wrap{text-align:right;flex-shrink:0}
 .days-num{font-family:var(--h);font-size:3rem;line-height:1;letter-spacing:1px;color:var(--green)}
 .status-card.warning .days-num{color:var(--amber)}
@@ -81,15 +81,15 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.94);backdrop-filter
 .info-grid{background:var(--s1);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:1rem;animation:fadeUp .6s ease .15s both}
 .info-row{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border)}
 .info-row:last-child{border-bottom:none}
-.info-cell{padding:1rem 1.2rem;display:flex;align-items:center;gap:.8rem;border-right:1px solid var(--border)}
+.info-cell{padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;border-right:1px solid var(--border);min-width:0;overflow:hidden}
 .info-cell:last-child{border-right:none}
-.info-icon{width:36px;height:36px;border-radius:10px;background:var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.9rem}
-.info-icon.red{background:rgba(229,9,20,.12)}
-.info-icon.green{background:rgba(70,211,105,.1)}
-.info-icon.amber{background:rgba(245,166,35,.1)}
-.info-icon.blue{background:rgba(77,166,255,.1)}
-.info-lbl{font-family:var(--m);font-size:.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);margin-bottom:3px}
-.info-val{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px}
+.info-icon{width:38px;height:38px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.info-icon.red{background:rgba(229,9,20,.15)}
+.info-icon.green{background:rgba(70,211,105,.12)}
+.info-icon.amber{background:rgba(245,166,35,.12)}
+.info-icon.blue{background:rgba(77,166,255,.12)}
+.info-lbl{font-family:var(--m);font-size:.53rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:3px}
+.info-val{font-size:.85rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden}
 .info-val.green{color:var(--green)}.info-val.amber{color:var(--amber)}
 .copy-tiny{background:transparent;border:none;color:var(--muted2);cursor:pointer;padding:2px;transition:color .2s;flex-shrink:0}
 .copy-tiny:hover{color:var(--text)}
@@ -409,10 +409,7 @@ function buildPage(data){
         <div class="status-info">
           <div class="status-title"><div class="status-dot"></div>${statusTitle}</div>
           <div class="status-sub">${statusSub}</div>
-          <div class="status-meta">
-            <span>🕐 Last synced: ${timeStr}</span>
-            <span>⚡ Live monitoring</span>
-          </div>
+
         </div>
         ${days>0?`<div class="days-wrap"><div class="days-num">${days}</div><div class="days-lbl">days left</div></div>`:''}
       </div>
@@ -431,7 +428,7 @@ function buildPage(data){
         <div class="info-cell">
           <div class="info-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
           <div><div class="info-lbl">Netflix Email</div>
-          <div class="info-val" style="font-size:.75rem">${esc(data.email)}<button class="copy-tiny" onclick="doCopy('${esc(data.email)}',null,false)" title="Copy email"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>
+          <div style="min-width:0;overflow:hidden"><div class="info-val" style="font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:130px">${esc(data.email)}</div><button class="copy-tiny" onclick="doCopy('${esc(data.email)}',null,false)" title="Copy email" style="margin-top:3px;display:flex;align-items:center;gap:3px;font-family:var(--m);font-size:.58rem;color:var(--muted2);background:none;border:none;cursor:pointer"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</button></div></div>
         </div>
         <div class="info-cell">
           <div class="info-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
@@ -452,11 +449,11 @@ function buildPage(data){
       <div class="info-row">
         <div class="info-cell">
           <div class="info-icon" style="background:var(--s3)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-          <div><div class="info-lbl">Device Status</div><div class="info-val green">Active<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Last active: just now</span></div></div>
+          <div><div class="info-lbl">Device Status</div><div><div class="info-val green">Active</div><div style="font-size:.62rem;font-family:var(--m);color:var(--muted2);margin-top:2px">Just now</div></div></div>
         </div>
         <div class="info-cell">
           <div class="info-icon" style="background:var(--s3)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-          <div><div class="info-lbl">Membership</div><div class="info-val" style="flex-direction:column;align-items:flex-start">Standard<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Renews in ${days} days</span></div></div>
+          <div><div class="info-lbl">Membership</div><div><div class="info-val">Premium</div><div style="font-size:.62rem;font-family:var(--m);color:var(--muted2);margin-top:2px">Renews in ${days} days</div></div></div>
         </div>
       </div>
     </div>
@@ -483,7 +480,7 @@ function buildPage(data){
     <!-- CODES -->
     <div class="codes-section">
       <div class="codes-header">
-        <div class="codes-title">📬 Your Codes <span class="code-count-badge" id="code-badge">${allCodes.length}</span></div>
+        <div class="codes-title">Codes Your Codes <span class="code-count-badge" id="code-badge">${allCodes.length}</span></div>
       </div>
       <div class="tabs" id="tabs">
         <button class="tab active-all" id="tab-all" onclick="switchTab('all')">All <span class="tc">${allCodes.length}</span></button>
