@@ -376,13 +376,21 @@ function buildPage(data){
   const ico=days<=0?'⏰':days<=3?'⚠️':'🛡️';
   const statusTitle=days<=0?'Account Expired':days<=3?'Expiring Soon':'Account Active';
   const statusSub=days<=0?'Please renew your subscription':days<=3?`Only ${days} days remaining — renew now`:'Your household automation is running smoothly.';
-  const pLetter=(data.profile||'?').replace('Profile ','');
+  const pLetter=(data.profile||'?').replace('Profile ','').trim().charAt(0)||'?';
   const now=new Date();
   const timeStr=now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
   // Update nav avatar
   const av=document.getElementById('nav-avatar');
   if(av)av.textContent=pLetter;
+  // Set shield icon based on status
+  setTimeout(()=>{
+    const si=document.getElementById('shield-ico-wrap');
+    if(si){
+      const color=statusCls==='active'?'#46d369':statusCls==='warning'?'#f5a623':'#E50914';
+      si.innerHTML=`<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>`;
+    }
+  },100);
 
   const h=allCodes.filter(c=>c.type==='household').length;
   const u=allCodes.filter(c=>c.type==='update').length;
@@ -396,7 +404,7 @@ function buildPage(data){
       <div class="status-top">
         <div class="shield-wrap">
           <div class="shield-ring"></div><div class="shield-ring2"></div>
-          <div class="shield-ico">${ico}</div>
+          <div class="shield-ico" id="shield-ico-wrap"></div>
         </div>
         <div class="status-info">
           <div class="status-title"><div class="status-dot"></div>${statusTitle}</div>
@@ -421,33 +429,33 @@ function buildPage(data){
     <div class="info-grid">
       <div class="info-row">
         <div class="info-cell">
-          <div class="info-icon red">📧</div>
+          <div class="info-icon red"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
           <div><div class="info-lbl">Netflix Email</div>
           <div class="info-val" style="font-size:.75rem">${esc(data.email)}<button class="copy-tiny" onclick="doCopy('${esc(data.email)}',null,false)" title="Copy email"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></div>
         </div>
         <div class="info-cell">
-          <div class="info-icon blue">👤</div>
+          <div class="info-icon blue"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
           <div><div class="info-lbl">Profile</div><div class="info-val">${esc(data.profile||'-')}</div></div>
         </div>
       </div>
       <div class="info-row">
         <div class="info-cell">
-          <div class="info-icon amber">🔒</div>
+          <div class="info-icon amber"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
           <div><div class="info-lbl">PIN</div>
           <div class="info-val"><span id="pin-display">••••</span><button class="pin-toggle" onclick="togglePin()" id="pin-btn" title="Show/hide PIN"><svg id="eye-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
         </div>
         <div class="info-cell">
-          <div class="info-icon green">🛡️</div>
+          <div class="info-icon green"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
           <div><div class="info-lbl">Account Status</div><div class="info-val green">Secure</div></div>
         </div>
       </div>
       <div class="info-row">
         <div class="info-cell">
-          <div class="info-icon" style="background:var(--s3)">🖥️</div>
+          <div class="info-icon" style="background:var(--s3)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
           <div><div class="info-lbl">Device Status</div><div class="info-val green">Active<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Last active: just now</span></div></div>
         </div>
         <div class="info-cell">
-          <div class="info-icon" style="background:var(--s3)">📅</div>
+          <div class="info-icon" style="background:var(--s3)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
           <div><div class="info-lbl">Membership</div><div class="info-val" style="flex-direction:column;align-items:flex-start">Standard<br><span style="font-size:.65rem;font-family:var(--m);color:var(--muted2);font-weight:400">Renews in ${days} days</span></div></div>
         </div>
       </div>
@@ -465,7 +473,7 @@ function buildPage(data){
     <!-- LIVE ACTIVITY -->
     <div class="activity-card">
       <div class="activity-header">
-        <div class="activity-title"><span class="activity-icon">📊</span> Live Activity</div>
+        <div class="activity-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Live Activity</div>
       </div>
       <div class="activity-list" id="activity-list">
         <div class="activity-item"><div class="act-dot green"></div><div class="act-time">${timeStr}</div><div class="act-body"><div class="act-title">Ready for refresh</div><div class="act-sub">System is active</div></div></div>
@@ -488,7 +496,7 @@ function buildPage(data){
 
     <!-- QUICK TIP -->
     <div class="tip-card">
-      <div class="tip-ico">💡</div>
+      <div class="tip-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></div>
       <div>
         <div class="tip-title">Quick Tip</div>
         <div class="tip-desc">Request a Netflix code on your TV or device first, then tap 'Refresh Codes'.</div>
@@ -572,7 +580,7 @@ function cardHtml(item,i){
   const tvIco=`<div class="c-ico"><div class="tv-wrap"><svg width="28" height="20" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="12" y1="15" x2="12" y2="18"/></svg><div class="tv-screen"><div class="tv-scan"></div></div></div></div>`;
   const lockIco=`<div class="c-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`;
 
-  if(item.type==='update')return`<div class="card update${fc}" style="${delay}">${fb}${tvIco}<div class="c-type" style="margin-bottom:5px">TV Household Update</div>... <div style="min-width:0"><div class="c-type">TV Household Update</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="c-meta"><span class="c-age">${age}</span></div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
+  if(item.type==='update')return`<div class="card update${fc}" style="${delay}">${fb}${tvIco}<div style="min-width:0"><div class="c-type">TV Household Update</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="c-meta"><span class="c-age">${age}</span></div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
 
   if(item.type==='signin')return`<div class="card signin${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${lockIco}<div style="min-width:0"><div class="c-type">Sign-in Code</div><div class="c-code">${item.code}</div><div class="c-meta"><span class="c-age">${age}</span>${cd}</div></div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
 
