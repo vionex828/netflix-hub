@@ -72,7 +72,7 @@ function isRateLimited(ip) {
 
 // ── CACHE ────────────────────────────────────────────────────
 const cache = new Map();
-function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<60000) return e.data; return null; }
+function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<30000) return e.data; return null; }
 function setCache(key, data) { cache.set(key, {data, time:Date.now()}); }
 
 // ── TELEGRAM ─────────────────────────────────────────────────
@@ -501,7 +501,8 @@ app.get('/api/link/:token', async (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip);
   const cacheKey = `link_${link.email}`;
-  const cached = getCached(cacheKey);
+  const forceRefresh = req.query.refresh === '1';
+  const cached = !forceRefresh && getCached(cacheKey);
   if (cached) return res.json({ success:true, codes:cached, count:cached.length, cached:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft });
   try {
     const codes = await fetchNetflixEmails(link.email, true);
