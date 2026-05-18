@@ -520,6 +520,63 @@ app.get('/api/stats', (req, res) => {
   res.json({ live:getLiveVisitors(), today:totalToday });
 });
 
+// Debug endpoint - shows raw email headers for troubleshooting
+app.get('/api/debug-email', async (req, res) => {
+  const filterEmail = (req.query.email || '').trim().toLowerCase();
+  try {
+    const results = await new Promise((resolve, reject) => {
+      const imap = new Imap({
+        user: GMAIL_USER, password: GMAIL_PASS,
+        host: 'imap.gmail.com', port: 993, tls: true,
+        tlsOptions: { rejectUnauthorized: false }
+      });
+      imap.once('ready', () => {
+        imap.openBox('INBOX', true, (err) => {
+          if (err) { imap.end(); return reject(err); }
+          const since = new Date(Date.now() - 20*60*1000);
+          imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+            if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
+            const fetch = imap.fetch(uids, { bodies: '' });
+            const promises = [];
+            fetch.on('message', (msg) => {
+              const p = new Promise((res2) => {
+                msg.on('body', (stream) => {
+                  simpleParser(stream, (err, mail) => {
+                    if (err) return res2(null);
+                    const toText = mail.to?.text || '';
+                    const toValues = (mail.to?.value || []).map(a => a.address);
+                    const subject = mail.subject || '';
+                    res2({
+                      subject,
+                      to_text: toText,
+                      to_parsed: toValues,
+                      cc: mail.cc?.text || '',
+                      header_lines: mail.headerLines?.filter(h => ['to','cc','delivered-to','x-forwarded-to','x-original-to','envelope-to'].includes(h.key)).map(h => h.line) || [],
+                      matches_filter: filterEmail ? toValues.some(a => a?.toLowerCase() === filterEmail) || toText.toLowerCase().includes(filterEmail) : true
+                    });
+                  });
+                });
+              });
+              promises.push(p);
+            });
+            fetch.once('end', async () => {
+              const items = (await Promise.all(promises)).filter(Boolean);
+              imap.end();
+              resolve(items);
+            });
+            fetch.once('error', (e) => { imap.end(); reject(e); });
+          });
+        });
+      });
+      imap.once('error', reject);
+      imap.connect();
+    });
+    res.json({ success: true, filter: filterEmail, count: results.length, emails: results });
+  } catch(err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
 });
