@@ -228,52 +228,28 @@ function extractLink(body) {
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
-    let signinCode = null;
+    // From debug data: Netflix HTML template contains "8199" hundreds of times in CSS
+    // The ACTUAL code appears at the very END of the email, after all the template HTML
+    // Strategy: get ALL 4-digit numbers, remove 8199 (template number) and blocked codes,
+    // then take the LAST unique number which is the real code
 
-    // Netflix sign-in email HTML contains the code with specific spacing like "8 1 7 1"
-    // or as a plain 4-digit number in large text
+    // Get all 4-digit numbers from full body
+    const allNums = [...bodyHtml.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
 
-    // Pattern 1: Spaced digits "8 1 7 1" format (Netflix HTML email style)
-    const spacedMatch = bodyPlain.match(/\b(\d)\s(\d)\s(\d)\s(\d)\b/);
-    if (spacedMatch) {
-      const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4];
-      if (!BLOCKED_CODES.includes(code)) signinCode = code;
+    // Remove template number 8199 and blocked codes
+    const TEMPLATE_NUMS = [...BLOCKED_CODES, '8199'];
+    const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
+
+    // The real code is typically at the end - take the last unique number
+    if (filtered.length > 0) {
+      // Get unique numbers preserving order
+      const unique = [...new Set(filtered)];
+      // Netflix puts the code near the end, so check last few unique numbers
+      // Pick the one that appears only once (the real code, not repeated template numbers)
+      const singleOccurrence = unique.filter(n => allNums.filter(x => x === n).length <= 5);
+      const signinCode = singleOccurrence[singleOccurrence.length - 1] || unique[unique.length - 1];
+      if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
-
-    // Pattern 2: HTML - code in its own element with large font/tracking
-    if (!signinCode) {
-      const htmlMatch = bodyHtml.match(/(?:letter-spacing|font-size)[^>]*>\s*([0-9]\s*[0-9]\s*[0-9]\s*[0-9])\s*</i);
-      if (htmlMatch) {
-        const code = htmlMatch[1].replace(/\s/g,'');
-        if (code.length === 4 && !BLOCKED_CODES.includes(code)) signinCode = code;
-      }
-    }
-
-    // Pattern 3: 4 digits between "code" and "Enter" in plain text
-    if (!signinCode) {
-      const between = bodyPlain.match(/sign in[^0-9]{0,50}(\d{4})[^0-9]/i) ||
-                      bodyPlain.match(/your code[^0-9]{0,30}(\d{4})[^0-9]/i) ||
-                      bodyPlain.match(/enter[^0-9]{0,30}(\d{4})[^0-9]/i);
-      if (between && !BLOCKED_CODES.includes(between[1])) signinCode = between[1];
-    }
-
-    // Pattern 4: standalone 4-digit number preceded and followed by spaces/newlines
-    if (!signinCode) {
-      const lines = bodyPlain.split(/[\n\r]+/);
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (/^\d{4}$/.test(trimmed) && !BLOCKED_CODES.includes(trimmed)) {
-          signinCode = trimmed; break;
-        }
-        // Also check spaced version "8 1 7 1"
-        const spaced = trimmed.replace(/\s/g,'');
-        if (/^\d{4}$/.test(spaced) && !BLOCKED_CODES.includes(spaced) && trimmed.length <= 8) {
-          signinCode = spaced; break;
-        }
-      }
-    }
-
-    if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
   }
   const isRelevant = sl.includes('temporary')||sl.includes('access code')||sl.includes('travel')||sl.includes('household')||sl.includes('update')||sl.includes('verify');
   if (!isRelevant) return null;
