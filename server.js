@@ -228,8 +228,52 @@ function extractLink(body) {
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
-    const m = bodyPlain.match(/\b(\d{4,6})\b/);
-    if (m && !BLOCKED_CODES.includes(m[1])) return { type:'signin', label:'Sign-in Code', code:m[1], to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    let signinCode = null;
+
+    // Netflix sign-in email HTML contains the code with specific spacing like "8 1 7 1"
+    // or as a plain 4-digit number in large text
+
+    // Pattern 1: Spaced digits "8 1 7 1" format (Netflix HTML email style)
+    const spacedMatch = bodyPlain.match(/\b(\d)\s(\d)\s(\d)\s(\d)\b/);
+    if (spacedMatch) {
+      const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4];
+      if (!BLOCKED_CODES.includes(code)) signinCode = code;
+    }
+
+    // Pattern 2: HTML - code in its own element with large font/tracking
+    if (!signinCode) {
+      const htmlMatch = bodyHtml.match(/(?:letter-spacing|font-size)[^>]*>\s*([0-9]\s*[0-9]\s*[0-9]\s*[0-9])\s*</i);
+      if (htmlMatch) {
+        const code = htmlMatch[1].replace(/\s/g,'');
+        if (code.length === 4 && !BLOCKED_CODES.includes(code)) signinCode = code;
+      }
+    }
+
+    // Pattern 3: 4 digits between "code" and "Enter" in plain text
+    if (!signinCode) {
+      const between = bodyPlain.match(/sign in[^0-9]{0,50}(\d{4})[^0-9]/i) ||
+                      bodyPlain.match(/your code[^0-9]{0,30}(\d{4})[^0-9]/i) ||
+                      bodyPlain.match(/enter[^0-9]{0,30}(\d{4})[^0-9]/i);
+      if (between && !BLOCKED_CODES.includes(between[1])) signinCode = between[1];
+    }
+
+    // Pattern 4: standalone 4-digit number preceded and followed by spaces/newlines
+    if (!signinCode) {
+      const lines = bodyPlain.split(/[\n\r]+/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (/^\d{4}$/.test(trimmed) && !BLOCKED_CODES.includes(trimmed)) {
+          signinCode = trimmed; break;
+        }
+        // Also check spaced version "8 1 7 1"
+        const spaced = trimmed.replace(/\s/g,'');
+        if (/^\d{4}$/.test(spaced) && !BLOCKED_CODES.includes(spaced) && trimmed.length <= 8) {
+          signinCode = spaced; break;
+        }
+      }
+    }
+
+    if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
   }
   const isRelevant = sl.includes('temporary')||sl.includes('access code')||sl.includes('travel')||sl.includes('household')||sl.includes('update')||sl.includes('verify');
   if (!isRelevant) return null;
@@ -568,6 +612,63 @@ app.get('/api/debug-email', async (req, res) => {
       imap.connect();
     });
     res.json({ success: true, filter: filterEmail, count: results.length, emails: results });
+  } catch(err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/debug-signin', async (req, res) => {
+  const filterEmail = (req.query.email || '').trim().toLowerCase();
+  try {
+    const results = await new Promise((resolve, reject) => {
+      const imap = new Imap({
+        user: GMAIL_USER, password: GMAIL_PASS,
+        host: 'imap.gmail.com', port: 993, tls: true,
+        tlsOptions: { rejectUnauthorized: false }
+      });
+      imap.once('ready', () => {
+        imap.openBox('INBOX', true, (err) => {
+          if (err) { imap.end(); return reject(err); }
+          const since = new Date(Date.now() - 20*60*1000);
+          imap.search([['SINCE', since], ['SUBJECT', 'sign-in code']], (err, uids) => {
+            if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
+            const fetch = imap.fetch(uids, { bodies: '' });
+            const promises = [];
+            fetch.on('message', (msg) => {
+              const p = new Promise((res2) => {
+                msg.on('body', (stream) => {
+                  simpleParser(stream, (err, mail) => {
+                    if (err) return res2(null);
+                    const toValues = (mail.to?.value || []).map(a => a.address?.toLowerCase());
+                    const bodyPlain = (mail.html || mail.text || '').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+                    // Extract all 4-digit numbers from body
+                    const allNums = [...bodyPlain.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
+                    res2({
+                      to: mail.to?.text,
+                      to_parsed: toValues,
+                      subject: mail.subject,
+                      matches_filter: filterEmail ? toValues.some(a => a === filterEmail) : true,
+                      all_4digit_numbers: allNums,
+                      body_plain_first200: bodyPlain.substring(0, 200)
+                    });
+                  });
+                });
+              });
+              promises.push(p);
+            });
+            fetch.once('end', async () => {
+              const items = (await Promise.all(promises)).filter(Boolean);
+              imap.end();
+              resolve(items);
+            });
+            fetch.once('error', (e) => { imap.end(); reject(e); });
+          });
+        });
+      });
+      imap.once('error', reject);
+      imap.connect();
+    });
+    res.json({ success: true, filter: filterEmail, results });
   } catch(err) {
     res.status(500).json({ success: false, error: err.message });
   }
