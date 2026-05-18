@@ -500,13 +500,8 @@ app.get('/api/link/:token', async (req, res) => {
   trackAnalytics(req.params.token);
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip);
-  const cacheKey = `link_${link.email}`;
-  const forceRefresh = req.query.refresh === '1';
-  const cached = !forceRefresh && getCached(cacheKey);
-  if (cached) return res.json({ success:true, codes:cached, count:cached.length, cached:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft });
   try {
     const codes = await fetchNetflixEmails(link.email, true);
-    setCache(cacheKey, codes);
     if (codes.length > 0) totalToday += 1;
     res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft });
   } catch(err) {
