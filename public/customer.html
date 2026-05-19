@@ -53,6 +53,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.94);backdrop-filter
 .status-card.warning{background:linear-gradient(135deg,rgba(245,166,35,.1),rgba(245,166,35,.02));border-color:rgba(245,166,35,.25)}
 .status-card.danger{background:linear-gradient(135deg,rgba(229,9,20,.1),rgba(229,9,20,.02));border-color:rgba(229,9,20,.25)}
 .status-top{display:flex;align-items:center;gap:1rem;margin-bottom:.9rem}
+.progress-bar-wrap{margin-top:.8rem;margin-bottom:.2rem}
+.progress-bar-track{background:var(--s3);border-radius:100px;height:6px;overflow:hidden}
+.progress-bar-fill{height:100%;border-radius:100px;transition:width .5s ease}
+.progress-bar-fill.green{background:linear-gradient(90deg,var(--green),#2ecc71)}
+.progress-bar-fill.amber{background:linear-gradient(90deg,var(--amber),#f39c12)}
+.progress-bar-fill.red{background:linear-gradient(90deg,var(--red),#c0392b)}
+.progress-bar-label{display:flex;justify-content:space-between;margin-top:4px;font-family:var(--m);font-size:.58rem;color:var(--muted2)}
+
 .shield-wrap{position:relative;width:56px;height:56px;flex-shrink:0}
 .shield-ring{position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(70,211,105,.25);animation:ringPulse 2s ease infinite}
 .shield-ring2{position:absolute;inset:-12px;border-radius:50%;border:1px solid rgba(70,211,105,.12);animation:ringPulse 2s ease .5s infinite}
@@ -97,6 +105,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.94);backdrop-filter
 .pin-toggle:hover{color:var(--text)}
 
 /* REFRESH BTN */
+.refresh-countdown{font-family:var(--m);font-size:.72rem;color:rgba(255,255,255,.6);margin-top:.3rem;letter-spacing:1px}
 .refresh-btn-big{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));border:1px solid rgba(229,9,20,.4);border-radius:14px;padding:1.2rem;cursor:pointer;margin-bottom:1rem;animation:fadeUp .6s ease .2s both;position:relative;overflow:hidden;transition:all .2s}
 .refresh-btn-big::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent);pointer-events:none}
 .refresh-btn-big::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);transform:translateX(-100%);transition:transform .5s}
@@ -356,6 +365,9 @@ async function fetchCodes(token,isRefresh=false){
 
     if(refreshTimer)clearInterval(refreshTimer);
     refreshTimer=setInterval(()=>fetchCodes(token,true),2*60*1000);
+
+    // Start 10s countdown after manual refresh
+    if(isRefresh) startRefreshCountdown();
     if(cdTimer)clearInterval(cdTimer);
     cdTimer=setInterval(tickCd,1000);
 
@@ -368,6 +380,29 @@ async function fetchCodes(token,isRefresh=false){
     if(!isRefresh)showError('error','Could not connect.');
     addActivity('red','Error','Connection failed');
   }
+}
+
+function startRefreshCountdown(){
+  const btn = document.querySelector('.refresh-btn-big');
+  const sub = document.getElementById('rbig-sub');
+  const cd = document.getElementById('refresh-countdown');
+  const icon = document.getElementById('rbig-icon');
+  if(!cd) return;
+  let secs = 10;
+  if(btn) btn.disabled = true;
+  if(cd){ cd.style.display='block'; cd.textContent=`Auto refresh in ${secs}s`; }
+  if(sub) sub.style.display='none';
+  const interval = setInterval(()=>{
+    secs--;
+    if(cd) cd.textContent = `Auto refresh in ${secs}s`;
+    if(secs <= 0){
+      clearInterval(interval);
+      if(btn) btn.disabled = false;
+      if(cd) cd.style.display='none';
+      if(sub) sub.style.display='block';
+      fetchCodes(window._tok, true);
+    }
+  }, 1000);
 }
 
 function buildPage(data){
@@ -392,6 +427,8 @@ function buildPage(data){
     }
   },100);
 
+  const progressPct = Math.min(100, Math.max(0, (days/totalDays)*100));
+  const progressCls = days<=3?'red':days<=7?'amber':'green';
   const h=allCodes.filter(c=>c.type==='household').length;
   const u=allCodes.filter(c=>c.type==='update').length;
   const s=allCodes.filter(c=>c.type==='signin').length;
@@ -464,7 +501,8 @@ function buildPage(data){
         <svg class="rbig-icon" id="rbig-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
         <span class="rbig-title">Refresh Codes</span>
       </div>
-      <div class="rbig-sub">Scan inbox and get new codes</div>
+      <div class="rbig-sub" id="rbig-sub">Scan inbox and get new codes</div>
+      <div class="refresh-countdown" id="refresh-countdown" style="display:none"></div>
     </button>
 
     <!-- LIVE ACTIVITY -->
@@ -510,6 +548,8 @@ function buildPage(data){
 
 function updatePage(data){
   allCodes=data.codes;
+  const progressPct = Math.min(100, Math.max(0, (days/totalDays)*100));
+  const progressCls = days<=3?'red':days<=7?'amber':'green';
   const h=allCodes.filter(c=>c.type==='household').length;
   const u=allCodes.filter(c=>c.type==='update').length;
   const s=allCodes.filter(c=>c.type==='signin').length;
