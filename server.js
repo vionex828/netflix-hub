@@ -666,6 +666,15 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
+// Prevent crashes from uncaught errors
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.message);
+  console.error(err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 ensureDataDir();
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
