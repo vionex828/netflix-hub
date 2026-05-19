@@ -696,19 +696,22 @@ async function loadLinks() {
 function updateStats(links) {
   const now = Date.now();
   const oneDay = 24*60*60*1000;
-  const today = Object.values(links).filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=oneDay).length;
-  const week = Object.values(links).filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=7*oneDay).length;
-  const month = Object.values(links).filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*oneDay).length;
-  const safe=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const threeDays = 3*oneDay;
+  const arr = Object.values(links);
+  const safe = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+
+  // Expiry calendar
+  const today = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=oneDay).length;
+  const week = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=7*oneDay).length;
+  const month = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*oneDay).length;
   safe('exp-today',today); safe('exp-week',week); safe('exp-month',month);
 
-  const arr = Object.values(links);
-  const now = Date.now(), threeDays = 3*24*60*60*1000;
-  const safe = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  // Stat cards
   safe('s-active', arr.filter(l=>l.active&&l.expiresAt>now).length);
   safe('s-expiring', arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length);
   safe('s-expired', arr.filter(l=>l.expiresAt<=now).length);
   safe('s-uses', arr.reduce((s,l)=>s+l.uses,0));
+
   const active = arr.filter(l=>l.active&&l.expiresAt>now).length;
   const ab = document.getElementById('active-badge');
   if(ab){ab.textContent=`${active} Active`;ab.className='card-badge ok';}
