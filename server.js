@@ -63,6 +63,7 @@ function trackIP(token, ip) {
     data[token].push(ip);
     saveIPs(data);
     if (data[token].length >= 4) {
+      try {
       const links = loadLinks();
       const link = links[token];
       sendTelegram(
@@ -70,6 +71,7 @@ function trackIP(token, ip) {
         `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
         `📍 <b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
       );
+      } catch(e) { console.error('IP alert error:', e.message); }
     }
   }
   return data[token].length;
@@ -166,7 +168,7 @@ function checkExpiringLinks() {
   }
 }
 setInterval(checkExpiringLinks, 60*60*1000);
-scheduleMorningReport();
+try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
 // ── OTP SCRAPER ───────────────────────────────────────────────
 async function scrapeOTP(link) {
@@ -678,5 +680,5 @@ process.on('unhandledRejection', (reason) => {
 ensureDataDir();
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
-  sendTelegram('🟢 <b>FanFlix Started</b>\nType /help for commands');
+  try { sendTelegram('🟢 <b>FanFlix Started</b>\nType /help for commands'); } catch(e) { console.error('TG startup error:', e.message); }
 });
