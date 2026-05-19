@@ -291,7 +291,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 </div>
 
 <!-- DASHBOARD -->
-<div id="dashboard" style="display:none;width:100%;display:flex;flex:1">
+<div id="dashboard" style="display:none;width:100%;flex:1">
 
   <!-- SIDEBAR -->
   <div class="sidebar">
@@ -607,6 +607,7 @@ function doLogout() { sessionStorage.removeItem('fanflix_admin'); location.reloa
 function showDashboard() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'flex';
+  document.getElementById('dashboard').style.width = '100%';
   loadAll();
   setInterval(loadStats, 30000);
   setInterval(loadAll, 60000);
