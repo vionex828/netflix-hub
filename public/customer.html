@@ -452,11 +452,22 @@ function buildPage(data){
       </div>
     </div>
 
+    <!-- PROGRESS BAR -->
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill ${progressCls}" id="prog-bar" style="width:${progressPct}%"></div>
+      </div>
+      <div class="progress-bar-label">
+        <span>${days > 0 ? days + ' days remaining' : 'Expired'}</span>
+        <span>${Math.round(progressPct)}%</span>
+      </div>
+    </div>
+
     <!-- RENEWAL POPUP -->
     <div id="renewal-popup" style="display:none;opacity:0;transition:opacity .4s;background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1rem;align-items:center;gap:.8rem">
-      <span style="font-size:1.3rem">⚠️</span>
+      <div style="width:32px;height:32px;border-radius:8px;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <div style="flex:1"><div style="font-size:.82rem;font-weight:600;color:var(--amber);margin-bottom:2px">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.73rem;color:var(--muted)">Renew now to avoid losing access.</div></div>
-      <a href="https://wa.me/8801928382918" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#000;padding:7px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:.75rem;white-space:nowrap">💬 Renew</a>
+      <a href="https://wa.me/8801928382918" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:#25D366;color:#000;padding:7px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:.75rem;white-space:nowrap">Contact to Renew</a>
     </div>
 
     <!-- INFO GRID -->
@@ -627,11 +638,11 @@ function cardHtml(item,i){
 }
 
 function showExpired(){
-  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">⏰</span><div class="exp-title">Subscription Expired</div><div class="exp-msg">Your FanFlix subscription has expired.<br>Contact us to renew and keep watching.</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">💬 Renew on WhatsApp</a></div></div>`;
+  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">⏰</span><div class="exp-title">Subscription Expired</div><div class="exp-msg">Your FanFlix subscription has expired.<br>Contact us to renew and keep watching.</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;
 }
 
 function showError(type,msg){
-  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">${type==='revoked'?'🚫':'❌'}</span><div class="exp-title">${type==='revoked'?'Access Revoked':'Error'}</div><div class="exp-msg">${msg||'Contact FanFlix BD.'}</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">💬 Contact FanFlix BD</a></div></div>`;
+  document.getElementById('page').innerHTML=`<div class="exp-wrap"><div class="exp-logo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="exp-box"><span class="exp-ico">${type==='revoked'?'🚫':'❌'}</span><div class="exp-title">${type==='revoked'?'Access Revoked':'Error'}</div><div class="exp-msg">${msg||'Contact FanFlix BD.'}</div><a class="wa-big" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;
 }
 
 function fmtCd(exp){
