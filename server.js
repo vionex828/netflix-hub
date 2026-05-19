@@ -69,7 +69,7 @@ function trackIP(token, ip) {
       sendTelegram(
         `⚠️ <b>Suspicious Activity!</b>\n\n` +
         `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
-        `📍 <b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
+        `<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
       );
       } catch(e) { console.error('IP alert error:', e.message); }
     }
@@ -131,24 +131,24 @@ async function sendMorningReport() {
   const expiring7 = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)>threeDays && (l.expiresAt-now)<=sevenDays);
   const active = Object.values(links).filter(l => l.active && l.expiresAt>now);
   const expired = Object.values(links).filter(l => l.expiresAt<=now);
-  let msg = `🌅 <b>FanFlix Morning Report</b>\n📅 ${new Date().toLocaleDateString('en-BD',{timeZone:'Asia/Dhaka',weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n\n`;
-  msg += `✅ Active: ${active.length} | ⚠️ Expiring 3d: ${expiring3.length} | 🕐 Expiring 7d: ${expiring7.length} | ❌ Expired: ${expired.length}\n\n`;
+  let msg = `<b>FanFlix Morning Report</b>\n📅 ${new Date().toLocaleDateString('en-BD',{timeZone:'Asia/Dhaka',weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n\n`;
+  msg += `Active: ${active.length} | Expiring 3d: ${expiring3.length} | Expiring 7d: ${expiring7.length} | Expired: ${expired.length}\n\n`;
   if (expiring3.length > 0) {
-    msg += `🚨 <b>Expiring in 3 days — Renew now:</b>\n`;
+    msg += `<b>Expiring in 3 days — Renew now:</b>\n`;
     for (const l of expiring3) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg += `• ${l.profile} | ${l.email}\n  ⏳ ${days}d | /renew ${l.token} 28\n`;
+      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 28\n`;
     }
     msg += '\n';
   }
   if (expiring7.length > 0) {
-    msg += `⏰ <b>Expiring in 7 days:</b>\n`;
+    msg += `<b>Expiring in 7 days:</b>\n`;
     for (const l of expiring7) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
       msg += `• ${l.profile} | ${l.email} | ${days}d\n`;
     }
   }
-  if (expiring3.length === 0 && expiring7.length === 0) msg += `All links are healthy! 🎉`;
+  if (expiring3.length === 0 && expiring7.length === 0) msg += `All links are healthy!`;
   sendTelegram(msg);
 }
 
@@ -161,7 +161,7 @@ function checkExpiringLinks() {
     const remaining = link.expiresAt - now;
     if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
       const days = Math.ceil(remaining/(24*60*60*1000));
-      sendTelegram(`⚠️ <b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
+      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
       links[link.token].warningSent = true;
       saveLinks(links);
     }
@@ -409,7 +409,7 @@ app.post('/tg-webhook', async (req, res) => {
     const token = text.replace('/ip','').trim();
     const ips = loadIPs();
     if (!ips[token]) return sendTelegram(`No IPs recorded for /c/${token}`, chatId);
-    return sendTelegram(`📍 <b>IPs for /c/${token}</b>\n\n${ips[token].map((ip,i)=>`${i+1}. ${ip}`).join('\n')}\n\nTotal: ${ips[token].length} unique IPs`, chatId);
+    return sendTelegram(`<b>IPs for /c/${token}</b>\n\n${ips[token].map((ip,i)=>`${i+1}. ${ip}`).join('\n')}\n\nTotal: ${ips[token].length} unique IPs`, chatId);
   }
 
   if (text.startsWith('/expiry')) {
@@ -421,7 +421,7 @@ app.post('/tg-webhook', async (req, res) => {
     let msg2 = `📅 <b>Expiring This Week</b>\n\n`;
     for (const l of expiring) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg2 += `⏳ ${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 28\n\n`;
+      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 28\n\n`;
     }
     return sendTelegram(msg2, chatId);
   }
@@ -447,7 +447,7 @@ app.post('/tg-webhook', async (req, res) => {
     const active = Object.values(links).filter(l=>l.active&&l.expiresAt>now).length;
     const expired = Object.values(links).filter(l=>l.expiresAt<=now).length;
     const totalUses = Object.values(links).reduce((s,l)=>s+l.uses,0);
-    return sendTelegram(`📊 <b>FanFlix Stats</b>\n\n✅ Active: ${active}\n❌ Expired: ${expired}\n👁 Total uses: ${totalUses}\n👥 Live: ${getLiveVisitors()}\n📈 Today: ${totalToday}`, chatId);
+    return sendTelegram(`📊 <b>FanFlix Stats</b>\n\nActive: ${active}\nExpired: ${expired}\n👁 Total uses: ${totalUses}\n👥 Live: ${getLiveVisitors()}\n📈 Today: ${totalToday}`, chatId);
   }
 
   if (text === '/help' || text === '/start') {
@@ -680,5 +680,5 @@ process.on('unhandledRejection', (reason) => {
 ensureDataDir();
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
-  try { sendTelegram('🟢 <b>FanFlix Started</b>\nType /help for commands'); } catch(e) { console.error('TG startup error:', e.message); }
+  try { sendTelegram('<b>FanFlix Started</b>\nType /help for commands'); } catch(e) { console.error('TG startup error:', e.message); }
 });
