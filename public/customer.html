@@ -328,7 +328,7 @@ async function fetchCodes(token,isRefresh=false){
   if(isRefresh){
     startProg();
     const rb=document.getElementById('rbig-icon');if(rb)rb.classList.add('spinning');
-    addActivity('red','Scanning...','Checking inbox for new codes');
+    addActivity('grey','Scanning...','Checking inbox for new codes');
   }
   try{
     const res=await fetch(`/api/link/${token}`);
@@ -377,8 +377,12 @@ async function fetchCodes(token,isRefresh=false){
   }catch(e){
     stopProg();
     const rb=document.getElementById('rbig-icon');if(rb)rb.classList.remove('spinning');
-    if(!isRefresh)showError('error','Could not connect.');
-    addActivity('red','Error','Connection failed');
+    if(!isRefresh){
+      showError('error','Could not connect.');
+    } else {
+      // Silent fail on auto-refresh - just try again next cycle
+      addActivity('grey','Retrying...','Will check again shortly');
+    }
   }
 }
 
