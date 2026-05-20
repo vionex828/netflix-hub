@@ -17,7 +17,21 @@ const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
 const ADMIN_PASS = process.env.ADMIN_PASS || '@Orsha420@';
-const DATA_DIR = '/app/data';
+const DATA_DIR = (() => {
+  const preferred = '/app/data';
+  const fallback = '/tmp/fanflix-data';
+  try {
+    require('fs').mkdirSync(preferred, { recursive: true });
+    // test write
+    require('fs').writeFileSync(preferred + '/.test', '1');
+    require('fs').unlinkSync(preferred + '/.test');
+    return preferred;
+  } catch(e) {
+    console.log('Volume not available, using fallback:', fallback);
+    require('fs').mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+})();
 const LINKS_FILE = `${DATA_DIR}/links.json`;
 const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
 const IP_FILE = `${DATA_DIR}/ips.json`;
