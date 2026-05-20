@@ -44,18 +44,17 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.95);backdrop-filter
 .page{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:1.5rem 1.2rem 6rem}
 
 /* STATUS CARD — main big card */
-.status-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.4rem 1.6rem;margin-bottom:1rem;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:1.2rem;animation:fadeUp .5s ease both}
+.status-card{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.2rem 1.3rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;animation:fadeUp .5s ease both}
 .status-card.warning{border-color:rgba(245,166,35,.2)}
 .status-card.danger{border-color:rgba(229,9,20,.2)}
-.shield-wrap{position:relative;width:60px;height:60px;flex-shrink:0}
-.shield-ring{position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(70,211,105,.2);animation:ringPulse 2s ease infinite}
-.shield-ring2{position:absolute;inset:-13px;border-radius:50%;border:1px solid rgba(70,211,105,.08);animation:ringPulse 2s ease .5s infinite}
-.warning .shield-ring{border-color:rgba(245,166,35,.2)}.warning .shield-ring2{border-color:rgba(245,166,35,.08)}
-.danger .shield-ring{border-color:rgba(229,9,20,.2)}.danger .shield-ring2{border-color:rgba(229,9,20,.08)}
+.shield-wrap{position:relative;width:52px;height:52px;flex-shrink:0}
+.shield-ring{position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(70,211,105,.25);animation:ringPulse 2s ease infinite}
+.warning .shield-ring{border-color:rgba(245,166,35,.25)}
+.danger .shield-ring{border-color:rgba(229,9,20,.25)}
 @keyframes ringPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.08);opacity:.5}}
-.shield-ico{width:60px;height:60px;border-radius:16px;background:rgba(70,211,105,.1);display:flex;align-items:center;justify-content:center}
-.warning .shield-ico{background:rgba(245,166,35,.1)}.danger .shield-ico{background:rgba(229,9,20,.1)}
-.status-info{min-width:0}
+.shield-ico{width:52px;height:52px;border-radius:14px;background:rgba(70,211,105,.12);display:flex;align-items:center;justify-content:center}
+.warning .shield-ico{background:rgba(245,166,35,.12)}.danger .shield-ico{background:rgba(229,9,20,.12)}
+.status-info{flex:1;min-width:0}
 .status-title{font-size:1.1rem;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:lpulse 1.5s ease infinite;flex-shrink:0}
 .status-card.active .status-title{color:var(--green)}
@@ -64,12 +63,12 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.95);backdrop-filter
 .status-sub{font-size:.8rem;color:var(--muted);line-height:1.5}
 
 /* DAYS + PROGRESS side by side */
-.days-block{text-align:center;flex-shrink:0;padding:0 .5rem}
-.days-num{font-family:var(--h);font-size:3.5rem;line-height:1;color:var(--green)}
+.days-block{text-align:center;flex-shrink:0;padding:0 .3rem}
+.days-num{font-family:var(--h);font-size:2.8rem;line-height:1;color:var(--green)}
 .status-card.warning .days-num{color:var(--amber)}
 .status-card.danger .days-num{color:var(--red)}
 .days-lbl{font-family:var(--m);font-size:.52rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-top:2px}
-.prog-block{flex-shrink:0;min-width:160px}
+.prog-block{flex-shrink:0;min-width:120px;max-width:140px}
 .prog-lbl{font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-bottom:6px}
 .prog-track{background:var(--s4);border-radius:100px;height:7px;overflow:hidden}
 .prog-fill{height:100%;border-radius:100px;transition:width .6s ease}
@@ -79,8 +78,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.95);backdrop-filter
 .prog-pct{font-family:var(--m);font-size:.58rem;color:var(--muted2);text-align:right;margin-top:4px}
 
 /* INFO GRID — 3 columns */
-.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;margin-bottom:.8rem;animation:fadeUp .5s ease .05s both}
-.info-grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem;margin-bottom:1rem;animation:fadeUp .5s ease .1s both}
+.info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem;margin-bottom:.7rem;animation:fadeUp .5s ease .05s both}
+.info-grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.7rem;margin-bottom:1rem;animation:fadeUp .5s ease .1s both}
 .info-cell{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1rem 1.1rem;display:flex;align-items:center;gap:.85rem}
 .info-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .info-icon.red{background:rgba(229,9,20,.15)}.info-icon.blue{background:rgba(77,166,255,.12)}.info-icon.amber{background:rgba(245,166,35,.12)}.info-icon.green{background:rgba(70,211,105,.12)}.info-icon.grey{background:var(--s4)}.info-icon.purple{background:rgba(150,100,255,.12)}
@@ -212,15 +211,22 @@ nav{position:sticky;top:0;z-index:100;background:rgba(6,6,6,.95);backdrop-filter
 @keyframes spin{to{transform:rotate(360deg)}}
 
 @media(max-width:600px){
-  .status-card{grid-template-columns:auto 1fr;grid-template-rows:auto auto}
-  .days-block{grid-column:2;grid-row:1;text-align:right}
-  .prog-block{grid-column:1/-1;min-width:unset}
-  .info-grid,.info-grid2{grid-template-columns:1fr 1fr}
+  .info-grid,.info-grid2{grid-template-columns:1fr 1fr 1fr;gap:.5rem}
+  .info-cell{padding:.75rem .8rem;gap:.6rem}
+  .info-icon{width:36px;height:36px;flex-shrink:0}
+  .info-val{font-size:.8rem}
+  .info-sub{font-size:.62rem}
+  .prog-block{min-width:100px;max-width:120px}
+  .days-num{font-size:2.4rem}
   .card{grid-template-columns:auto 1fr;padding:1rem 1.1rem}
   .cp-btn{display:none}.card{cursor:pointer}
   .c-code{font-size:2.8rem;letter-spacing:10px}
 }
-@media(max-width:380px){
+@media(max-width:420px){
+  .info-grid,.info-grid2{grid-template-columns:1fr 1fr}
+  .prog-block{display:none}
+}
+@media(max-width:320px){
   .info-grid,.info-grid2{grid-template-columns:1fr}
 }
 </style>
@@ -362,7 +368,7 @@ function buildPage(data){
     <!-- STATUS CARD -->
     <div class="status-card ${statusCls}">
       <div class="shield-wrap">
-        <div class="shield-ring"></div><div class="shield-ring2"></div>
+        <div class="shield-ring"></div>
         <div class="shield-ico">
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="${shieldColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
         </div>
