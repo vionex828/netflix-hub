@@ -407,6 +407,7 @@ function startRefreshCountdown(){
 
 function buildPage(data){
   const days=data.daysLeft||0;
+  const totalDays=data.totalDays||28;
   const statusCls=days<=0?'danger':days<=3?'warning':'active';
   const ico=days<=0?'⏰':days<=3?'⚠️':'🛡️';
   const statusTitle=days<=0?'Account Expired':days<=3?'Expiring Soon':'Account Active';
