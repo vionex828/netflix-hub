@@ -210,7 +210,9 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
     const imap = new Imap({
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
-      tlsOptions: { rejectUnauthorized: false }
+      tlsOptions: { rejectUnauthorized: false },
+      connTimeout: 10000,
+      authTimeout: 8000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
@@ -612,6 +614,12 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
 
 // ── CUSTOMER LINK ─────────────────────────────────────────────
 app.get('/api/link/:token', async (req, res) => {
+  // Overall timeout - respond within 15 seconds
+  const timeout = setTimeout(() => {
+    if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
+  }, 15000);
+  const origJson = res.json.bind(res);
+  res.json = (data) => { clearTimeout(timeout); return origJson(data); };
   const links = loadLinks();
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
@@ -639,7 +647,7 @@ app.get('/api/debug-email', async (req, res) => {
   const filterEmail = (req.query.email || '').trim().toLowerCase();
   try {
     const results = await new Promise((resolve, reject) => {
-      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false} });
+      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false}, connTimeout:10000, authTimeout:8000 });
       imap.once('ready', () => {
         imap.openBox('INBOX', true, (err) => {
           if (err) { imap.end(); return reject(err); }
