@@ -1,542 +1,720 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#000000">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>FanFlix – Your Codes</title>
-<link rel="manifest" href="/manifest.json">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --red:#E50914;--red2:#a50000;
-  --bg:#0a0a0a;--s1:#111;--s2:#161616;--s3:#1c1c1c;--s4:#222;--s5:#2a2a2a;
-  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
-  --text:#fff;--muted:#888;--muted2:#555;
-  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;--purple:#9664ff;
-  --f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;--h:'Anton',sans-serif;
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{overflow-x:hidden}
-body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;-webkit-font-smoothing:antialiased}
+const express = require('express');
+const Imap = require('imap');
+const { simpleParser } = require('mailparser');
+const cors = require('cors');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
-/* NAV */
-nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--border)}
-.logo{font-family:var(--h);font-size:1.7rem;letter-spacing:3px}
-.logo .f{color:var(--red)}.logo .l{color:var(--text)}
-.nav-avatar{width:34px;height:34px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--h);font-size:.9rem;color:#fff}
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
 
-/* PROGRESS BAR TOP */
-.prog{position:fixed;top:0;left:0;right:0;height:2px;z-index:999}
-.prog.on .pb{animation:pa 1.5s ease infinite}
-.pb{height:100%;background:var(--red);width:0;box-shadow:0 0 8px var(--red)}
-@keyframes pa{0%{width:0;margin-left:0}50%{width:60%}100%{width:0;margin-left:100%}}
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+const PORT = process.env.PORT || 3000;
+const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
+const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
+const ADMIN_PASS = process.env.ADMIN_PASS || '@Orsha420@';
+const DATA_DIR = (() => {
+  const preferred = '/app/data';
+  const fallback = '/tmp/fanflix-data';
+  try {
+    require('fs').mkdirSync(preferred, { recursive: true });
+    // test write
+    require('fs').writeFileSync(preferred + '/.test', '1');
+    require('fs').unlinkSync(preferred + '/.test');
+    return preferred;
+  } catch(e) {
+    console.log('Volume not available, using fallback:', fallback);
+    require('fs').mkdirSync(fallback, { recursive: true });
+    return fallback;
+  }
+})();
+const LINKS_FILE = `${DATA_DIR}/links.json`;
+const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
+const IP_FILE = `${DATA_DIR}/ips.json`;
+const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
+const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
+const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
+const WA_NUMBER = '8801928382918';
+const MAX_SLOTS = 8;
+const BLOCKED_CODES = ['2023','2024','2025','2026','2027','2028','0000'];
 
-/* PAGE */
-.page{max-width:500px;margin:0 auto;padding:1rem 1rem 6rem}
+const FIXED_PROFILES = [
+  { profile: 'Profile A', pin: '5651', slots: 2 },
+  { profile: 'Profile B', pin: '5652', slots: 2 },
+  { profile: 'Profile C', pin: '5653', slots: 2 },
+  { profile: 'Profile D', pin: '5654', slots: 1 },
+  { profile: 'Profile E', pin: '5655', slots: 1 },
+];
 
-/* STATUS CARD */
-.scard{background:var(--s1);border:1px solid var(--border);border-radius:18px;overflow:hidden;margin-bottom:.9rem;animation:fu .5s ease both}
-.scard-top{padding:1.2rem 1.4rem;display:flex;align-items:center;gap:1rem}
-.netflix-n{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#8b0000,#E50914);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--h);font-size:2.4rem;color:#fff;letter-spacing:0;box-shadow:0 4px 20px rgba(229,9,20,.35)}
-.scard-mid{flex:1;min-width:0}
-.stitle{font-size:1.15rem;font-weight:700;color:var(--green);display:flex;align-items:center;gap:7px;margin-bottom:3px}
-.sdot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;animation:glow 2s ease infinite}
-@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.5)}70%{box-shadow:0 0 0 5px rgba(70,211,105,0)}}
-.scard.warning .stitle{color:var(--amber)}.scard.warning .sdot{background:var(--amber)}
-.scard.danger .stitle{color:var(--red)}.scard.danger .sdot{background:var(--red)}
-.ssub{font-size:.8rem;color:var(--muted);line-height:1.4}
-.days-block{text-align:right;flex-shrink:0}
-.days-num{font-family:var(--h);font-size:3.2rem;line-height:1;color:var(--green)}
-.scard.warning .days-num{color:var(--amber)}.scard.danger .days-num{color:var(--red)}
-.days-lbl{font-family:var(--m);font-size:.5rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-top:1px}
-.scard-prog{padding:.6rem 1.4rem 1.2rem}
-.prog-labels{display:flex;justify-content:space-between;font-family:var(--m);font-size:.6rem;color:var(--muted);margin-bottom:6px}
-.prog-track{background:var(--s4);border-radius:100px;height:7px;overflow:hidden}
-.prog-fill{height:100%;border-radius:100px;transition:width .6s ease}
-.prog-fill.green{background:linear-gradient(90deg,#2ecc71,var(--green))}
-.prog-fill.amber{background:linear-gradient(90deg,#f39c12,var(--amber))}
-.prog-fill.red{background:linear-gradient(90deg,#c0392b,var(--red))}
+// ── DATA ─────────────────────────────────────────────────────
+function ensureDataDir() { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {} }
+function loadLinks() { try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); } catch(e) { return {}; } }
+function saveLinks(links) { ensureDataDir(); fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2)); }
+function loadAnalytics() { try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf8')); } catch(e) { return {}; } }
+function saveAnalytics(data) { ensureDataDir(); fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2)); }
+function loadIPs() { try { return JSON.parse(fs.readFileSync(IP_FILE, 'utf8')); } catch(e) { return {}; } }
+function saveIPs(data) { ensureDataDir(); fs.writeFileSync(IP_FILE, JSON.stringify(data, null, 2)); }
 
-/* INFO GRID — 2 cols */
-.igrid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem;animation:fu .5s ease .05s both}
-.icell{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1rem 1.1rem;display:flex;align-items:center;gap:.85rem}
-.icell.full{grid-column:1/-1}
-.iico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.iico.red{background:rgba(229,9,20,.15)}.iico.blue{background:rgba(77,166,255,.12)}.iico.amber{background:rgba(245,166,35,.12)}.iico.green{background:rgba(70,211,105,.12)}.iico.grey{background:var(--s4)}.iico.purple{background:rgba(150,100,255,.12)}
-.ilbl{font-family:var(--m);font-size:.52rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px}
-.ival{font-size:.9rem;font-weight:600;color:var(--text)}
-.ival.green{color:var(--green)}.ival.amber{color:var(--amber)}
-.isub{font-size:.7rem;color:var(--muted);margin-top:2px}
-.copy-btn{display:inline-flex;align-items:center;gap:5px;margin-top:7px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;padding:5px 12px;color:var(--muted);font-family:var(--m);font-size:.6rem;cursor:pointer;transition:all .2s}
-.copy-btn:hover{color:var(--text);border-color:var(--muted)}
-.pin-row{display:flex;align-items:center;gap:8px;margin-top:2px}
-.eye-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;transition:color .2s}
-.eye-btn:hover{color:var(--text)}
-
-/* REFRESH BTN */
-.rbtn{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));border:none;border-radius:16px;padding:1.1rem 1.5rem;cursor:pointer;margin-bottom:.9rem;display:flex;align-items:center;gap:1.1rem;transition:all .2s;animation:fu .5s ease .1s both;position:relative;overflow:hidden}
-.rbtn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.06),transparent);pointer-events:none}
-.rbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 28px rgba(229,9,20,.4)}
-.rbtn:disabled{opacity:.7;cursor:not-allowed}
-.rbtn-ico-wrap{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.rbtn-ico{transition:none}
-.rbtn-ico.spinning{animation:spin 1s linear infinite}
-.rbtn-text{flex:1;text-align:left}
-.rbtn-title{font-family:var(--h);font-size:1.2rem;letter-spacing:3px;color:#fff;text-transform:uppercase;display:block}
-.rbtn-sub{font-family:var(--m);font-size:.65rem;color:rgba(255,255,255,.5);display:block;margin-top:2px;letter-spacing:.5px}
-.rbtn-arrow{color:rgba(255,255,255,.4);flex-shrink:0}
-
-/* ACTIVITY */
-.acard{background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.1rem 1.3rem;margin-bottom:.9rem;animation:fu .5s ease .15s both}
-.ahead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
-.atitle{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600}
-.aright{color:var(--red);font-family:var(--m);font-size:.62rem;display:flex;align-items:center;gap:4px;cursor:pointer}
-.alist{display:flex;flex-direction:column}
-.aitem{display:flex;gap:.8rem;align-items:flex-start;padding:.5rem 0;position:relative}
-.aitem:not(:last-child)::after{content:'';position:absolute;left:5px;top:20px;bottom:-4px;width:1px;background:var(--s4)}
-.adot{width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:3px;border:2px solid var(--bg)}
-.adot.green{background:var(--green)}.adot.grey{background:var(--muted2)}
-.atime{font-family:var(--m);font-size:.6rem;color:var(--muted2);flex-shrink:0;width:54px;padding-top:1px}
-.atxt{font-size:.82rem;font-weight:600}
-.asub{font-size:.7rem;color:var(--muted);margin-top:1px}
-
-/* CODES */
-.cwrap{animation:fu .5s ease .2s both}
-.cheader{display:flex;align-items:center;gap:.6rem;margin-bottom:.8rem}
-.ctitle{font-size:1rem;font-weight:700}
-.cbadge{background:var(--s3);border:1px solid var(--border);border-radius:100px;padding:2px 10px;font-family:var(--m);font-size:.6rem;color:var(--muted)}
-.tabs{display:flex;gap:.4rem;margin-bottom:.9rem;overflow-x:auto;scrollbar-width:none}
-.tabs::-webkit-scrollbar{display:none}
-.tab{padding:7px 16px;border-radius:100px;border:1px solid var(--border);background:transparent;color:var(--muted2);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:var(--f);display:flex;align-items:center;gap:5px}
-.tab.a-all{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.18);color:var(--text)}
-.tab.a-household{background:rgba(70,211,105,.1);border-color:rgba(70,211,105,.3);color:var(--green)}
-.tab.a-update{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--amber)}
-.tab.a-signin{background:rgba(77,166,255,.1);border-color:rgba(77,166,255,.3);color:var(--blue)}.tab.a-verify{background:rgba(150,100,255,.1);border-color:rgba(150,100,255,.3);color:var(--purple)}
-.tc{font-family:var(--m);font-size:.6rem;opacity:.6}
-.cards{display:flex;flex-direction:column;gap:.7rem}
-
-/* CODE CARD */
-.card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.4rem;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;position:relative;overflow:hidden;animation:cin .5s cubic-bezier(.34,1.56,.64,1) both;transition:border-color .2s,transform .2s;cursor:pointer}
-@keyframes cin{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
-.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
-.card.household::before{background:var(--green)}.card.update::before{background:var(--amber)}.card.signin::before{background:var(--blue)}.card.verify::before{background:var(--purple)}
-.card:hover{border-color:var(--border2);transform:translateY(-1px)}
-.card.fresh.household{background:linear-gradient(135deg,rgba(70,211,105,.05),var(--s1) 60%);border-color:rgba(70,211,105,.2)}
-.card.fresh.update{background:linear-gradient(135deg,rgba(245,166,35,.05),var(--s1) 60%);border-color:rgba(245,166,35,.2)}
-.card.fresh.signin{background:linear-gradient(135deg,rgba(77,166,255,.05),var(--s1) 60%);border-color:rgba(77,166,255,.2)}.card.fresh.verify{background:linear-gradient(135deg,rgba(150,100,255,.05),var(--s1) 60%);border-color:rgba(150,100,255,.2)}
-.fbadge{position:absolute;top:10px;right:12px;font-family:var(--m);font-size:.5rem;letter-spacing:2px;padding:3px 8px;border-radius:3px;font-weight:600;text-transform:uppercase}
-.household .fbadge{background:var(--green);color:#000;animation:fg 2s ease infinite}
-.update .fbadge{background:var(--amber);color:#000}
-.signin .fbadge{background:var(--blue);color:#fff}.verify .fbadge{background:var(--purple);color:#fff}
-@keyframes fg{0%,100%{box-shadow:0 0 6px rgba(70,211,105,.3)}50%{box-shadow:0 0 18px rgba(70,211,105,.7)}}
-.cico{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.household .cico{background:rgba(70,211,105,.1)}.update .cico{background:rgba(245,166,35,.1)}.signin .cico{background:rgba(77,166,255,.1)}.verify .cico{background:rgba(150,100,255,.1)}
-.pdot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--s1);animation:dp 1.5s ease infinite}
-@keyframes dp{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
-.tvscan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:sc 2s ease infinite}
-@keyframes sc{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:110%;opacity:0}}
-.ctype{font-family:var(--m);font-size:.56rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.household .ctype{color:var(--green)}.update .ctype{color:var(--amber)}.signin .ctype{color:var(--blue)}.verify .ctype{color:var(--purple)}
-.ccode{font-family:var(--h);font-size:3.2rem;letter-spacing:14px;line-height:1;color:var(--text)}
-.clink{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:.82rem;font-weight:500;border:1px solid;border-radius:8px;padding:10px 18px;margin-top:6px;transition:all .2s}
-.clink.g{color:var(--green);border-color:rgba(70,211,105,.25)}.clink.g:hover{background:rgba(70,211,105,.08)}
-.clink.a{color:var(--amber);border-color:rgba(245,166,35,.25)}.clink.a:hover{background:rgba(245,166,35,.08)}
-.cmeta{display:flex;align-items:center;gap:.7rem;margin-top:6px}
-.ctime{font-family:var(--m);font-size:.58rem;color:var(--muted2)}
-.ccd{font-family:var(--m);font-size:.6rem}
-.cd-ok{color:var(--green)}.cd-warn{color:var(--amber)}.cd-exp{color:var(--red)}
-.cflip{animation:cf .15s ease}
-@keyframes cf{0%{opacity:0;transform:translateY(-3px)}100%{opacity:1;transform:none}}
-.cpbtn{background:var(--s3);border:1px solid var(--s5);color:var(--muted2);padding:10px 16px;border-radius:9px;cursor:pointer;font-family:var(--m);font-size:.62rem;letter-spacing:1px;text-transform:uppercase;transition:all .2s;white-space:nowrap;flex-shrink:0}
-.cpbtn:hover{border-color:var(--border2);color:var(--text)}
-.cpbtn.ok{border-color:var(--green)!important;color:var(--green)!important;background:rgba(70,211,105,.07)!important}
-
-/* RENEWAL */
-.rpopup{display:none;opacity:0;transition:opacity .4s;background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.2);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.9rem;align-items:center;gap:.9rem}
-
-/* EMPTY */
-.empty{text-align:center;padding:3rem 1rem}
-.empty svg{opacity:.15;margin-bottom:.8rem}
-.empty h3{font-family:var(--h);font-size:1.2rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
-.empty p{font-size:.8rem;color:var(--muted2);line-height:1.8}
-
-/* EXPIRED/ERROR */
-.ewrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;padding:2rem;text-align:center}
-.elogo{font-family:var(--h);font-size:2rem;letter-spacing:3px;margin-bottom:2rem}
-.elogo .f{color:var(--red)}.elogo .l{color:var(--muted2)}
-.ebox{background:var(--s1);border:1px solid rgba(229,9,20,.2);border-radius:20px;padding:2.5rem 2rem;max-width:360px;width:100%}
-.etitle{font-family:var(--h);font-size:1.7rem;letter-spacing:2px;color:var(--red);margin-bottom:.5rem;text-transform:uppercase}
-.emsg{font-size:.85rem;color:var(--muted);line-height:1.8;margin-bottom:1.8rem}
-.wabig{display:inline-flex;align-items:center;gap:10px;background:#25D366;color:#000;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.9rem;transition:all .25s}
-.wabig:hover{background:#1ebe5d;transform:translateY(-2px)}
-
-/* SK */
-.sk{background:linear-gradient(90deg,var(--s3) 25%,var(--s4) 50%,var(--s3) 75%);background-size:200% 100%;animation:sh 1.5s infinite;border-radius:10px}
-@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-/* WA FLOAT */
-.waf{position:fixed;bottom:1.4rem;right:1.4rem;z-index:200;width:52px;height:52px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 4px 20px rgba(37,211,102,.4)}
-
-/* COPY OVERLAY */
-.covl{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .25s}
-.covl.show{opacity:1}
-.cbox{background:rgba(0,0,0,.92);border:1px solid rgba(70,211,105,.3);border-radius:20px;padding:1.8rem 2.5rem;display:flex;flex-direction:column;align-items:center;gap:.7rem;backdrop-filter:blur(20px);transform:scale(.8);transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
-.covl.show .cbox{transform:scale(1)}
-.ccheck{width:52px;height:52px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
-.clbl{font-family:var(--h);font-size:1.1rem;letter-spacing:3px;color:var(--text);text-transform:uppercase}
-
-#toast{position:fixed;bottom:1.8rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:var(--h);font-size:.88rem;padding:10px 24px;border-radius:6px;letter-spacing:3px;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-@keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@keyframes spin{to{transform:rotate(360deg)}}
-</style>
-</head>
-<body>
-<div class="prog" id="prog"><div class="pb" id="pb"></div></div>
-
-<nav>
-  <div class="logo"><span class="f">FAN</span><span class="l">FLIX</span></div>
-  <div class="nav-avatar" id="nav-avatar">?</div>
-</nav>
-
-<div id="page">
-  <div class="page">
-    <div style="height:160px;border-radius:18px;margin-bottom:.9rem" class="sk"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem">
-      <div style="height:90px;border-radius:14px" class="sk"></div>
-      <div style="height:90px;border-radius:14px" class="sk"></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.9rem">
-      <div style="height:90px;border-radius:14px" class="sk"></div>
-      <div style="height:90px;border-radius:14px" class="sk"></div>
-    </div>
-    <div style="height:80px;border-radius:16px;margin-bottom:.9rem" class="sk"></div>
-  </div>
-</div>
-
-<div class="covl" id="covl">
-  <div class="cbox">
-    <div class="ccheck"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <div class="clbl">Copied!</div>
-  </div>
-</div>
-
-<a class="waf" href="https://wa.me/8801928382918" target="_blank">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-</a>
-<div id="toast"></div>
-
-<script>
-let allCodes=[],curTab='all',pinShown=false,actLog=[],refTimer=null,cdTimer=null;
-const BLOCKED=['2023','2024','2025','2026','2027','2028','0000'];
-
-window.onload=()=>{
-  const token=window.location.pathname.match(/\/c\/([a-zA-Z0-9]+)/)?.[1];
-  if(!token){showError('invalid','Invalid link.');return;}
-  window._tok=token;
-  sp();
-  fetchCodes(token);
-};
-
-function sp(){document.getElementById('prog').classList.add('on')}
-function ep(){
-  const p=document.getElementById('prog');p.classList.remove('on');
-  const b=document.getElementById('pb');b.style.width='100%';
-  setTimeout(()=>{b.style.width='0';},400);
+function trackAnalytics(token) {
+  const data = loadAnalytics();
+  if (!data[token]) data[token] = { total: 0, daily: {} };
+  data[token].total += 1;
+  const today = new Date().toISOString().split('T')[0];
+  data[token].daily[today] = (data[token].daily[today] || 0) + 1;
+  saveAnalytics(data);
 }
 
-async function fetchCodes(token,isRefresh=false){
-  if(isRefresh){sp();const r=document.getElementById('rbtn-ico');if(r)r.classList.add('spinning');}
-  try{
-    const res=await fetch(`/api/link/${token}`);
-    const data=await res.json();
-    ep();
-    const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
-    if(!data.success){
-      if(data.error==='expired')showExpired();
-      else showError(data.error,data.message);
-      return;
+function trackIP(token, ip) {
+  if (!ip || ip === '::1' || ip === '127.0.0.1') return false;
+  const data = loadIPs();
+  if (!data[token]) data[token] = [];
+  const isNew = !data[token].includes(ip);
+  if (isNew) {
+    data[token].push(ip);
+    saveIPs(data);
+    if (data[token].length >= 4) {
+      try {
+      const links = loadLinks();
+      const link = links[token];
+      sendTelegram(
+        `⚠️ <b>Suspicious Activity!</b>\n\n` +
+        `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
+        `<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
+      );
+      } catch(e) { console.error('IP alert error:', e.message); }
     }
-    const now=Date.now();
-    data.codes=data.codes.filter(c=>{
-      if(c.code&&BLOCKED.includes(c.code))return false;
-      if(c.expiresAt&&c.expiresAt<now)return false;
-      return true;
+  }
+  return data[token].length;
+}
+
+function generateToken() { return crypto.randomBytes(4).toString('hex'); }
+
+// ── STATS ─────────────────────────────────────────────────────
+let totalToday = 0, lastReset = new Date().toDateString();
+const visitors = new Map();
+function resetDailyIfNeeded() { const t = new Date().toDateString(); if (t !== lastReset) { totalToday = 0; lastReset = t; } }
+function trackVisitor(ip) { visitors.set(ip, Date.now()); const c = Date.now()-5*60*1000; for(const[k,v] of visitors) if(v<c) visitors.delete(k); }
+function getLiveVisitors() { const c = Date.now()-5*60*1000; return [...visitors.values()].filter(v=>v>c).length; }
+
+// ── RATE LIMIT ────────────────────────────────────────────────
+const rateLimitMap = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const e = rateLimitMap.get(ip) || { count:0, start:now };
+  if (now - e.start > 5*60*1000) { rateLimitMap.set(ip,{count:1,start:now}); return false; }
+  if (e.count >= 10) return true;
+  e.count++; rateLimitMap.set(ip,e); return false;
+}
+
+// ── CACHE ─────────────────────────────────────────────────────
+const cache = new Map();
+function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<30000) return e.data; return null; }
+function setCache(key, data) { cache.set(key, {data, time:Date.now()}); }
+
+// ── TELEGRAM ──────────────────────────────────────────────────
+async function sendTelegram(msg, chatId=TG_CHAT) {
+  try {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id:chatId, text:msg, parse_mode:'HTML', disable_web_page_preview:true })
     });
-    const seen=new Set();
-    data.codes=data.codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
-    allCodes=data.codes;
-    window._ld=data;
-    if(!isRefresh){buildPage(data);addAct('green','Ready','System is active');}
-    else{
-      updateCodes(data);
-      if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
+  } catch(e) { console.error('TG error:', e.message); }
+}
+
+// ── MORNING REPORT ────────────────────────────────────────────
+function scheduleMorningReport() {
+  const now = new Date();
+  const bd = new Date(now.getTime() + 6*60*60*1000);
+  const next11am = new Date(bd);
+  next11am.setUTCHours(5,0,0,0); // 11AM BD = 5AM UTC
+  if (bd.getUTCHours() >= 5) next11am.setUTCDate(next11am.getUTCDate()+1);
+  const msUntil = next11am.getTime() - now.getTime();
+  setTimeout(() => { sendMorningReport(); setInterval(sendMorningReport, 24*60*60*1000); }, msUntil);
+}
+
+async function sendMorningReport() {
+  const links = loadLinks();
+  const now = Date.now();
+  const threeDays = 3*24*60*60*1000;
+  const sevenDays = 7*24*60*60*1000;
+  const expiring3 = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)<=threeDays);
+  const expiring7 = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)>threeDays && (l.expiresAt-now)<=sevenDays);
+  const active = Object.values(links).filter(l => l.active && l.expiresAt>now);
+  const expired = Object.values(links).filter(l => l.expiresAt<=now);
+  let msg = `<b>FanFlix Morning Report</b>\n📅 ${new Date().toLocaleDateString('en-BD',{timeZone:'Asia/Dhaka',weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n\n`;
+  msg += `Active: ${active.length} | Expiring 3d: ${expiring3.length} | Expiring 7d: ${expiring7.length} | Expired: ${expired.length}\n\n`;
+  if (expiring3.length > 0) {
+    msg += `<b>Expiring in 3 days — Renew now:</b>\n`;
+    for (const l of expiring3) {
+      const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
+      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 28\n`;
     }
-    if(refTimer)clearInterval(refTimer);
-    refTimer=setInterval(()=>fetchCodes(token,true),60*1000);
-    if(cdTimer)clearInterval(cdTimer);
-    cdTimer=setInterval(tickCd,1000);
-    if(data.daysLeft<=3&&data.daysLeft>0){
-      setTimeout(()=>{const p=document.getElementById('rpopup');if(p){p.style.display='flex';setTimeout(()=>p.style.opacity='1',50);}},1500);
+    msg += '\n';
+  }
+  if (expiring7.length > 0) {
+    msg += `<b>Expiring in 7 days:</b>\n`;
+    for (const l of expiring7) {
+      const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
+      msg += `• ${l.profile} | ${l.email} | ${days}d\n`;
     }
-  }catch(e){
-    ep();
-    const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
-    if(!isRefresh)showError('error','Could not connect.');
+  }
+  if (expiring3.length === 0 && expiring7.length === 0) msg += `All links are healthy!`;
+  sendTelegram(msg);
+}
+
+// ── EXPIRY CHECKER ────────────────────────────────────────────
+function checkExpiringLinks() {
+  const links = loadLinks();
+  const now = Date.now(), threeDays = 3*24*60*60*1000;
+  for (const link of Object.values(links)) {
+    if (!link.active) continue;
+    const remaining = link.expiresAt - now;
+    if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
+      const days = Math.ceil(remaining/(24*60*60*1000));
+      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
+      links[link.token].warningSent = true;
+      saveLinks(links);
+    }
   }
 }
+setInterval(checkExpiringLinks, 60*60*1000);
+try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
-function buildPage(data){
-  const days=data.daysLeft||0;
-  const totalDays=data.totalDays||28;
-  const sc=days<=0?'danger':days<=3?'warning':'active';
-  const stitle=days<=0?'Account Expired':days<=3?'Expiring Soon':'Account Active';
-  const ssub=days<=0?'Please renew your subscription.':days<=3?`Only ${days} days remaining — renew now!`:'Your account is in good standing.';
-  const pct=Math.min(100,Math.max(0,(days/totalDays)*100));
-  const pcls=days<=3?'red':days<=7?'amber':'green';
-  const expDate=new Date(Date.now()+days*24*60*60*1000);
-  const expStr=expDate.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  const pLetter=(data.profile||'?').replace('Profile ','').trim().charAt(0)||'?';
-  const h=allCodes.filter(c=>c.type==='household').length;
-  const u=allCodes.filter(c=>c.type==='update').length;
-  const s=allCodes.filter(c=>c.type==='signin').length;
-  const v=allCodes.filter(c=>c.type==='verify').length;
-  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-
-  const av=document.getElementById('nav-avatar');if(av)av.textContent=pLetter;
-
-  document.getElementById('page').innerHTML=`
-  <div class="page">
-
-    <!-- STATUS CARD -->
-    <div class="scard ${sc}">
-      <div class="scard-top">
-        <div class="netflix-n">N</div>
-        <div class="scard-mid">
-          <div class="stitle"><span class="sdot"></span>${stitle}</div>
-          <div class="ssub">${ssub}</div>
-        </div>
-        ${days>0?`<div class="days-block"><div class="days-num">${days}</div><div class="days-lbl">Days Left</div></div>`:''}
-      </div>
-      <div class="scard-prog">
-        <div class="prog-labels"><span>${days} days remaining</span><span>${Math.round(pct)}%</span></div>
-        <div class="prog-track"><div class="prog-fill ${pcls}" style="width:${pct}%"></div></div>
-      </div>
-    </div>
-
-    <!-- ROW 1: Email + Profile -->
-    <div class="igrid">
-      <div class="icell full" style="grid-column:1/-1">
-        <div class="iico red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-        <div style="min-width:0;overflow:hidden">
-          <div class="ilbl">Netflix Email</div>
-          <div class="ival" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(data.email)}</div>
-          <button class="copy-btn" onclick="doCopy('${esc(data.email)}',null,false)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Email</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- ROW 2: Profile + PIN -->
-    <div class="igrid">
-      <div class="icell">
-        <div class="iico blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-        <div><div class="ilbl">Profile</div><div class="ival">${esc(data.profile||'-')}</div></div>
-      </div>
-      <div class="icell">
-        <div class="iico amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-        <div><div class="ilbl">PIN</div>
-          <div class="pin-row">
-            <span class="ival" id="pin-display">••••</span>
-            <button class="eye-btn" onclick="togglePin()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ROW 3: Account Status + Device Status -->
-    <div class="igrid">
-      <div class="icell">
-        <div class="iico green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
-        <div><div class="ilbl">Account Status</div><div class="ival green">Active</div></div>
-      </div>
-      <div class="icell">
-        <div class="iico grey"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-        <div><div class="ilbl">Device Status</div><div class="ival green">Active</div><div class="isub">2 Logins Allowed</div></div>
-      </div>
-    </div>
-
-    <!-- ROW 4: Membership full width -->
-    <div class="igrid" style="margin-bottom:.9rem">
-      <div class="icell" style="grid-column:1/-1">
-        <div class="iico purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9664ff" stroke-width="2" stroke-linecap="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7z"/></svg></div>
-        <div><div class="ilbl">Membership</div><div class="ival">Premium</div><div class="isub">Renews ${expStr}</div></div>
-      </div>
-    </div>
-
-    <!-- RENEWAL POPUP -->
-    <div class="rpopup" id="rpopup">
-      <div style="width:34px;height:34px;border-radius:9px;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-      <div style="flex:1"><div style="font-size:.84rem;font-weight:600;color:var(--amber)">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.72rem;color:var(--muted);margin-top:2px">Contact FanFlix BD to renew.</div></div>
-      <a href="https://wa.me/8801928382918" target="_blank" style="background:#25D366;color:#000;padding:8px 16px;border-radius:7px;text-decoration:none;font-weight:700;font-size:.76rem;white-space:nowrap">Renew</a>
-    </div>
-
-    <!-- REFRESH BTN -->
-    <button class="rbtn" id="rbtn" onclick="doRefresh()">
-      <div class="rbtn-ico-wrap">
-        <svg id="rbtn-ico" class="rbtn-ico" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-      </div>
-      <div class="rbtn-text">
-        <span class="rbtn-title">Refresh Codes</span>
-        <span class="rbtn-sub">Scan inbox and get new codes</span>
-      </div>
-      <div class="rbtn-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-    </button>
-
-    <!-- LIVE ACTIVITY -->
-    <div class="acard">
-      <div class="ahead">
-        <div class="atitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Live Activity</div>
-        <div class="aright"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
-      </div>
-      <div class="alist" id="alist">
-        <div class="aitem"><div class="adot green"></div><div class="atime">${now}</div><div><div class="atxt">Ready</div><div class="asub">System is active</div></div></div>
-      </div>
-    </div>
-
-    <!-- CODES -->
-    <div class="cwrap">
-      <div class="cheader">
-        <div class="ctitle">Your Codes</div>
-        <span class="cbadge" id="cbadge">${allCodes.length}</span>
-      </div>
-      <div class="tabs">
-        <button class="tab a-all" id="tab-all" onclick="switchTab('all')">All <span class="tc">${allCodes.length}</span></button>
-        <button class="tab" id="tab-household" onclick="switchTab('household')">Household <span class="tc">${h}</span></button>
-        <button class="tab" id="tab-update" onclick="switchTab('update')">TV Update <span class="tc">${u}</span></button>
-        ${s>0?`<button class="tab" id="tab-signin" onclick="switchTab('signin')">Sign-in <span class="tc">${s}</span></button>`:''}
-        ${v>0?`<button class="tab" id="tab-verify" onclick="switchTab('verify')">Verify <span class="tc">${v}</span></button>`:''}
-      </div>
-      <div class="cards" id="cards"></div>
-    </div>
-
-  </div>`;
-  renderCards();
+// ── OTP SCRAPER ───────────────────────────────────────────────
+async function scrapeOTP(link) {
+  try {
+    const res = await fetch(link, {
+      headers: { 'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15', 'Accept':'text/html' },
+      redirect: 'follow'
+    });
+    const html = await res.text();
+    const patterns = [/>\s*(\d{4})\s*</g, /"code"\s*:\s*"(\d{4})"/, />\s*(\d{4,6})\s*<\/(?:p|h\d|div|span)/];
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match) { const code=(match[1]||match[0]).replace(/\D/g,''); if(code&&code.length>=4&&!BLOCKED_CODES.includes(code)) return code; }
+    }
+    const allMatches = [...html.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)];
+    const filtered = allMatches.filter(m=>!BLOCKED_CODES.includes(m[1])&&!['1080','1920','1440'].includes(m[1]));
+    if (filtered.length > 0) return filtered[0][1];
+    return null;
+  } catch(e) { return null; }
 }
 
-function doRefresh(){
-  const b=document.getElementById('rbtn');if(b)b.disabled=true;
-  fetchCodes(window._tok,true).finally(()=>{const b=document.getElementById('rbtn');if(b)b.disabled=false;});
+// ── IMAP ──────────────────────────────────────────────────────
+function fetchNetflixEmails(filterEmail, includeSignin=false) {
+  return new Promise((resolve, reject) => {
+    const imap = new Imap({
+      user: GMAIL_USER, password: GMAIL_PASS,
+      host: 'imap.gmail.com', port: 993, tls: true,
+      tlsOptions: { rejectUnauthorized: false }
+    });
+    imap.once('ready', () => {
+      imap.openBox('INBOX', true, (err) => {
+        if (err) { imap.end(); return reject(err); }
+        const since = new Date(Date.now() - 20*60*1000);
+        imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+          if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
+          const fetch = imap.fetch(uids, { bodies: '' });
+          const promises = [];
+          fetch.on('message', (msg) => {
+            const p = new Promise((res) => {
+              msg.on('body', (stream) => {
+                simpleParser(stream, async (err, mail) => {
+                  if (err) return res(null);
+                  const toValues = (mail.to?.value || []).map(a => (a.address||'').toLowerCase());
+                  const toText = mail.to?.text || '';
+                  const subject = (mail.subject || '').toLowerCase();
+                  const bodyHtml = mail.html || '';
+                  const bodyText = mail.text || '';
+                  const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+                  const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
+                  const toEmail = toValues[0] || toText.toLowerCase().trim();
+
+                  if (filterEmail) {
+                    const filterLower = filterEmail.toLowerCase().trim();
+                    const matched = toValues.some(a => a === filterLower) || toText.toLowerCase().includes(filterLower);
+                    if (!matched) return res(null);
+                  }
+
+                  const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
+                  res(parsed);
+                });
+              });
+            });
+            promises.push(p);
+          });
+          fetch.once('end', async () => {
+            const items = (await Promise.all(promises)).filter(Boolean);
+            imap.end();
+            resolve(items.sort((a,b) => b.ts - a.ts));
+          });
+          fetch.once('error', (e) => { imap.end(); reject(e); });
+        });
+      });
+    });
+    imap.once('error', (err) => { reject(err); });
+    imap.connect();
+  });
 }
 
-function updateCodes(data){
-  allCodes=data.codes;
-  const h=allCodes.filter(c=>c.type==='household').length;
-  const u=allCodes.filter(c=>c.type==='update').length;
-  const s=allCodes.filter(c=>c.type==='signin').length;
-  const v=allCodes.filter(c=>c.type==='verify').length;
-  const se=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
-  se('cbadge',allCodes.length);
-  se('tab-all',`All <span class="tc">${allCodes.length}</span>`);
-  se('tab-household',`Household <span class="tc">${h}</span>`);
-  se('tab-update',`TV Update <span class="tc">${u}</span>`);
-  renderCards(true);
+function extractLink(body) {
+  const b = body.replace(/&amp;/g,'&');
+  const m1 = b.match(/https:\/\/www\.netflix\.com\/account\/travel\/verify\?nftoken=[^\s"'<>\\]+/i);
+  if (m1) return { link:m1[0], type:'household', label:'Temporary Access Code' };
+  const m2 = b.match(/https:\/\/www\.netflix\.com\/account\/update-primary-location\?nftoken=[^\s"'<>\\]+/i);
+  if (m2) return { link:m2[0], type:'update', label:'Update Household (TV)' };
+  const m3 = b.match(/href=["'](https:\/\/[^"']*netflix\.com\/account[^"']*nftoken[^"']*)/i);
+  if (m3) { const link=m3[1].replace(/&amp;/g,'&'); const isUpdate=link.includes('update-primary'); return { link, type:isUpdate?'update':'household', label:isUpdate?'Update Household (TV)':'Temporary Access Code' }; }
+  return null;
 }
 
-function addAct(cls,title,sub){
-  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-  actLog.unshift({cls,title,sub,time:now});
-  if(actLog.length>3)actLog=actLog.slice(0,3);
-  const l=document.getElementById('alist');if(!l)return;
-  l.innerHTML=actLog.map(a=>`<div class="aitem"><div class="adot ${a.cls}"></div><div class="atime">${a.time}</div><div><div class="atxt">${a.title}</div><div class="asub">${a.sub}</div></div></div>`).join('');
-}
+async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
+  const sl = subject.toLowerCase();
 
-function togglePin(){
-  pinShown=!pinShown;
-  const d=document.getElementById('pin-display');
-  if(d)d.textContent=pinShown?(window._ld?.pin||'----'):'••••';
-}
-
-function switchTab(t){
-  curTab=t;
-  document.querySelectorAll('.tab').forEach(x=>x.className='tab');
-  const el=document.getElementById('tab-'+t);if(el)el.classList.add('tab','a-'+t);
-  renderCards();
-}
-
-function renderCards(smooth=false){
-  const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
-  const c=document.getElementById('cards');if(!c)return;
-  if(!list.length){
-    c.innerHTML=`<div class="empty"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><h3>No Codes Found</h3><p>No Netflix codes in the last 20 minutes.<br>Request a code on your device,<br>then tap <strong>Refresh Codes</strong>.</p></div>`;
-    return;
+  // 6-DIGIT VERIFICATION CODE (new Netflix flow - "Verify with this code")
+  if (includeSignin && (sl.includes('verification code') || sl.includes('verify with') || sl.includes('verify this'))) {
+    // Extract 6-digit code — Netflix shows it spaced like "9 1 6 3 8 9"
+    const TEMPLATE_NUMS6 = [...BLOCKED_CODES, '8199'];
+    // Try spaced format first: "9 1 6 3 8 9"
+    const spacedMatch = bodyPlain.match(/(?<![0-9])(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)(?![0-9])/);
+    if (spacedMatch) {
+      const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4]+spacedMatch[5]+spacedMatch[6];
+      if (!TEMPLATE_NUMS6.includes(code)) return { type:'verify', label:'Verification Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    }
+    // Try plain 6-digit number
+    const allNums6 = [...bodyHtml.matchAll(/(?<![0-9])(\d{6})(?![0-9])/g)].map(m => m[1]);
+    const filtered6 = allNums6.filter(n => !TEMPLATE_NUMS6.includes(n));
+    if (filtered6.length > 0) {
+      const unique6 = [...new Set(filtered6)];
+      const single6 = unique6.filter(n => allNums6.filter(x => x === n).length <= 5);
+      const verifyCode = single6[single6.length - 1] || unique6[unique6.length - 1];
+      if (verifyCode) return { type:'verify', label:'Verification Code', code:verifyCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    }
   }
-  const html=list.map((item,i)=>cardHtml(item,i)).join('');
-  if(smooth){c.style.opacity='0';c.style.transition='opacity .2s';setTimeout(()=>{c.innerHTML=html;c.style.opacity='1';attachL();},180);}
-  else{c.innerHTML=html;attachL();}
+
+  // 4-DIGIT SIGN-IN CODE (existing flow)
+  if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
+    // Netflix template contains 8199 hundreds of times in CSS
+    // Real code appears rarely at the end — find numbers appearing <= 5 times
+    const TEMPLATE_NUMS = [...BLOCKED_CODES, '8199'];
+    const allNums = [...bodyHtml.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
+    const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
+    if (filtered.length > 0) {
+      const unique = [...new Set(filtered)];
+      const singleOccurrence = unique.filter(n => allNums.filter(x => x === n).length <= 5);
+      const signinCode = singleOccurrence[singleOccurrence.length - 1] || unique[unique.length - 1];
+      if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    }
+  }
+
+  const isRelevant = sl.includes('temporary')||sl.includes('access code')||sl.includes('travel')||sl.includes('household')||sl.includes('update')||sl.includes('verify');
+  if (!isRelevant) return null;
+  const result = extractLink(bodyHtml) || extractLink(bodyText);
+  if (!result) return null;
+  if (result.type === 'household') {
+    const otp = await scrapeOTP(result.link);
+    if (otp && !BLOCKED_CODES.includes(otp)) return { type:'household', label:'Temporary Access Code', code:otp, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    return { ...result, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+  }
+  return { ...result, to:toEmail, ts };
 }
 
-function attachL(){
-  document.querySelectorAll('.card[data-code]').forEach(c=>{
-    c.addEventListener('click',()=>doCopy(c.dataset.code,null,true));
-  });
+// ── ADMIN AUTH ────────────────────────────────────────────────
+function adminAuth(req, res, next) {
+  if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
+  next();
 }
 
-function cardHtml(item,i){
-  const delay=`animation-delay:${i*.07}s`;
-  const fresh=(Date.now()-item.ts)<10*60*1000;
-  const fc=fresh?' fresh':'';
-  const fb=fresh?'<span class="fbadge">Fresh</span>':'';
-  const cd=item.expiresAt?`<span class="ccd" data-exp="${item.expiresAt}">${fmtCd(item.expiresAt)}</span>`:'';
-  const rt=item.ts?new Date(item.ts).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}):'';
-  const tt=rt?`<span class="ctime">${rt}</span>`:'';
-  const pIco=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke-linecap="round"/></svg><div class="pdot"></div></div>`;
-  const tvIco=`<div class="cico" style="position:relative"><svg width="28" height="22" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="12" y1="15" x2="12" y2="18"/></svg><div style="position:absolute;inset:4px 5px 6px;background:rgba(245,166,35,.1);overflow:hidden;border-radius:2px"><div class="tvscan"></div></div></div>`;
-  const lIco=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`;
-  if(item.type==='update')return`<div class="card update${fc}" style="${delay}">${fb}${tvIco}<div style="min-width:0"><div class="ctype">TV Household Update</div><a class="clink a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
-  const vIco=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9664ff" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>`;
-  if(item.type==='verify')return`<div class="card verify${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${vIco}<div style="min-width:0"><div class="ctype">Verification Code</div><div class="ccode" style="font-size:2.6rem;letter-spacing:10px">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  if(item.type==='signin')return`<div class="card signin${fc}"` style="${delay}" data-code="${esc(item.code)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Sign-in Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  if(item.code)return`<div class="card household${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><a class="clink g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
+// ── TELEGRAM WEBHOOK ──────────────────────────────────────────
+app.post('/tg-webhook', async (req, res) => {
+  res.sendStatus(200);
+  const msg = req.body?.message;
+  if (!msg?.text) return;
+  const text = msg.text.trim();
+  const chatId = msg.chat.id;
+
+  if (text.startsWith('/create')) {
+    const parts = text.replace('/create','').trim().split('|').map(s=>s.trim());
+    const emailRaw = parts[0];
+    if (!emailRaw||!emailRaw.includes('@')) return sendTelegram('❌ Format: /create email@gmail.com\nOptional: /create email@gmail.com | 85', chatId);
+    const email = emailRaw.toLowerCase();
+    const days = parts[1] ? parseInt(parts[1]) : 28;
+    const links = loadLinks();
+    const now = Date.now();
+    const existing = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
+    if (existing.length >= MAX_SLOTS) return sendTelegram(`❌ Account Full! ${email} has ${MAX_SLOTS}/${MAX_SLOTS} active links.\nUse /list ${email}`, chatId);
+    const created = [];
+    for (const prof of FIXED_PROFILES) {
+      for (let i=0; i<prof.slots; i++) {
+        const token = generateToken();
+        links[token] = { token, email, profile:prof.profile, pin:prof.pin, days, createdAt:now, expiresAt:now+days*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+        created.push({ token, profile:prof.profile, pin:prof.pin, link:`${SITE_URL}/c/${token}` });
+      }
+    }
+    saveLinks(links);
+    let msg2 = `✅ <b>8 Links Created!</b>\n📧 ${email}\n⏳ ${days} days\n\n`;
+    let lastProf = '';
+    for (const l of created) {
+      if (l.profile !== lastProf) { msg2 += `\n👤 <b>${l.profile}</b> | PIN: <code>${l.pin}</code>\n`; lastProf = l.profile; }
+      msg2 += `🔗 <code>${l.link}</code>\n`;
+    }
+    msg2 += `\n━━━━━━━━━━━━━━━━━━\n📋 <b>Template:</b>\n\n` + buildCustomerMessage(email,'[PROFILE]','[PIN]','[LINK]',days);
+    return sendTelegram(msg2, chatId);
+  }
+
+  if (text.startsWith('/replaceall')) {
+    const parts = text.replace('/replaceall','').trim().split(' ');
+    if (parts.length < 2) return sendTelegram('❌ Format: /replaceall oldemail newemail', chatId);
+    const [oldEmail, newEmail] = parts;
+    const links = loadLinks();
+    let count = 0;
+    for (const token of Object.keys(links)) {
+      if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
+    }
+    if (count === 0) return sendTelegram(`❌ No links found for ${oldEmail}`, chatId);
+    saveLinks(links);
+    cache.delete(oldEmail.toLowerCase());
+    cache.delete(newEmail.toLowerCase());
+    return sendTelegram(`✅ <b>Account Replaced!</b>\n\n📧 Old: ${oldEmail}\n📧 New: ${newEmail}\n🔗 ${count} links updated\n\nAll customer links now fetch from new account!`, chatId);
+  }
+
+  if (text.startsWith('/replace')) {
+    const parts = text.replace('/replace','').trim().split(' ');
+    if (parts.length < 2) return sendTelegram('❌ Format: /replace TOKEN newemail@gmail.com', chatId);
+    const [token, newEmail] = parts;
+    const links = loadLinks();
+    if (!links[token]) return sendTelegram('❌ Link not found: '+token, chatId);
+    const oldEmail = links[token].email;
+    links[token].email = newEmail.toLowerCase();
+    saveLinks(links);
+    cache.delete(oldEmail); cache.delete(newEmail.toLowerCase());
+    return sendTelegram(`✅ <b>Link Updated!</b>\n\n🔗 /c/${token}\n👤 ${links[token].profile}\n📧 Old: ${oldEmail}\n📧 New: ${newEmail}`, chatId);
+  }
+
+  if (text.startsWith('/list')) {
+    const emailFilter = text.replace('/list','').trim().toLowerCase();
+    const links = loadLinks();
+    const now = Date.now();
+    const filtered = Object.values(links).filter(l => !emailFilter || l.email.includes(emailFilter));
+    if (!filtered.length) return sendTelegram(`No links found`, chatId);
+    let msg2 = `📋 <b>Links</b>\n\n`;
+    for (const l of filtered.sort((a,b)=>b.createdAt-a.createdAt)) {
+      const daysLeft = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
+      const status = !l.active?'🚫':daysLeft<=0?'⏰':daysLeft<=3?'⚠️':'✅';
+      msg2 += `${status} ${l.profile} | PIN: ${l.pin}\n🔗 /c/${l.token}\n⏳ ${daysLeft}d | Uses: ${l.uses}\n\n`;
+    }
+    return sendTelegram(msg2, chatId);
+  }
+
+  if (text.startsWith('/renew')) {
+    const parts = text.replace('/renew','').trim().split(' ');
+    const token = parts[0]; const days = parseInt(parts[1])||28;
+    const links = loadLinks();
+    if (!links[token]) return sendTelegram('❌ Link not found', chatId);
+    links[token].expiresAt = Date.now()+days*24*60*60*1000;
+    links[token].warningSent = false; links[token].active = true;
+    saveLinks(links);
+    return sendTelegram(`✅ Renewed /c/${token} for ${days} days`, chatId);
+  }
+
+  if (text.startsWith('/extend')) {
+    const parts = text.replace('/extend','').trim().split(' ');
+    if (parts.length < 2) return sendTelegram('❌ Format: /extend TOKEN days', chatId);
+    const [token, daysStr] = parts; const days = parseInt(daysStr)||28;
+    const links = loadLinks();
+    if (!links[token]) return sendTelegram('❌ Link not found', chatId);
+    links[token].expiresAt += days*24*60*60*1000;
+    links[token].warningSent = false;
+    saveLinks(links);
+    return sendTelegram(`✅ Extended /c/${token} by ${days} days`, chatId);
+  }
+
+  if (text.startsWith('/revoke')) {
+    const token = text.replace('/revoke','').trim();
+    const links = loadLinks();
+    if (!links[token]) return sendTelegram('❌ Link not found', chatId);
+    links[token].active = false; saveLinks(links);
+    return sendTelegram(`✅ Revoked /c/${token}`, chatId);
+  }
+
+  if (text.startsWith('/ip')) {
+    const token = text.replace('/ip','').trim();
+    const ips = loadIPs();
+    if (!ips[token]) return sendTelegram(`No IPs recorded for /c/${token}`, chatId);
+    return sendTelegram(`<b>IPs for /c/${token}</b>\n\n${ips[token].map((ip,i)=>`${i+1}. ${ip}`).join('\n')}\n\nTotal: ${ips[token].length} unique IPs`, chatId);
+  }
+
+  if (text.startsWith('/expiry')) {
+    const links = loadLinks();
+    const now = Date.now();
+    const sevenDays = 7*24*60*60*1000;
+    const expiring = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)<=sevenDays).sort((a,b)=>a.expiresAt-b.expiresAt);
+    if (!expiring.length) return sendTelegram('No links expiring this week!', chatId);
+    let msg2 = `📅 <b>Expiring This Week</b>\n\n`;
+    for (const l of expiring) {
+      const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
+      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 28\n\n`;
+    }
+    return sendTelegram(msg2, chatId);
+  }
+
+  if (text === '/slots') {
+    const links = loadLinks(); const now = Date.now();
+    const byEmail = {};
+    for (const l of Object.values(links)) {
+      if (!byEmail[l.email]) byEmail[l.email] = { active:0, total:0 };
+      byEmail[l.email].total++;
+      if (l.active && l.expiresAt>now) byEmail[l.email].active++;
+    }
+    let msg2 = '📊 <b>Slot Usage</b>\n\n';
+    for (const [email, info] of Object.entries(byEmail)) {
+      const bar = '█'.repeat(info.active)+'░'.repeat(Math.max(0,MAX_SLOTS-info.active));
+      msg2 += `📧 ${email}\n${bar} ${info.active}/${MAX_SLOTS}\n\n`;
+    }
+    return sendTelegram(msg2||'No active links.', chatId);
+  }
+
+  if (text === '/stats') {
+    const links = loadLinks(); const now = Date.now();
+    const active = Object.values(links).filter(l=>l.active&&l.expiresAt>now).length;
+    const expired = Object.values(links).filter(l=>l.expiresAt<=now).length;
+    const totalUses = Object.values(links).reduce((s,l)=>s+l.uses,0);
+    return sendTelegram(`📊 <b>FanFlix Stats</b>\n\nActive: ${active}\nExpired: ${expired}\n👁 Total uses: ${totalUses}\n👥 Live: ${getLiveVisitors()}\n📈 Today: ${totalToday}`, chatId);
+  }
+
+  if (text === '/help' || text === '/start') {
+    return sendTelegram(
+      `🎬 <b>FanFlix Bot Commands</b>\n\n` +
+      `<b>Create:</b>\n/create email | days\n\n` +
+      `<b>Replace Account:</b>\n/replace TOKEN newemail\n/replaceall oldemail newemail\n\n` +
+      `<b>Manage:</b>\n/list email\n/renew TOKEN days\n/extend TOKEN days\n/revoke TOKEN\n\n` +
+      `<b>Info:</b>\n/slots\n/stats\n/expiry\n/ip TOKEN\n/help`, chatId
+    );
+  }
+});
+
+function buildCustomerMessage(email, profile, pin, link, days) {
+  return `🎬 <b>FanFlix BD</b>\n\n📧 Email: <code>${email}</code>\n👤 Profile: ${profile}\n🔑 PIN: ${pin}\n\n🔗 Your Code Link:\n${link}\n\n📺 Login Tutorial:\n${LOGIN_VIDEO}\n\n🏠 Household Fix:\n${HOUSEHOLD_VIDEO}\n\n⚠️ Important:\n• No account changes allowed\n• 1 device at a time\n• BD use only\n• Sign in anytime if logged out\n\n✅ Valid for ${days} days`;
 }
 
-function showExpired(){document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox"><div class="etitle">Subscription Expired</div><div class="emsg">Your FanFlix subscription has expired.<br>Contact us to renew and keep watching.</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;}
-function showError(type,msg){document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox"><div class="etitle">${type==='revoked'?'Access Revoked':'Error'}</div><div class="emsg">${msg||'Could not connect.'}</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;}
+// ── ADMIN ROUTES ──────────────────────────────────────────────
+app.post('/api/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password === ADMIN_PASS) res.json({ success:true, token:ADMIN_PASS });
+  else res.status(401).json({ success:false, error:'Wrong password' });
+});
 
-function fmtCd(exp){
-  const r=exp-Date.now();
-  if(r<=0)return`<span class="cd-exp">Expired</span>`;
-  const m=Math.floor(r/60000),s=Math.floor((r%60000)/1000);
-  return`<span class="${r<2*60*1000?'cd-warn':'cd-ok'}" data-exp="${exp}"><span class="ct">${m}:${s.toString().padStart(2,'0')}</span></span>`;
-}
+app.get('/api/admin/links', adminAuth, (req, res) => {
+  const links = loadLinks();
+  const analytics = loadAnalytics();
+  const ips = loadIPs();
+  for (const token of Object.keys(links)) {
+    links[token].analytics = analytics[token] || { total:0, daily:{} };
+    links[token].ipCount = (ips[token] || []).length;
+    links[token].ips = ips[token] || [];
+  }
+  res.json({ success:true, links });
+});
 
-function tickCd(){
-  document.querySelectorAll('[data-exp]').forEach(el=>{
-    const exp=parseInt(el.dataset.exp);if(!exp||isNaN(exp))return;
-    const r=exp-Date.now();
-    if(r<=0){el.className='cd-exp';el.textContent='Expired';return;}
-    if(r<2*60*1000)playBeep();
-    const m=Math.floor(r/60000),s=Math.floor((r%60000)/1000);
-    el.className=r<2*60*1000?'ccd cd-warn':'ccd cd-ok';
-    const t=el.querySelector('.ct');const nv=`${m}:${s.toString().padStart(2,'0')}`;
-    if(t&&t.textContent!==nv){t.classList.add('cflip');t.textContent=nv;setTimeout(()=>t.classList.remove('cflip'),150);}
-  });
-}
+app.post('/api/admin/create', adminAuth, (req, res) => {
+  const { email, profile, pin, days } = req.body;
+  if (!email||!profile||!pin||!days) return res.status(400).json({ error:'Missing fields' });
+  const links = loadLinks();
+  const now = Date.now();
+  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now);
+  if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
+  const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
+  if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
+  const token = generateToken();
+  links[token] = { token, email:email.toLowerCase(), profile, pin, days:parseInt(days), createdAt:now, expiresAt:now+parseInt(days)*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+  saveLinks(links);
+  res.json({ success:true, token, link:`/c/${token}` });
+});
 
-function doCopy(text,btn,overlay){
-  navigator.clipboard.writeText(text).then(()=>{
-    if(btn){btn.textContent='Copied';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok');},2000);}
-    if(overlay){const o=document.getElementById('covl');o.classList.add('show');setTimeout(()=>o.classList.remove('show'),1200);}
-    showToast('Copied!');
-  });
-}
+app.post('/api/admin/revoke/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  links[req.params.token].active = false; saveLinks(links); res.json({ success:true });
+});
 
-function playBeep(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.3);o.start();o.stop(ctx.currentTime+.3);}catch(e){}}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-</script>
-</body>
-</html>
+app.post('/api/admin/activate/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  links[req.params.token].active = true; saveLinks(links); res.json({ success:true });
+});
+
+app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  const { days } = req.body;
+  links[req.params.token].expiresAt += parseInt(days)*24*60*60*1000;
+  links[req.params.token].warningSent = false;
+  saveLinks(links); res.json({ success:true });
+});
+
+app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  const { days } = req.body; const d = parseInt(days)||28;
+  links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
+  links[req.params.token].warningSent = false;
+  links[req.params.token].active = true;
+  saveLinks(links); res.json({ success:true });
+});
+
+// Replace account email for single link
+app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  const { newEmail } = req.body;
+  if (!newEmail) return res.status(400).json({ error:'Missing newEmail' });
+  const oldEmail = links[req.params.token].email;
+  links[req.params.token].email = newEmail.toLowerCase().trim();
+  saveLinks(links);
+  cache.delete(oldEmail); cache.delete(newEmail.toLowerCase());
+  res.json({ success:true, oldEmail, newEmail });
+});
+
+// Replace all links for an email
+app.post('/api/admin/replaceall', adminAuth, (req, res) => {
+  const { oldEmail, newEmail } = req.body;
+  if (!oldEmail||!newEmail) return res.status(400).json({ error:'Missing fields' });
+  const links = loadLinks();
+  let count = 0;
+  for (const token of Object.keys(links)) {
+    if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
+  }
+  saveLinks(links);
+  cache.delete(oldEmail.toLowerCase()); cache.delete(newEmail.toLowerCase());
+  res.json({ success:true, count });
+});
+
+app.delete('/api/admin/delete/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  delete links[req.params.token]; saveLinks(links); res.json({ success:true });
+});
+
+app.get('/api/admin/slots', adminAuth, (req, res) => {
+  const links = loadLinks(); const now = Date.now();
+  const byEmail = {};
+  for (const l of Object.values(links)) {
+    if (!byEmail[l.email]) byEmail[l.email] = { active:0, total:0 };
+    byEmail[l.email].total++;
+    if (l.active && l.expiresAt>now) byEmail[l.email].active++;
+  }
+  res.json({ success:true, slots:byEmail, maxSlots:MAX_SLOTS });
+});
+
+// ── CUSTOMER LINK ─────────────────────────────────────────────
+app.get('/api/link/:token', async (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
+  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+  const now = Date.now();
+  const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
+  const totalDays = link.days || 28;
+  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0 });
+  link.uses += 1; link.lastUsed = now; saveLinks(links);
+  trackAnalytics(req.params.token);
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+  trackVisitor(ip);
+  const ipCount = trackIP(req.params.token, ip);
+  try {
+    const codes = await fetchNetflixEmails(link.email, true);
+    if (codes.length > 0) totalToday += 1;
+    res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+  } catch(err) {
+    res.status(500).json({ success:false, error:'server', message:'Server error. Try again.' });
+  }
+});
+
+// ── DEBUG ─────────────────────────────────────────────────────
+app.get('/api/debug-email', async (req, res) => {
+  const filterEmail = (req.query.email || '').trim().toLowerCase();
+  try {
+    const results = await new Promise((resolve, reject) => {
+      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false} });
+      imap.once('ready', () => {
+        imap.openBox('INBOX', true, (err) => {
+          if (err) { imap.end(); return reject(err); }
+          const since = new Date(Date.now() - 20*60*1000);
+          imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+            if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
+            const fetch = imap.fetch(uids, { bodies: '' });
+            const promises = [];
+            fetch.on('message', (msg) => {
+              const p = new Promise((res2) => {
+                msg.on('body', (stream) => {
+                  simpleParser(stream, (err, mail) => {
+                    if (err) return res2(null);
+                    const toValues = (mail.to?.value || []).map(a => a.address?.toLowerCase());
+                    res2({ subject:mail.subject, to:mail.to?.text, to_parsed:toValues, matches_filter: filterEmail ? toValues.some(a=>a===filterEmail) : true });
+                  });
+                });
+              });
+              promises.push(p);
+            });
+            fetch.once('end', async () => { const items=(await Promise.all(promises)).filter(Boolean); imap.end(); resolve(items); });
+            fetch.once('error', (e) => { imap.end(); reject(e); });
+          });
+        });
+      });
+      imap.once('error', reject);
+      imap.connect();
+    });
+    res.json({ success:true, filter:filterEmail, count:results.length, emails:results });
+  } catch(err) { res.status(500).json({ success:false, error:err.message }); }
+});
+
+// ── PUBLIC ROUTES ─────────────────────────────────────────────
+app.get('/api/stats', (req, res) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+  trackVisitor(ip); resetDailyIfNeeded();
+  res.json({ live:getLiveVisitors(), today:totalToday });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
+});
+
+app.get('/api/codes', async (req, res) => {
+  const email = (req.query.email||'').trim();
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+  trackVisitor(ip); resetDailyIfNeeded();
+  if (isRateLimited(ip)) return res.status(429).json({ success:false, error:'Too many requests. Wait 5 minutes.' });
+  const cached = getCached(email);
+  if (cached) return res.json({ success:true, codes:cached, count:cached.length, cached:true, fetchTime:0 });
+  const start = Date.now();
+  try {
+    const codes = await fetchNetflixEmails(email, false);
+    const fetchTime = ((Date.now()-start)/1000).toFixed(1);
+    setCache(email, codes);
+    if (codes.length > 0) totalToday += 1;
+    res.json({ success:true, codes, count:codes.length, fetchTime });
+  } catch(err) { res.status(500).json({ success:false, error:err.message }); }
+});
+
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
+app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
+app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
+
+// Prevent crashes from uncaught errors
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.message);
+  console.error(err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
+ensureDataDir();
+app.listen(PORT, () => {
+  console.log(`FanFlix running on port ${PORT}`);
+  try { sendTelegram('<b>FanFlix Started</b>\nType /help for commands'); } catch(e) { console.error('TG startup error:', e.message); }
+});
