@@ -113,7 +113,7 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .tab.a-all{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.18);color:var(--text)}
 .tab.a-household{background:rgba(70,211,105,.1);border-color:rgba(70,211,105,.3);color:var(--green)}
 .tab.a-update{background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.3);color:var(--amber)}
-.tab.a-signin{background:rgba(77,166,255,.1);border-color:rgba(77,166,255,.3);color:var(--blue)}
+.tab.a-signin{background:rgba(77,166,255,.1);border-color:rgba(77,166,255,.3);color:var(--blue)}.tab.a-verify{background:rgba(150,100,255,.1);border-color:rgba(150,100,255,.3);color:var(--purple)}
 .tc{font-family:var(--m);font-size:.6rem;opacity:.6}
 .cards{display:flex;flex-direction:column;gap:.7rem}
 
@@ -121,24 +121,24 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .card{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:1.2rem 1.4rem;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:1rem;position:relative;overflow:hidden;animation:cin .5s cubic-bezier(.34,1.56,.64,1) both;transition:border-color .2s,transform .2s;cursor:pointer}
 @keyframes cin{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
 .card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
-.card.household::before{background:var(--green)}.card.update::before{background:var(--amber)}.card.signin::before{background:var(--blue)}
+.card.household::before{background:var(--green)}.card.update::before{background:var(--amber)}.card.signin::before{background:var(--blue)}.card.verify::before{background:var(--purple)}
 .card:hover{border-color:var(--border2);transform:translateY(-1px)}
 .card.fresh.household{background:linear-gradient(135deg,rgba(70,211,105,.05),var(--s1) 60%);border-color:rgba(70,211,105,.2)}
 .card.fresh.update{background:linear-gradient(135deg,rgba(245,166,35,.05),var(--s1) 60%);border-color:rgba(245,166,35,.2)}
-.card.fresh.signin{background:linear-gradient(135deg,rgba(77,166,255,.05),var(--s1) 60%);border-color:rgba(77,166,255,.2)}
+.card.fresh.signin{background:linear-gradient(135deg,rgba(77,166,255,.05),var(--s1) 60%);border-color:rgba(77,166,255,.2)}.card.fresh.verify{background:linear-gradient(135deg,rgba(150,100,255,.05),var(--s1) 60%);border-color:rgba(150,100,255,.2)}
 .fbadge{position:absolute;top:10px;right:12px;font-family:var(--m);font-size:.5rem;letter-spacing:2px;padding:3px 8px;border-radius:3px;font-weight:600;text-transform:uppercase}
 .household .fbadge{background:var(--green);color:#000;animation:fg 2s ease infinite}
 .update .fbadge{background:var(--amber);color:#000}
-.signin .fbadge{background:var(--blue);color:#fff}
+.signin .fbadge{background:var(--blue);color:#fff}.verify .fbadge{background:var(--purple);color:#fff}
 @keyframes fg{0%,100%{box-shadow:0 0 6px rgba(70,211,105,.3)}50%{box-shadow:0 0 18px rgba(70,211,105,.7)}}
 .cico{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.household .cico{background:rgba(70,211,105,.1)}.update .cico{background:rgba(245,166,35,.1)}.signin .cico{background:rgba(77,166,255,.1)}
+.household .cico{background:rgba(70,211,105,.1)}.update .cico{background:rgba(245,166,35,.1)}.signin .cico{background:rgba(77,166,255,.1)}.verify .cico{background:rgba(150,100,255,.1)}
 .pdot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--red);border:2px solid var(--s1);animation:dp 1.5s ease infinite}
 @keyframes dp{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
 .tvscan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:sc 2s ease infinite}
 @keyframes sc{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:110%;opacity:0}}
 .ctype{font-family:var(--m);font-size:.56rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.household .ctype{color:var(--green)}.update .ctype{color:var(--amber)}.signin .ctype{color:var(--blue)}
+.household .ctype{color:var(--green)}.update .ctype{color:var(--amber)}.signin .ctype{color:var(--blue)}.verify .ctype{color:var(--purple)}
 .ccode{font-family:var(--h);font-size:3.2rem;letter-spacing:14px;line-height:1;color:var(--text)}
 .clink{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:.82rem;font-weight:500;border:1px solid;border-radius:8px;padding:10px 18px;margin-top:6px;transition:all .2s}
 .clink.g{color:var(--green);border-color:rgba(70,211,105,.25)}.clink.g:hover{background:rgba(70,211,105,.08)}
@@ -303,6 +303,7 @@ function buildPage(data){
   const h=allCodes.filter(c=>c.type==='household').length;
   const u=allCodes.filter(c=>c.type==='update').length;
   const s=allCodes.filter(c=>c.type==='signin').length;
+  const v=allCodes.filter(c=>c.type==='verify').length;
   const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
 
   const av=document.getElementById('nav-avatar');if(av)av.textContent=pLetter;
@@ -416,6 +417,7 @@ function buildPage(data){
         <button class="tab" id="tab-household" onclick="switchTab('household')">Household <span class="tc">${h}</span></button>
         <button class="tab" id="tab-update" onclick="switchTab('update')">TV Update <span class="tc">${u}</span></button>
         ${s>0?`<button class="tab" id="tab-signin" onclick="switchTab('signin')">Sign-in <span class="tc">${s}</span></button>`:''}
+        ${v>0?`<button class="tab" id="tab-verify" onclick="switchTab('verify')">Verify <span class="tc">${v}</span></button>`:''}
       </div>
       <div class="cards" id="cards"></div>
     </div>
@@ -434,6 +436,7 @@ function updateCodes(data){
   const h=allCodes.filter(c=>c.type==='household').length;
   const u=allCodes.filter(c=>c.type==='update').length;
   const s=allCodes.filter(c=>c.type==='signin').length;
+  const v=allCodes.filter(c=>c.type==='verify').length;
   const se=(id,v)=>{const e=document.getElementById(id);if(e)e.innerHTML=v;};
   se('cbadge',allCodes.length);
   se('tab-all',`All <span class="tc">${allCodes.length}</span>`);
@@ -493,7 +496,9 @@ function cardHtml(item,i){
   const tvIco=`<div class="cico" style="position:relative"><svg width="28" height="22" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18"/><line x1="12" y1="15" x2="12" y2="18"/></svg><div style="position:absolute;inset:4px 5px 6px;background:rgba(245,166,35,.1);overflow:hidden;border-radius:2px"><div class="tvscan"></div></div></div>`;
   const lIco=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>`;
   if(item.type==='update')return`<div class="card update${fc}" style="${delay}">${fb}${tvIco}<div style="min-width:0"><div class="ctype">TV Household Update</div><a class="clink a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
-  if(item.type==='signin')return`<div class="card signin${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Sign-in Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
+  const vIco=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9664ff" stroke-width="2.5" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>`;
+  if(item.type==='verify')return`<div class="card verify${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${vIco}<div style="min-width:0"><div class="ctype">Verification Code</div><div class="ccode" style="font-size:2.6rem;letter-spacing:10px">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
+  if(item.type==='signin')return`<div class="card signin${fc}"` style="${delay}" data-code="${esc(item.code)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Sign-in Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
   if(item.code)return`<div class="card household${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
   return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><a class="clink g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
 }
