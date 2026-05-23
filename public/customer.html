@@ -256,7 +256,12 @@ async function fetchCodes(token,isRefresh=false){
     ep();
     const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
     if(!data.success){
-      if(data.error==='expired')showExpired();
+      if(data.error==='expired') showExpired();
+      else if(data.error==='timeout') {
+        // Timeout - show retry message, don't show full error page
+        if(!isRefresh) showRetry();
+        return;
+      }
       else showError(data.error,data.message);
       return;
     }
@@ -503,6 +508,9 @@ function cardHtml(item,i){
   return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><a class="clink g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
 }
 
+function showRetry(){
+  document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox" style="border-color:rgba(245,166,35,.2)"><div class="etitle" style="color:var(--amber);font-size:1.4rem">Loading Slow</div><div class="emsg">Gmail is taking too long to respond.<br>Please wait a moment and try again.</div><button onclick="location.reload()" style="background:var(--amber);color:#000;border:none;padding:13px 26px;border-radius:10px;font-weight:700;font-size:.9rem;cursor:pointer;width:100%">Retry</button></div></div>`;
+}
 function showExpired(){document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox"><div class="etitle">Subscription Expired</div><div class="emsg">Your FanFlix subscription has expired.<br>Contact us to renew and keep watching.</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;}
 function showError(type,msg){document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox"><div class="etitle">${type==='revoked'?'Access Revoked':'Error'}</div><div class="emsg">${msg||'Could not connect.'}</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;}
 
