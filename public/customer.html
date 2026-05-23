@@ -292,9 +292,18 @@ async function fetchCodes(token,isRefresh=false,bgLoad=false){
     allCodes=data.codes;
     window._ld={...window._ld,...data};
     if(bgLoad){
-      // Background load - just update codes, page already built
+      // Background load - update codes section
       allCodes=data.codes;
-      updateCodes(data);
+      // Rebuild just the codes section
+      const h=allCodes.filter(c=>c.type==='household').length;
+      const u=allCodes.filter(c=>c.type==='update').length;
+      const s=allCodes.filter(c=>c.type==='signin').length;
+      const v=allCodes.filter(c=>c.type==='verify').length;
+      const cb=document.getElementById('cbadge');if(cb)cb.textContent=allCodes.length;
+      const ta=document.getElementById('tab-all');if(ta)ta.innerHTML=`All <span class="tc">${allCodes.length}</span>`;
+      const th=document.getElementById('tab-household');if(th)th.innerHTML=`Household <span class="tc">${h}</span>`;
+      const tu=document.getElementById('tab-update');if(tu)tu.innerHTML=`TV Update <span class="tc">${u}</span>`;
+      renderCards();
       addAct('green','Ready','System is active');
       if(data.codes.length>0) addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');
     } else if(!isRefresh){buildPage(data);addAct('green','Ready','System is active');}
