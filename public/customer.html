@@ -233,12 +233,28 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 let allCodes=[],curTab='all',pinShown=false,actLog=[],refTimer=null,cdTimer=null;
 const BLOCKED=['2023','2024','2025','2026','2027','2028','0000'];
 
-window.onload=()=>{
+window.onload=async()=>{
   const token=window.location.pathname.match(/\/c\/([a-zA-Z0-9]+)/)?.[1];
   if(!token){showError('invalid','Invalid link.');return;}
   window._tok=token;
   sp();
-  fetchCodes(token);
+  // Step 1: Load page instantly with link info (no IMAP)
+  try{
+    const r=await fetch(`/api/link/${token}/info`);
+    const d=await r.json();
+    ep();
+    if(!d.success){
+      if(d.error==='expired')showExpired();
+      else showError(d.error,d.message);
+      return;
+    }
+    window._ld=d;
+    // Build page immediately with empty codes
+    buildPage({...d,codes:[]});
+    addAct('grey','Loading codes...','Scanning inbox');
+    // Step 2: Load codes in background
+    fetchCodes(token,false,true);
+  }catch(e){ep();showError('error','Could not connect.');}
 };
 
 function sp(){document.getElementById('prog').classList.add('on')}
@@ -248,7 +264,7 @@ function ep(){
   setTimeout(()=>{b.style.width='0';},400);
 }
 
-async function fetchCodes(token,isRefresh=false){
+async function fetchCodes(token,isRefresh=false,bgLoad=false){
   if(isRefresh){sp();const r=document.getElementById('rbtn-ico');if(r)r.classList.add('spinning');}
   try{
     const res=await fetch(`/api/link/${token}`);
@@ -274,8 +290,14 @@ async function fetchCodes(token,isRefresh=false){
     const seen=new Set();
     data.codes=data.codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
     allCodes=data.codes;
-    window._ld=data;
-    if(!isRefresh){buildPage(data);addAct('green','Ready','System is active');}
+    window._ld={...window._ld,...data};
+    if(bgLoad){
+      // Background load - just update codes, page already built
+      allCodes=data.codes;
+      updateCodes(data);
+      addAct('green','Ready','System is active');
+      if(data.codes.length>0) addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');
+    } else if(!isRefresh){buildPage(data);addAct('green','Ready','System is active');}
     else{
       updateCodes(data);
       if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
