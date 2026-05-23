@@ -279,21 +279,30 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
 
   // 6-DIGIT VERIFICATION CODE (new Netflix flow - "Verify with this code")
   if (includeSignin && (sl.includes('verification code') || sl.includes('verify with') || sl.includes('verify this'))) {
-    // Extract 6-digit code — Netflix shows it spaced like "9 1 6 3 8 9"
-    const TEMPLATE_NUMS6 = [...BLOCKED_CODES, '8199'];
-    // Try spaced format first: "9 1 6 3 8 9"
-    const spacedMatch = bodyPlain.match(/(?<![0-9])(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)(?![0-9])/);
+    // Extract 6-digit code — Netflix shows it spaced like "5 0 9 6 1 9"
+    // Strategy: spaced format is most reliable, then look for code appearing only once
+
+    // Pattern 1: Spaced digits "5 0 9 6 1 9" in plain text
+    const spacedMatch = bodyPlain.match(/(?<![0-9\d])(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)(?![0-9\d])/);
     if (spacedMatch) {
       const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4]+spacedMatch[5]+spacedMatch[6];
-      if (!TEMPLATE_NUMS6.includes(code)) return { type:'verify', label:'Verification Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+      if (!BLOCKED_CODES.includes(code)) return { type:'verify', label:'Verification Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
-    // Try plain 6-digit number
+
+    // Pattern 2: Look for 6-digit number after "code:" or "Verify with this code" in plain text
+    const afterCode = bodyPlain.match(/(?:verify with this code|this code)[^0-9]{0,30}([0-9]{6})(?![0-9])/i);
+    if (afterCode && !BLOCKED_CODES.includes(afterCode[1])) {
+      return { type:'verify', label:'Verification Code', code:afterCode[1], to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    }
+
+    // Pattern 3: 6-digit number that appears only 1-2 times (not a template number)
     const allNums6 = [...bodyHtml.matchAll(/(?<![0-9])(\d{6})(?![0-9])/g)].map(m => m[1]);
-    const filtered6 = allNums6.filter(n => !TEMPLATE_NUMS6.includes(n));
+    const filtered6 = allNums6.filter(n => !BLOCKED_CODES.includes(n));
     if (filtered6.length > 0) {
       const unique6 = [...new Set(filtered6)];
-      const single6 = unique6.filter(n => allNums6.filter(x => x === n).length <= 5);
-      const verifyCode = single6[single6.length - 1] || unique6[unique6.length - 1];
+      // Pick number that appears only once — that's the real code
+      const onlyOnce = unique6.filter(n => allNums6.filter(x => x === n).length === 1);
+      const verifyCode = onlyOnce[onlyOnce.length - 1] || unique6[unique6.length - 1];
       if (verifyCode) return { type:'verify', label:'Verification Code', code:verifyCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
   }
