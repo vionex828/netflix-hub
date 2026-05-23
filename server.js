@@ -613,6 +613,19 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
 });
 
 // ── CUSTOMER LINK ─────────────────────────────────────────────
+// Fast endpoint - returns link info instantly without IMAP
+app.get('/api/link/:token/info', (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
+  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+  const now = Date.now();
+  const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
+  const totalDays = link.days || 28;
+  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0 });
+  res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
+});
+
 app.get('/api/link/:token', async (req, res) => {
   // Overall timeout - respond within 15 seconds
   const timeout = setTimeout(() => {
