@@ -613,6 +613,7 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
 });
 
 // ── CUSTOMER LINK ─────────────────────────────────────────────
+
 // Fast endpoint - returns link info instantly without IMAP
 app.get('/api/link/:token/info', (req, res) => {
   const links = loadLinks();
