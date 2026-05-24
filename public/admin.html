@@ -484,10 +484,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
                   <option value="85">3 Months (85d)</option>
                 </select>
               </div>
-              <div style="display:flex;flex-direction:column;justify-content:flex-end">
+              <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
                 <button class="create-btn" onclick="doCreate()">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                   Create
+                </button>
+                <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="6" x2="19" y2="6"/></svg>
+                  Bulk (8 Links)
                 </button>
               </div>
             </div>
@@ -750,11 +754,110 @@ function updateChart(links) {
   if(path) path.setAttribute('d',`M${pts} L300,70 L0,70 Z`);
 }
 
-function filterLinks() {
-  const q = document.getElementById('search-inp').value.toLowerCase().replace('/c/','');
+function filterByEmail(email) {
+  document.getElementById('search-inp').value = email;
+  filterLinks();
+  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
+}
+
+async function bulkCreate() {
+  const email = document.getElementById('c-email').value.trim();
+  const days = document.getElementById('c-days').value;
+  if(!email||!email.includes('@')) return showToast('Enter Netflix email first!',true);
+
+  // Check for duplicates
+  const now = Date.now();
+  const existing = Object.values(allLinks).filter(l=>l.email===email&&l.active&&l.expiresAt>now);
+  if(existing.length > 0) {
+    if(!confirm(`⚠️ ${existing.length} active link(s) already exist for this email. Create remaining slots?`)) return;
+  }
+
+  const profiles = [
+    {profile:'Profile A',pin:'5651'},{profile:'Profile A',pin:'5651'},
+    {profile:'Profile B',pin:'5652'},{profile:'Profile B',pin:'5652'},
+    {profile:'Profile C',pin:'5653'},{profile:'Profile C',pin:'5653'},
+    {profile:'Profile D',pin:'5654'},
+    {profile:'Profile E',pin:'5655'},
+  ];
+
+  let created = 0, skipped = 0;
+  const links = [];
+  for(const p of profiles) {
+    // Check duplicate
+    const dup = Object.values(allLinks).find(l=>l.email===email&&l.profile===p.profile&&l.active&&l.expiresAt>now&&links.filter(x=>x.profile===p.profile).length < (p.profile==='Profile A'||p.profile==='Profile B'||p.profile==='Profile C'?2:1));
+    const r = await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile:p.profile,pin:p.pin,days})});
+    const d = await r.json();
+    if(d.success){
+      links.push({...p,token:d.token,link:\`\${SITE}/c/\${d.token}\`});
+      if(d.existing) skipped++; else created++;
+    }
+  }
+
+  await loadAll();
+  showToast(\`✅ \${created} created, \${skipped} existing\`);
+
+  // Copy all links as formatted message
+  const msg = links.map(l=>\`\${l.profile} | PIN: \${l.pin}
+\${l.link}\`).join('
+
+');
+  navigator.clipboard.writeText(\`FanFlix BD - \${email}
+\${days===28?'1 Month':'3 Months'}
+
+\${msg}\`);
+  showToast('All links copied to clipboard!');
+}
+
+async function replaceAllLinks() {
+  const oldEmail = prompt('Enter current Netflix email to replace:');
+  if(!oldEmail||!oldEmail.includes('@')) return;
+  const newEmail = prompt(\`Replace ALL links from:
+\${oldEmail}
+
+Enter NEW Netflix email:\`);
+  if(!newEmail||!newEmail.includes('@')) return;
+  const r = await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({oldEmail,newEmail})});
+  const d = await r.json();
+  if(d.success){showToast(\`✅ \${d.count} links updated!\`);loadAll();}
+  else showToast('Error: '+(d.error||'Unknown'),true);
+}
+
+function showNeverUsed() {
   const filtered = {};
   for(const[k,v] of Object.entries(allLinks)){
-    if(v.email.includes(q)||(v.profile||'').toLowerCase().includes(q)||k.includes(q)) filtered[k]=v;
+    if(v.uses === 0 && v.active && v.expiresAt > Date.now()) filtered[k]=v;
+  }
+  renderLinks(filtered);
+  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
+  showToast(\`\${Object.keys(filtered).length} never-used links\`);
+}
+
+function showRevoked() {
+  const filtered = {};
+  for(const[k,v] of Object.entries(allLinks)){
+    if(!v.active) filtered[k]=v;
+  }
+  renderLinks(filtered);
+  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
+  showToast(\`\${Object.keys(filtered).length} revoked links\`);
+}
+
+function filterLinks() {
+  const q = document.getElementById('search-inp').value.toLowerCase().replace('/c/','').trim();
+  if(!q){renderLinks(allLinks);return;}
+  const now = Date.now();
+  const filtered = {};
+  for(const[k,v] of Object.entries(allLinks)){
+    const daysLeft = Math.max(0,Math.ceil((v.expiresAt-now)/(24*60*60*1000)));
+    const status = !v.active?'revoked':v.expiresAt<=now?'expired':'active';
+    if(
+      v.email.toLowerCase().includes(q) ||
+      (v.profile||'').toLowerCase().includes(q) ||
+      k.includes(q) ||
+      (v.pin||'').includes(q) ||
+      status.includes(q) ||
+      String(daysLeft).includes(q)
+    ) filtered[k]=v;
   }
   renderLinks(filtered);
 }
@@ -792,7 +895,7 @@ function renderLinks(links) {
     const expiring = !expired&&(l.expiresAt-now)<=threeDays;
     const status = !l.active?'revoked':expired?'expired':expiring?'expiring':'active';
     const daysLeft = Math.max(0,Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
-    const daysCls = daysLeft<=3?'days-exp':daysLeft<=7?'days-warn':'days-ok';
+    const daysCls = daysLeft<=3?'days-exp':daysLeft<=14?'days-warn':'days-ok';
     const lastUsed = l.lastUsed?timeAgo(l.lastUsed):'Never';
     const fullLink = `${SITE}/c/${l.token}`;
     const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
@@ -853,6 +956,16 @@ async function doCreate() {
   const pin=document.getElementById('c-pin').value.trim();
   const days=document.getElementById('c-days').value;
   if(!email||!profile||!pin)return showToast('Fill all fields!',true);
+  // Duplicate detector
+  const now=Date.now();
+  const dup=Object.values(allLinks).find(l=>l.email===email&&l.profile===profile&&l.active&&l.expiresAt>now);
+  if(dup){
+    if(!confirm(\`⚠️ Duplicate detected!
+
+\${email} - \${profile} already has an active link (/c/\${dup.token}).
+
+Create another anyway?\`)) return;
+  }
   const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days})});
   const d=await r.json();
   if(d.success){
