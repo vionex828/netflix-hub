@@ -332,6 +332,20 @@ tr:hover td{background:rgba(255,255,255,.015)}
         Analytics
       </div>
 
+      <div class="sb-section">Quick Filters</div>
+      <div class="sb-item" onclick="showNeverUsed()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Never Used
+      </div>
+      <div class="sb-item" onclick="showRevoked()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        Revoked Links
+      </div>
+      <div class="sb-item" onclick="replaceAllLinks()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Replace Account
+      </div>
+
       <div class="sb-section">System</div>
       <div class="sb-item">
         <svg class="gear-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M20 12h2M2 12h2M12 20v2M12 2v2"/></svg>
@@ -425,6 +439,34 @@ tr:hover td{background:rgba(255,255,255,.015)}
             </div>
           </div>
           <div class="stat-link">View usage analytics <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        </div>
+      </div>
+
+      <!-- REVENUE CARD -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-revenue" style="color:var(--green)">-</div>
+              <div class="stat-lbl">Est. Monthly Revenue</div>
+            </div>
+            <div class="stat-icon green">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+          </div>
+          <div class="stat-link" id="s-revenue-detail" style="color:var(--muted2);font-size:.68rem"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div>
+              <div class="stat-num" id="s-never-used" style="color:var(--amber)">-</div>
+              <div class="stat-lbl">Never Used Links</div>
+            </div>
+            <div class="stat-icon amber">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+          </div>
+          <div class="stat-link" onclick="showNeverUsed()" style="cursor:pointer">View never used links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
         </div>
       </div>
 
@@ -547,9 +589,18 @@ tr:hover td{background:rgba(255,255,255,.015)}
             Customer Links
             <span class="card-badge ok" id="active-badge">-</span>
           </div>
-          <div class="search-wrap" style="margin-left:auto">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input id="search-inp" placeholder="Search email, profile or /c/token..." oninput="filterLinks()"/>
+          <div style="display:flex;align-items:center;gap:.6rem;margin-left:auto">
+            <select id="sort-select" onchange="sortLinks()" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.68rem;padding:6px 10px;border-radius:7px;cursor:pointer">
+              <option value="created">Sort: Newest</option>
+              <option value="days-asc">Sort: Days ↑</option>
+              <option value="days-desc">Sort: Days ↓</option>
+              <option value="uses-desc">Sort: Most Used</option>
+              <option value="last-used">Sort: Last Used</option>
+            </select>
+            <div class="search-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input id="search-inp" placeholder="Search email, profile or /c/token..." oninput="filterLinks()"/>
+            </div>
           </div>
         </div>
         <div class="table-wrap">
@@ -716,6 +767,18 @@ function updateStats(links) {
   safe('s-expired', arr.filter(l=>l.expiresAt<=now).length);
   safe('s-uses', arr.reduce((s,l)=>s+l.uses,0));
 
+  // Revenue estimate
+  const active1m = arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)<=28).length;
+  const active3m = arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)>28).length;
+  const revenue = (active1m * 400) + (active3m * 1200);
+  const rev = document.getElementById('s-revenue');
+  const revDetail = document.getElementById('s-revenue-detail');
+  if(rev) rev.textContent = '৳' + revenue.toLocaleString();
+  if(revDetail) revDetail.textContent = active1m + ' × ৳400 + ' + active3m + ' × ৳1200';
+  const neverUsed = arr.filter(l=>l.uses===0&&l.active&&l.expiresAt>now).length;
+  const nu = document.getElementById('s-never-used');
+  if(nu) nu.textContent = neverUsed;
+
   const active = arr.filter(l=>l.active&&l.expiresAt>now).length;
   const ab = document.getElementById('active-badge');
   if(ab){ab.textContent=`${active} Active`;ab.className='card-badge ok';}
@@ -753,6 +816,31 @@ function updateChart(links) {
   const pts = days.map((v,i)=>`${(i/6)*300},${70-(v/max)*60}`).join(' L');
   const path = document.getElementById('chart-path');
   if(path) path.setAttribute('d',`M${pts} L300,70 L0,70 Z`);
+}
+
+function sortLinks() {
+  const val = document.getElementById('sort-select').value;
+  const now = Date.now();
+  const arr = Object.values(allLinks);
+  let sorted;
+  if(val==='created') sorted = arr.sort((a,b)=>b.createdAt-a.createdAt);
+  else if(val==='days-asc') sorted = arr.sort((a,b)=>(a.expiresAt-now)-(b.expiresAt-now));
+  else if(val==='days-desc') sorted = arr.sort((a,b)=>(b.expiresAt-now)-(a.expiresAt-now));
+  else if(val==='uses-desc') sorted = arr.sort((a,b)=>b.uses-a.uses);
+  else if(val==='last-used') sorted = arr.sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  const obj = {};
+  sorted.forEach(l=>obj[l.token]=l);
+  renderLinks(obj);
+}
+
+async function copyAllLinks(email) {
+  const now = Date.now();
+  const links = Object.values(allLinks).filter(l=>l.email===email&&l.active&&l.expiresAt>now).sort((a,b)=>a.profile.localeCompare(b.profile));
+  if(!links.length) return showToast('No active links for this email',true);
+  const daysLeft = Math.ceil((links[0].expiresAt-now)/(24*60*60*1000));
+  const msg = 'FanFlix BD\n\nNetflix: '+email+'\n\n'+links.map(l=>l.profile+' | PIN: '+l.pin+'\n'+SITE+'/c/'+l.token).join('\n\n')+'\n\nValid: '+daysLeft+' days remaining';
+  await navigator.clipboard.writeText(msg);
+  showToast('All '+links.length+' links copied!');
 }
 
 function filterByEmail(email) {
@@ -895,7 +983,8 @@ function renderLinks(links) {
     const pColor = PROFILE_COLORS[pLetter] || '#888';
     const customerMsg = buildMsg(l.email,l.profile||'',l.pin||'',fullLink,daysLeft);
 
-    return `<tr>
+    const rowCls = daysLeft<=3&&!expired&&l.active ? 'row-danger' : '';
+    return `<tr class="${rowCls}">
       <td class="email-cell" title="${esc(l.email)}">${esc(l.email)}</td>
       <td>
         <div class="profile-cell">
