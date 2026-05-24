@@ -632,7 +632,7 @@ app.get('/api/link/:token/info', (req, res) => {
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
-  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0 });
+  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
 });
 
@@ -650,7 +650,7 @@ app.get('/api/link/:token', async (req, res) => {
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
-  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0 });
+  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   link.uses += 1; link.lastUsed = now; saveLinks(links);
   trackAnalytics(req.params.token);
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
