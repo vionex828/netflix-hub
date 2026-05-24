@@ -788,37 +788,28 @@ async function bulkCreate() {
     const r = await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile:p.profile,pin:p.pin,days})});
     const d = await r.json();
     if(d.success){
-      links.push({...p,token:d.token,link:\`\${SITE}/c/\${d.token}\`});
+      links.push({...p,token:d.token,link:`${SITE}/c/${d.token}`});
       if(d.existing) skipped++; else created++;
     }
   }
 
   await loadAll();
-  showToast(\`✅ \${created} created, \${skipped} existing\`);
+  showToast(`✅ ${created} created, ${skipped} existing`);
 
   // Copy all links as formatted message
-  const msg = links.map(l=>\`\${l.profile} | PIN: \${l.pin}
-\${l.link}\`).join('
-
-');
-  navigator.clipboard.writeText(\`FanFlix BD - \${email}
-\${days===28?'1 Month':'3 Months'}
-
-\${msg}\`);
-  showToast('All links copied to clipboard!');
+  const msg = links.map(l=>`${l.profile} | PIN: ${l.pin}\n${l.link}`).join('\n\n');
+  // clipboard handled above
+  showToast('All links copied!');
 }
 
 async function replaceAllLinks() {
   const oldEmail = prompt('Enter current Netflix email to replace:');
   if(!oldEmail||!oldEmail.includes('@')) return;
-  const newEmail = prompt(\`Replace ALL links from:
-\${oldEmail}
-
-Enter NEW Netflix email:\`);
+  const newEmail = prompt('Replace ALL links from: '+oldEmail+'\n\nEnter NEW Netflix email:');
   if(!newEmail||!newEmail.includes('@')) return;
   const r = await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({oldEmail,newEmail})});
   const d = await r.json();
-  if(d.success){showToast(\`✅ \${d.count} links updated!\`);loadAll();}
+  if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}
   else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
@@ -829,7 +820,7 @@ function showNeverUsed() {
   }
   renderLinks(filtered);
   document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-  showToast(\`\${Object.keys(filtered).length} never-used links\`);
+  showToast(`${Object.keys(filtered).length} never-used links`);
 }
 
 function showRevoked() {
@@ -839,7 +830,7 @@ function showRevoked() {
   }
   renderLinks(filtered);
   document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-  showToast(\`\${Object.keys(filtered).length} revoked links\`);
+  showToast(`${Object.keys(filtered).length} revoked links`);
 }
 
 function filterLinks() {
@@ -960,11 +951,7 @@ async function doCreate() {
   const now=Date.now();
   const dup=Object.values(allLinks).find(l=>l.email===email&&l.profile===profile&&l.active&&l.expiresAt>now);
   if(dup){
-    if(!confirm(\`⚠️ Duplicate detected!
-
-\${email} - \${profile} already has an active link (/c/\${dup.token}).
-
-Create another anyway?\`)) return;
+    if(!confirm('Duplicate! '+email+' - '+profile+' already has active link /c/'+dup.token+'. Create anyway?')) return;
   }
   const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days})});
   const d=await r.json();
