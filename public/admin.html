@@ -636,7 +636,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 const SITE = window.location.origin;
 const PROFILE_COLORS = {A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
 let adminToken = sessionStorage.getItem('fanflix_admin');
-let allLinks = {}, activityLog = [], curFilter = '', currentPage = 0, currentFiltered = {}, selectedLinks = new Set();
+let allLinks = {}, activityLog = [], curFilter = '', currentPage = 0, currentFiltered = {}, selectedLinks = new Set(), geoFlags = {};
 const PAGE_SIZE = 50;
 
 window.onload = () => {
@@ -669,7 +669,7 @@ function showDashboard() {
   setInterval(loadAll, 60000);
 }
 
-async function loadAll() { await Promise.all([loadLinks(), loadStats(), loadSlots()]); }
+async function loadAll() { await Promise.all([loadLinks(), loadStats(), loadSlots(), loadGeoFlags()]); }
 
 async function loadStats() {
   try {
@@ -680,6 +680,14 @@ async function loadStats() {
     if(el) el.textContent = d.live;
     if(et) et.textContent = d.today;
   } catch(e){}
+}
+
+async function loadGeoFlags() {
+  try {
+    const r = await fetch('/api/admin/geo', {headers:{'x-admin-token':adminToken}});
+    const d = await r.json();
+    geoFlags = d.geo || {};
+  } catch(e) {}
 }
 
 async function loadSlots() {
@@ -1013,6 +1021,8 @@ function renderLinks(links, page) {
     const pLetter = (l.profile||'?').replace('Profile ','').trim().charAt(0);
     const pColor = PROFILE_COLORS[pLetter] || '#888';
     const ipCount = l.ipCount || 0;
+    const hasOutsideBD = geoFlags[l.token] && geoFlags[l.token].length > 0;
+    const outsideBDInfo = hasOutsideBD ? geoFlags[l.token].map(g=>g.country).join(', ') : '';
     const isSelected = selectedLinks.has(l.token);
     const rowCls = (daysLeft<=3&&!expired&&l.active?'row-danger':'') + (isSelected?' row-selected':'');
     const expiryBadge = expiresInHours ? '<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;letter-spacing:1px;margin-left:4px">TODAY</span>' : '';
@@ -1030,6 +1040,7 @@ function renderLinks(links, page) {
       <td>
         <div class="link-cell">
           <span class="link-text">/c/${l.token}</span>
+          ${hasOutsideBD ? `<span title="Outside BD: ${esc(outsideBDInfo)}" style="cursor:help">🚩</span>` : ''}
           <button class="icon-btn" onclick="copyText('${esc(fullLink)}',this)" title="Copy link">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
