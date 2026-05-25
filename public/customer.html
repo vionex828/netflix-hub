@@ -238,7 +238,7 @@ function ep(){
 async function fetchCodes(token,isRefresh=false){
   if(isRefresh){sp();const r=document.getElementById('rbtn-ico');if(r)r.classList.add('spinning');}
   try{
-    const res=await fetch(`/api/link/${token}`);
+    const res=await fetch(`/api/link/${token}?t=${Date.now()}`);
     const data=await res.json();
     ep();
     const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
@@ -566,12 +566,21 @@ async function openRenewModal() {
   const modal = document.getElementById('renew-modal');
   if(!modal) return;
   // Load plans
+  // Hardcoded fallback plans
+  const HARDCODED_PLANS = [
+    { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28 },
+    { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:28 },
+    { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85 },
+    { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28 },
+    { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28 },
+    { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:85 },
+  ];
   try {
     const r = await fetch('/api/renew/plans');
     const d = await r.json();
-    renewPlans = d.plans || [];
+    renewPlans = d.plans && d.plans.length ? d.plans : HARDCODED_PLANS;
   } catch(e) {
-    renewPlans = [];
+    renewPlans = HARDCODED_PLANS;
   }
   renderPlans();
   modal.classList.add('show');
