@@ -363,11 +363,9 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
 }
 
 // ── EPS HELPERS ──────────────────────────────────────────────
-const crypto2 = require('crypto');
-
 function epsHash(data) {
   const key = Buffer.from(EPS_HASH_KEY, 'utf8');
-  return crypto2.createHmac('sha512', key).update(data).digest('base64');
+  return crypto.createHmac('sha512', key).update(data).digest('base64');
 }
 
 async function epsGetToken() {
