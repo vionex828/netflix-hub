@@ -718,6 +718,13 @@ app.get('/api/stats', (req, res) => {
   res.json({ live:getLiveVisitors(), today:totalToday });
 });
 
+// Geo flags endpoint for admin
+app.get('/api/admin/geo', (req, res) => {
+  if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
+  const geoData = loadGeo();
+  res.json({ success: true, geo: geoData });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
 });
