@@ -278,6 +278,14 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   const sl = subject.toLowerCase();
 
   // 6-DIGIT VERIFICATION CODE (new Netflix flow - "Verify with this code")
+  // BLOCK account change codes - dangerous, customer could hijack account
+  if (sl.includes('verification code') || sl.includes('your verification code')) {
+    const isAccountChange = bodyPlain.toLowerCase().includes('account change') ||
+                            bodyPlain.toLowerCase().includes('account info') ||
+                            bodyPlain.toLowerCase().includes('change to your account');
+    if (isAccountChange) return null; // Block completely
+  }
+
   if (includeSignin && (sl.includes('verification code') || sl.includes('verify with') || sl.includes('verify this'))) {
     // Extract 6-digit code — Netflix shows it spaced like "5 0 9 6 1 9"
     // Strategy: spaced format is most reliable, then look for code appearing only once
