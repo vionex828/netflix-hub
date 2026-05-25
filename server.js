@@ -40,13 +40,8 @@ const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHO
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
 const WA_NUMBER = '8801928382918';
 
-// EPS Config
-const EPS_MERCHANT_ID = process.env.EPS_MERCHANT_ID || '25787e85-78f5-48a8-b8ce-708673492b65';
-const EPS_STORE_ID    = process.env.EPS_STORE_ID    || '05983f40-ff21-43e1-acda-a12ac7c271c1';
-const EPS_USERNAME    = process.env.EPS_USERNAME    || 'mehedishimanto995@gmail.com';
-const EPS_PASSWORD    = process.env.EPS_PASSWORD    || 'FaN@45FLIX';
-const EPS_HASH_KEY    = process.env.EPS_HASH_KEY    || 'FMUNISHOY2lWZXDH4600FanFlix';
-const EPS_API         = 'https://pgapi.eps.com.bd';
+// EPS Bot Bridge URL
+const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
   { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28, product:'Netflix Subscription' },
