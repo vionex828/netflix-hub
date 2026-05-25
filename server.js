@@ -39,6 +39,23 @@ const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
 const WA_NUMBER = '8801928382918';
+
+// EPS Config
+const EPS_MERCHANT_ID = process.env.EPS_MERCHANT_ID || '25787e85-78f5-48a8-b8ce-708673492b65';
+const EPS_STORE_ID    = process.env.EPS_STORE_ID    || '05983f40-ff21-43e1-acda-a12ac7c271c1';
+const EPS_USERNAME    = process.env.EPS_USERNAME    || 'mehedishimanto995@gmail.com';
+const EPS_PASSWORD    = process.env.EPS_PASSWORD    || 'FaN@45FLIX';
+const EPS_HASH_KEY    = process.env.EPS_HASH_KEY    || 'FMUNISHOY2lWZXDH4600FanFlix';
+const EPS_API         = 'https://pgapi.eps.com.bd';
+
+const PLANS = [
+  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28, product:'Netflix Subscription' },
+  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:28, product:'Netflix TV Subscription' },
+  { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85, product:'Netflix TV Subscription 3M' },
+  { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28, product:'Netflix+Prime Mobile 1M' },
+  { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28, product:'Netflix+Prime TV 1M' },
+  { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:85, product:'Netflix+Prime TV 3M' },
+];
 const MAX_SLOTS = 8;
 const BLOCKED_CODES = ['2023','2024','2025','2026','2027','2028','0000'];
 
@@ -340,6 +357,76 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     return { ...result, to:toEmail, ts, expiresAt:ts+15*60*1000 };
   }
   return { ...result, to:toEmail, ts };
+}
+
+// ── EPS HELPERS ──────────────────────────────────────────────
+const crypto2 = require('crypto');
+
+function epsHash(data) {
+  const key = Buffer.from(EPS_HASH_KEY, 'utf8');
+  return crypto2.createHmac('sha512', key).update(data).digest('base64');
+}
+
+async function epsGetToken() {
+  const xhash = epsHash(EPS_USERNAME);
+  const res = await fetch(EPS_API + '/v1/Auth/GetToken', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-hash': xhash },
+    body: JSON.stringify({ userName: EPS_USERNAME, password: EPS_PASSWORD })
+  });
+  const d = await res.json();
+  if (!d.token) throw new Error('EPS auth failed: ' + (d.errorMessage || 'Unknown'));
+  return d.token;
+}
+
+async function epsInitPayment({ token, amount, productName, customerName, customerPhone, customerEmail, txnId, orderId, successUrl, failUrl, cancelUrl }) {
+  const bearerToken = await epsGetToken();
+  const xhash = epsHash(txnId);
+  const body = {
+    merchantId: EPS_MERCHANT_ID,
+    storeId: EPS_STORE_ID,
+    CustomerOrderId: orderId,
+    merchantTransactionId: txnId,
+    transactionTypeId: 1,
+    financialEntityId: 0,
+    transitionStatusId: 0,
+    totalAmount: amount,
+    ipAddress: '127.0.0.1',
+    version: '1',
+    successUrl, failUrl, cancelUrl,
+    customerName: customerName || 'Customer',
+    customerEmail: customerEmail || 'customer@fanflixbd.com',
+    CustomerAddress: 'Dhaka, Bangladesh',
+    CustomerAddress2: '',
+    CustomerCity: 'Dhaka',
+    CustomerState: 'Dhaka',
+    CustomerPostcode: '1000',
+    CustomerCountry: 'BD',
+    CustomerPhone: customerPhone || '01700000000',
+    ShippingMethod: 'NO',
+    NoOfItem: '1',
+    ProductName: productName,
+    ProductProfile: 'digital-goods',
+    ProductCategory: 'Subscription',
+    ValueA: token, // store fanflix token for callback
+  };
+  const res = await fetch(EPS_API + '/v1/EPSEngine/InitializeEPS', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-hash': xhash, 'Authorization': 'Bearer ' + bearerToken },
+    body: JSON.stringify(body)
+  });
+  const d = await res.json();
+  if (!d.RedirectURL) throw new Error('EPS init failed: ' + (d.ErrorMessage || 'Unknown'));
+  return d;
+}
+
+async function epsVerifyPayment(txnId) {
+  const bearerToken = await epsGetToken();
+  const xhash = epsHash(txnId);
+  const res = await fetch(EPS_API + '/v1/EPSEngine/CheckMerchantTransactionStatus?merchantTransactionId=' + txnId, {
+    headers: { 'x-hash': xhash, 'Authorization': 'Bearer ' + bearerToken }
+  });
+  return await res.json();
 }
 
 // ── ADMIN AUTH ────────────────────────────────────────────────
