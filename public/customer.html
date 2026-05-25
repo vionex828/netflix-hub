@@ -153,6 +153,26 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .covl.show .cbox{transform:scale(1)}
 .ccheck{width:52px;height:52px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
 .clbl{font-family:var(--h);font-size:1.1rem;letter-spacing:3px;color:var(--text);text-transform:uppercase}
+/* RENEWAL MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .3s;pointer-events:none}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:20px 20px 0 0;padding:1.5rem 1.4rem 2.5rem;width:100%;max-width:500px;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.1,.64,1)}
+.modal-overlay.show .modal-box{transform:none}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem}
+.modal-title{font-family:var(--h);font-size:1.2rem;letter-spacing:2px;text-transform:uppercase}
+.modal-close{background:var(--s3);border:1px solid var(--border);color:var(--muted);width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1.1rem}
+.plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.2rem}
+.plan-card{background:var(--s2);border:2px solid var(--border);border-radius:12px;padding:.9rem 1rem;cursor:pointer;transition:all .2s;text-align:left}
+.plan-card:hover{border-color:var(--red);background:rgba(229,9,20,.05)}
+.plan-card.selected{border-color:var(--red);background:rgba(229,9,20,.08)}
+.plan-card-name{font-size:.78rem;font-weight:600;color:var(--text);margin-bottom:4px}
+.plan-card-price{font-family:var(--h);font-size:1.4rem;color:var(--red);letter-spacing:1px}
+.plan-card-days{font-family:var(--m);font-size:.58rem;color:var(--muted2);margin-top:2px}
+.renew-pay-btn{width:100%;background:linear-gradient(135deg,var(--red),#a50000);border:none;border-radius:12px;padding:1rem;color:#fff;font-family:var(--h);font-size:1.1rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.renew-pay-btn:disabled{opacity:.5;cursor:not-allowed}
+.renew-pay-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(229,9,20,.3)}
+.renew-success{text-align:center;padding:1rem 0}
+
 #toast{position:fixed;bottom:1.8rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:var(--h);font-size:.88rem;padding:10px 24px;border-radius:6px;letter-spacing:3px;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -176,6 +196,25 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
   <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
 </a>
 <div id="toast"></div>
+
+<!-- RENEWAL MODAL -->
+<div class="modal-overlay" id="renew-modal" onclick="if(event.target===this)closeRenewModal()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Extend Your Plan</div>
+      <button class="modal-close" onclick="closeRenewModal()">×</button>
+    </div>
+    <div id="renew-modal-body">
+      <div style="font-family:var(--m);font-size:.65rem;color:var(--muted2);margin-bottom:.8rem;letter-spacing:1px">SELECT DURATION / TYPE</div>
+      <div class="plan-grid" id="plan-grid"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding:.8rem 1rem;background:var(--s2);border-radius:10px">
+        <span style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Price</span>
+        <span id="selected-price" style="font-family:var(--h);font-size:1.4rem;color:var(--text)">—</span>
+      </div>
+      <button class="renew-pay-btn" id="renew-pay-btn" disabled onclick="startPayment()">Renew Now</button>
+    </div>
+  </div>
+</div>
 <script>
 let allCodes=[],curTab='all',pinShown=false,actLog=[],refTimer=null,cdTimer=null;
 const BLOCKED=['2023','2024','2025','2026','2027','2028','0000'];
@@ -185,6 +224,7 @@ window.onload=()=>{
   if(!token){showError('invalid','Invalid link.');return;}
   window._tok=token;
   sp();
+  checkRenewalSuccess();
   fetchCodes(token);
 };
 
@@ -316,8 +356,11 @@ function buildPage(data){
     <div class="rpopup" id="rpopup">
       <div style="width:34px;height:34px;border-radius:9px;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <div style="flex:1"><div style="font-size:.84rem;font-weight:600;color:var(--amber)">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.72rem;color:var(--muted);margin-top:2px">Contact FanFlix BD to renew.</div></div>
-      <a href="#" onclick="this.href='https://wa.me/8801928382918?text='+(window._waRenewMsg||'')" target="_blank" style="background:#25D366;color:#000;padding:8px 16px;border-radius:7px;text-decoration:none;font-weight:700;font-size:.76rem;white-space:nowrap">Renew Now</a>
+      <button onclick="openRenewModal()" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:700;font-size:.76rem;white-space:nowrap">Renew Now</button>
     </div>
+    <button onclick="openRenewModal()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:16px;padding:.8rem;margin-bottom:.7rem;color:var(--muted);font-family:var(--m);font-size:.72rem;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
+      RENEW SUBSCRIPTION
+    </button>
     <button class="rbtn" id="rbtn" onclick="doRefresh()">
       <div class="rbtn-ico-wrap"><svg id="rbtn-ico" class="rbtn-ico" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
       <div class="rbtn-text"><span class="rbtn-title">Refresh Codes</span><span class="rbtn-sub">Scan inbox and get new codes</span></div>
@@ -515,6 +558,90 @@ function doCopy(text,btn,overlay){
 }
 
 function playBeep(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.3);o.start();o.stop(ctx.currentTime+.3);}catch(e){}}
+// ── RENEWAL ──────────────────────────────────────────────
+let selectedPlan = null;
+let renewPlans = [];
+
+async function openRenewModal() {
+  const modal = document.getElementById('renew-modal');
+  if(!modal) return;
+  // Load plans
+  try {
+    const r = await fetch('/api/renew/plans');
+    const d = await r.json();
+    renewPlans = d.plans || [];
+  } catch(e) {
+    renewPlans = [];
+  }
+  renderPlans();
+  modal.classList.add('show');
+}
+
+function renderPlans() {
+  const grid = document.getElementById('plan-grid');
+  if(!grid) return;
+  grid.innerHTML = renewPlans.map(p => `
+    <div class="plan-card" id="plan-${p.id}" onclick="selectPlan('${p.id}')">
+      <div class="plan-card-name">${p.name}</div>
+      <div class="plan-card-price">৳${p.price}</div>
+      <div class="plan-card-days">${p.days} days</div>
+    </div>`).join('');
+}
+
+function selectPlan(planId) {
+  selectedPlan = renewPlans.find(p => p.id === planId);
+  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
+  const el = document.getElementById('plan-' + planId);
+  if(el) el.classList.add('selected');
+  const priceEl = document.getElementById('selected-price');
+  if(priceEl) priceEl.textContent = selectedPlan ? '৳' + selectedPlan.price : '—';
+  const btn = document.getElementById('renew-pay-btn');
+  if(btn) btn.disabled = !selectedPlan;
+}
+
+async function startPayment() {
+  if(!selectedPlan || !window._tok) return;
+  const btn = document.getElementById('renew-pay-btn');
+  if(btn){ btn.disabled=true; btn.textContent='Processing...'; }
+  try {
+    const r = await fetch('/api/renew/init/' + window._tok, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ planId: selectedPlan.id })
+    });
+    const d = await r.json();
+    if(d.success && d.redirectUrl) {
+      window.location.href = d.redirectUrl;
+    } else {
+      showToast('Error: ' + (d.error || 'Please try again'));
+      if(btn){ btn.disabled=false; btn.textContent='Renew Now'; }
+    }
+  } catch(e) {
+    showToast('Connection error. Please try again.');
+    if(btn){ btn.disabled=false; btn.textContent='Renew Now'; }
+  }
+}
+
+function closeRenewModal() {
+  const modal = document.getElementById('renew-modal');
+  if(modal) modal.classList.remove('show');
+  selectedPlan = null;
+}
+
+// Check if redirected back after successful renewal
+function checkRenewalSuccess() {
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('renewed') === '1') {
+    const plan = params.get('plan') || '';
+    const days = params.get('days') || '';
+    setTimeout(()=>{
+      showToast('Renewed! ' + days + ' days added');
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }, 1000);
+  }
+}
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 </script>
