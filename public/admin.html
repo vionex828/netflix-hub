@@ -1029,7 +1029,7 @@ function renderLinks(links, page) {
 
     return `<tr class="${rowCls}" id="row-${l.token}">
       <td><input type="checkbox" class="link-checkbox" onchange="toggleSelect('${l.token}')" ${isSelected?'checked':''}></td>
-      <td class="email-cell" title="${esc(l.email)}">${esc(l.email)}</td>
+      <td class="email-cell" title="Click to edit email" style="cursor:pointer" onclick="editEmail('${l.token}','${esc(l.email)}')" title="${esc(l.email)}">${esc(l.email)} <span style="font-family:var(--m);font-size:.5rem;color:var(--muted2);opacity:.5">✏</span></td>
       <td>
         <div class="profile-cell">
           <div class="profile-avatar" style="background:${pColor};cursor:pointer" onclick="copyText('${esc(fullLink)}',this)" title="Click to copy link">${pLetter}</div>
@@ -1184,6 +1184,15 @@ async function extendLink(token){
   await fetch(`/api/admin/extend/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
   showToast('+28 days added');loadAll();
 }
+async function editEmail(token, currentEmail) {
+  const newEmail = prompt('Edit Netflix email for this link:\n\nCurrent: ' + currentEmail + '\n\nNew email:');
+  if(!newEmail || !newEmail.includes('@') || newEmail === currentEmail) return;
+  const r = await fetch('/api/admin/replace/'+token, {method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({newEmail})});
+  const d = await r.json();
+  if(d.success){ showToast('Email updated!'); loadAll(); }
+  else showToast('Error: '+(d.error||'Unknown'), true);
+}
+
 async function replaceLink(token, currentEmail){
   const newEmail = prompt(`Replace account email for this link.
 
