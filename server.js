@@ -813,9 +813,13 @@ app.get('/api/stats', (req, res) => {
 
 // Geo flags endpoint for admin
 app.get('/api/admin/geo', (req, res) => {
-  if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
-  const geoData = loadGeo();
-  res.json({ success: true, geo: geoData });
+  try {
+    if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
+    const geoData = loadGeo();
+    res.json({ success: true, geo: geoData });
+  } catch(e) {
+    res.json({ success: true, geo: {} });
+  }
 });
 
 app.get('/api/health', (req, res) => {
