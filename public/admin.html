@@ -636,7 +636,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
 const SITE = window.location.origin;
 const PROFILE_COLORS = {A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
 let adminToken = sessionStorage.getItem('fanflix_admin');
-let allLinks = {}, activityLog = [], curFilter = '';
+let allLinks = {}, activityLog = [], curFilter = '', currentPage = 0, currentFiltered = {}, selectedLinks = new Set();
+const PAGE_SIZE = 50;
 
 window.onload = () => {
   updateDate();
@@ -702,7 +703,14 @@ async function loadSlots() {
       badge.className = 'card-badge ' + (totalActive >= totalSlots ? 'full' : 'ok');
     }
 
-    container.innerHTML = Object.entries(slots).map(([email, info]) => {
+    // Sort by most recently created (using allLinks data) and show only last 5
+    const emailsByRecent = Object.keys(allLinks).length ? 
+      [...new Set(Object.values(allLinks).sort((a,b)=>b.createdAt-a.createdAt).map(l=>l.email))] : 
+      Object.keys(slots);
+    const recentEmails = emailsByRecent.filter(e=>slots[e]).slice(0,5);
+    const displaySlots = recentEmails.reduce((obj,e)=>{obj[e]=slots[e];return obj;},{});
+    
+    container.innerHTML = Object.entries(displaySlots).map(([email, info]) => {
       const pColors = ['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
       const avatars = Array.from({length:8},(_,i) => {
         const isUsed = i < info.active;
@@ -718,8 +726,13 @@ async function loadSlots() {
       const offset = circumference - (pct/100)*circumference;
       const ringColor = info.active >= 8 ? '#E50914' : info.active >= 6 ? '#f5a623' : '#46d369';
 
+      const healthColor = info.active >= 8 ? '#E50914' : '#46d369';
       return `<div class="slot-row">
-        <div class="slot-email">${esc(email)}</div>
+        <div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0">
+          <div style="width:8px;height:8px;border-radius:50%;background:${healthColor};flex-shrink:0"></div>
+          <div class="slot-email" onclick="filterByEmail('${esc(email)}')" style="cursor:pointer" title="Filter links">${esc(email)}</div>
+          <button onclick="copyAllLinks('${esc(email)}')" style="background:var(--s4);border:1px solid var(--border2);color:var(--muted);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0">Copy All</button>
+        </div>
         <div class="slot-avatars">${avatars}</div>
         <div class="slot-ring" style="width:46px;height:46px">
           <svg width="46" height="46" viewBox="0 0 46 46">
@@ -907,7 +920,7 @@ function showNeverUsed() {
   for(const[k,v] of Object.entries(allLinks)){
     if(v.uses === 0 && v.active && v.expiresAt > Date.now()) filtered[k]=v;
   }
-  renderLinks(filtered);
+  renderLinks(filtered, 0);
   document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
   showToast(`${Object.keys(filtered).length} never-used links`);
 }
@@ -917,14 +930,23 @@ function showRevoked() {
   for(const[k,v] of Object.entries(allLinks)){
     if(!v.active) filtered[k]=v;
   }
-  renderLinks(filtered);
+  renderLinks(filtered, 0);
   document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
   showToast(`${Object.keys(filtered).length} revoked links`);
 }
 
 function filterLinks() {
   const q = document.getElementById('search-inp').value.toLowerCase().replace('/c/','').trim();
-  if(!q){renderLinks(allLinks);return;}
+  if(!q){
+    // Show only most recent email's links by default
+    const recentEmail = Object.values(allLinks).sort((a,b)=>b.createdAt-a.createdAt)[0]?.email;
+    if(recentEmail){
+      const filtered = {};
+      for(const[k,v] of Object.entries(allLinks)){if(v.email===recentEmail)filtered[k]=v;}
+      renderLinks(filtered,0);
+    } else renderLinks(allLinks,0);
+    return;
+  }
   const now = Date.now();
   const filtered = {};
   for(const[k,v] of Object.entries(allLinks)){
@@ -939,7 +961,7 @@ function filterLinks() {
       String(daysLeft).includes(q)
     ) filtered[k]=v;
   }
-  renderLinks(filtered);
+  renderLinks(filtered, 0);
 }
 
 function filterByStatus(status) {
@@ -954,7 +976,7 @@ function filterByStatus(status) {
     else if(status==='week'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=sevenDays) filtered[k]=v;
     else if(status==='month'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=thirtyDays) filtered[k]=v;
   }
-  renderLinks(filtered);
+  renderLinks(filtered, 0);
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
 }
 
@@ -965,30 +987,42 @@ function showSection(s) {
   if(s==='links'){document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});}
 }
 
-function renderLinks(links) {
+function renderLinks(links, page) {
+  currentFiltered = links;
+  if(page !== undefined) currentPage = page;
   const tbody = document.getElementById('links-tbody');
   const arr = Object.values(links).sort((a,b)=>b.createdAt-a.createdAt);
-  if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="10">No links found</td></tr>';return;}
+  const totalPages = Math.ceil(arr.length / PAGE_SIZE);
+  const pageArr = arr.slice(currentPage * PAGE_SIZE, (currentPage+1) * PAGE_SIZE);
+
+  // Update pagination
+  updatePagination(arr.length, totalPages);
+
+  if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="11">No links found</td></tr>';return;}
   const now = Date.now(), threeDays=3*24*60*60*1000;
-  tbody.innerHTML = arr.map(l => {
+  tbody.innerHTML = pageArr.map(l => {
     const expired = l.expiresAt<=now;
+    const expiresInHours = !expired && (l.expiresAt-now) < 24*60*60*1000;
     const expiring = !expired&&(l.expiresAt-now)<=threeDays;
     const status = !l.active?'revoked':expired?'expired':expiring?'expiring':'active';
     const daysLeft = Math.max(0,Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
     const daysCls = daysLeft<=3?'days-exp':daysLeft<=14?'days-warn':'days-ok';
     const lastUsed = l.lastUsed?timeAgo(l.lastUsed):'Never';
-    const fullLink = `${SITE}/c/${l.token}`;
+    const fullLink = SITE+'/c/'+l.token;
     const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
     const pLetter = (l.profile||'?').replace('Profile ','').trim().charAt(0);
     const pColor = PROFILE_COLORS[pLetter] || '#888';
-    const customerMsg = buildMsg(l.email,l.profile||'',l.pin||'',fullLink,daysLeft);
+    const ipCount = l.ipCount || 0;
+    const isSelected = selectedLinks.has(l.token);
+    const rowCls = (daysLeft<=3&&!expired&&l.active?'row-danger':'') + (isSelected?' row-selected':'');
+    const expiryBadge = expiresInHours ? '<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;letter-spacing:1px;margin-left:4px">TODAY</span>' : '';
 
-    const rowCls = daysLeft<=3&&!expired&&l.active ? 'row-danger' : '';
-    return `<tr class="${rowCls}">
+    return `<tr class="${rowCls}" id="row-${l.token}">
+      <td><input type="checkbox" class="link-checkbox" onchange="toggleSelect('${l.token}')" ${isSelected?'checked':''}></td>
       <td class="email-cell" title="${esc(l.email)}">${esc(l.email)}</td>
       <td>
         <div class="profile-cell">
-          <div class="profile-avatar" style="background:${pColor}">${pLetter}</div>
+          <div class="profile-avatar" style="background:${pColor};cursor:pointer" onclick="copyText('${esc(fullLink)}',this)" title="Click to copy link">${pLetter}</div>
           <span style="font-size:.78rem">${esc(l.profile||'-')}</span>
         </div>
       </td>
@@ -1001,13 +1035,9 @@ function renderLinks(links) {
           </button>
         </div>
       </td>
-      <td>
-        <button class="icon-btn" onclick="copyText(customerMsg,this)" title="Copy message">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </button>
-      </td>
-      <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}</td>
+      <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}${expiryBadge}</td>
       <td class="uses-cell">${l.uses}<div class="uses-today">today: ${todayUses}</div></td>
+      <td style="font-family:var(--m);font-size:.68rem;color:${ipCount>=4?'var(--red)':ipCount>=2?'var(--amber)':'var(--muted)'}">${ipCount} IP${ipCount!==1?'s':''}</td>
       <td class="time-cell">${lastUsed}</td>
       <td><span class="status-badge ${status}">${status}</span></td>
       <td>
@@ -1016,7 +1046,7 @@ function renderLinks(links) {
             ?`<button class="icon-btn danger" onclick="revokeLink('${l.token}')" title="Revoke"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>`
             :`<button class="icon-btn success" onclick="activateLink('${l.token}')" title="Activate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>`
           }
-          <button class="icon-btn" onclick="replaceLink('${l.token}','${esc(l.email)}')" title="Replace account email">
+          <button class="icon-btn" onclick="replaceLink('${l.token}','${esc(l.email)}')" title="Replace">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
           </button>
           <button class="icon-btn success" onclick="renewLink('${l.token}')" title="Renew 28 days">
@@ -1029,6 +1059,80 @@ function renderLinks(links) {
       </td>
     </tr>`;
   }).join('');
+}
+
+function updatePagination(total, totalPages) {
+  let pg = document.getElementById('pagination-wrap');
+  if(!pg){
+    const tc = document.querySelector('.table-card');
+    if(tc){
+      const div = document.createElement('div');
+      div.id = 'pagination-wrap';
+      div.style = 'display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;border-top:1px solid var(--border)';
+      tc.appendChild(div);
+    }
+    pg = document.getElementById('pagination-wrap');
+  }
+  if(!pg) return;
+  if(totalPages <= 1){pg.style.display='none';return;}
+  pg.style.display='flex';
+  pg.innerHTML = `
+    <div style="font-family:var(--m);font-size:.68rem;color:var(--muted)">${total} links · Page ${currentPage+1} of ${totalPages}</div>
+    <div style="display:flex;gap:.5rem">
+      <button onclick="renderLinks(currentFiltered, ${currentPage-1})" ${currentPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">← Prev</button>
+      <button onclick="renderLinks(currentFiltered, ${currentPage+1})" ${currentPage>=totalPages-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">Next →</button>
+    </div>`;
+}
+
+function toggleSelect(token) {
+  if(selectedLinks.has(token)) selectedLinks.delete(token);
+  else selectedLinks.add(token);
+  updateBulkBar();
+}
+
+function toggleSelectAll() {
+  const arr = Object.values(currentFiltered);
+  if(selectedLinks.size === arr.length) selectedLinks.clear();
+  else arr.forEach(l=>selectedLinks.add(l.token));
+  renderLinks(currentFiltered, currentPage);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  let bar = document.getElementById('bulk-bar');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'bulk-bar';
+    bar.style = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4)';
+    document.body.appendChild(bar);
+  }
+  if(selectedLinks.size === 0){bar.style.display='none';return;}
+  bar.style.display='flex';
+  bar.innerHTML = `
+    <span style="font-family:var(--m);font-size:.72rem;color:var(--text)">${selectedLinks.size} selected</span>
+    <button onclick="bulkRenew()" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Renew All</button>
+    <button onclick="bulkDelete()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Delete All</button>
+    <button onclick="selectedLinks.clear();renderLinks(currentFiltered,currentPage);updateBulkBar();" style="background:var(--s4);color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem">Cancel</button>`;
+}
+
+async function bulkRenew() {
+  if(!confirm('Renew '+selectedLinks.size+' links for 28 days?')) return;
+  for(const token of selectedLinks) {
+    await fetch('/api/admin/renew/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
+  }
+  selectedLinks.clear();
+  showToast('Renewed!');
+  loadAll();
+}
+
+async function bulkDelete() {
+  if(!confirm('Permanently delete '+selectedLinks.size+' links?')) return;
+  for(const token of selectedLinks) {
+    await fetch('/api/admin/delete/'+token,{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  }
+  selectedLinks.clear();
+  showToast('Deleted!');
+  loadAll();
 }
 
 async function doCreate() {
