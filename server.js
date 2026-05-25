@@ -681,7 +681,7 @@ app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
   const oldEmail = links[req.params.token].email;
   links[req.params.token].email = newEmail.toLowerCase().trim();
   saveLinks(links);
-  cache.delete(oldEmail); cache.delete(newEmail.toLowerCase());
+  cache.clear(); // Clear all cache to ensure fresh data
   res.json({ success:true, oldEmail, newEmail });
 });
 
@@ -695,7 +695,7 @@ app.post('/api/admin/replaceall', adminAuth, (req, res) => {
     if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
   }
   saveLinks(links);
-  cache.delete(oldEmail.toLowerCase()); cache.delete(newEmail.toLowerCase());
+  cache.clear(); // Clear all cache
   res.json({ success:true, count });
 });
 
