@@ -368,14 +368,17 @@ function epsHash(data) {
 }
 
 async function epsGetToken() {
+  console.log('EPS GetToken - username:', EPS_USERNAME);
   const xhash = epsHash(EPS_USERNAME);
+  console.log('EPS xhash:', xhash.substring(0,20)+'...');
   const res = await fetch(EPS_API + '/v1/Auth/GetToken', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'x-hash': xhash },
     body: JSON.stringify({ userName: EPS_USERNAME, password: EPS_PASSWORD })
   });
   const d = await res.json();
-  if (!d.token) throw new Error('EPS auth failed: ' + (d.errorMessage || 'Unknown'));
+  console.log('EPS GetToken response:', JSON.stringify(d).substring(0,100));
+  if (!d.token) throw new Error('EPS auth failed: ' + (d.errorMessage || JSON.stringify(d)));
   return d.token;
 }
 
