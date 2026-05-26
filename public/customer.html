@@ -608,27 +608,16 @@ function selectPlan(planId) {
   if(btn) btn.disabled = !selectedPlan;
 }
 
-async function startPayment() {
+function startPayment() {
   if(!selectedPlan || !window._tok) return;
-  const btn = document.getElementById('renew-pay-btn');
-  if(btn){ btn.disabled=true; btn.textContent='Processing...'; }
-  try {
-    const r = await fetch('/api/renew/init/' + window._tok, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ planId: selectedPlan.id })
-    });
-    const d = await r.json();
-    if(d.success && d.redirectUrl) {
-      window.location.href = d.redirectUrl;
-    } else {
-      showToast('Error: ' + (d.error || 'Please try again'));
-      if(btn){ btn.disabled=false; btn.textContent='Renew Now'; }
-    }
-  } catch(e) {
-    showToast('Connection error. Please try again.');
-    if(btn){ btn.disabled=false; btn.textContent='Renew Now'; }
-  }
+  const profile = window._ld?.profile || '';
+  const msg = 'Hi FanFlix BD! I want to renew my subscription.\n\n' +
+    'Profile: ' + profile + '\n' +
+    'Link: /c/' + window._tok + '\n' +
+    'Plan: ' + selectedPlan.name + ' - ৳' + selectedPlan.price + '\n\n' +
+    'Please confirm payment details. 🙏';
+  closeRenewModal();
+  window.open('https://wa.me/8801928382918?text=' + encodeURIComponent(msg), '_blank');
 }
 
 function closeRenewModal() {
