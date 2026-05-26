@@ -22,7 +22,6 @@ const DATA_DIR = (() => {
   const fallback = '/tmp/fanflix-data';
   try {
     require('fs').mkdirSync(preferred, { recursive: true });
-    // test write
     require('fs').writeFileSync(preferred + '/.test', '1');
     require('fs').unlinkSync(preferred + '/.test');
     return preferred;
@@ -93,13 +92,13 @@ function trackIP(token, ip) {
     saveIPs(data);
     if (data[token].length >= 4) {
       try {
-      const links = loadLinks();
-      const link = links[token];
-      sendTelegram(
-        `⚠️ <b>Suspicious Activity!</b>\n\n` +
-        `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
-        `<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
-      );
+        const links = loadLinks();
+        const link = links[token];
+        sendTelegram(
+          `⚠️ <b>Suspicious Activity!</b>\n\n` +
+          `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
+          `<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
+        );
       } catch(e) { console.error('IP alert error:', e.message); }
     }
   }
@@ -145,7 +144,7 @@ function scheduleMorningReport() {
   const now = new Date();
   const bd = new Date(now.getTime() + 6*60*60*1000);
   const next11am = new Date(bd);
-  next11am.setUTCHours(5,0,0,0); // 11AM BD = 5AM UTC
+  next11am.setUTCHours(5,0,0,0);
   if (bd.getUTCHours() >= 5) next11am.setUTCDate(next11am.getUTCDate()+1);
   const msUntil = next11am.getTime() - now.getTime();
   setTimeout(() => { sendMorningReport(); setInterval(sendMorningReport, 24*60*60*1000); }, msUntil);
@@ -292,48 +291,36 @@ function extractLink(body) {
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
 
-  // 6-DIGIT VERIFICATION CODE (new Netflix flow - "Verify with this code")
-  // BLOCK account change codes - dangerous, customer could hijack account
   if (sl.includes('verification code') || sl.includes('your verification code')) {
     const isAccountChange = bodyPlain.toLowerCase().includes('account change') ||
                             bodyPlain.toLowerCase().includes('account info') ||
                             bodyPlain.toLowerCase().includes('change to your account');
-    if (isAccountChange) return null; // Block completely
+    if (isAccountChange) return null;
   }
 
   if (includeSignin && (sl.includes('verification code') || sl.includes('verify with') || sl.includes('verify this'))) {
-    // Extract 6-digit code — Netflix shows it spaced like "5 0 9 6 1 9"
-    // Strategy: spaced format is most reliable, then look for code appearing only once
-
-    // Pattern 1: Spaced digits "5 0 9 6 1 9" in plain text
     const spacedMatch = bodyPlain.match(/(?<![0-9\d])(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)(?![0-9\d])/);
     if (spacedMatch) {
       const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4]+spacedMatch[5]+spacedMatch[6];
       if (!BLOCKED_CODES.includes(code)) return { type:'verify', label:'Verification Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
 
-    // Pattern 2: Look for 6-digit number after "code:" or "Verify with this code" in plain text
     const afterCode = bodyPlain.match(/(?:verify with this code|this code)[^0-9]{0,30}([0-9]{6})(?![0-9])/i);
     if (afterCode && !BLOCKED_CODES.includes(afterCode[1])) {
       return { type:'verify', label:'Verification Code', code:afterCode[1], to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
 
-    // Pattern 3: 6-digit number that appears only 1-2 times (not a template number)
     const allNums6 = [...bodyHtml.matchAll(/(?<![0-9])(\d{6})(?![0-9])/g)].map(m => m[1]);
     const filtered6 = allNums6.filter(n => !BLOCKED_CODES.includes(n));
     if (filtered6.length > 0) {
       const unique6 = [...new Set(filtered6)];
-      // Pick number that appears only once — that's the real code
       const onlyOnce = unique6.filter(n => allNums6.filter(x => x === n).length === 1);
       const verifyCode = onlyOnce[onlyOnce.length - 1] || unique6[unique6.length - 1];
       if (verifyCode) return { type:'verify', label:'Verification Code', code:verifyCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
   }
 
-  // 4-DIGIT SIGN-IN CODE (existing flow)
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
-    // Netflix template contains 8199 hundreds of times in CSS
-    // Real code appears rarely at the end — find numbers appearing <= 5 times
     const TEMPLATE_NUMS = [...BLOCKED_CODES, '8199'];
     const allNums = [...bodyHtml.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
     const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
@@ -366,14 +353,12 @@ function epsHash(data) {
 async function epsGetToken() {
   console.log('EPS GetToken - username:', EPS_USERNAME);
   const xhash = epsHash(EPS_USERNAME);
-  console.log('EPS xhash:', xhash.substring(0,20)+'...');
   const res = await fetch(EPS_API + '/v1/Auth/GetToken', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'x-hash': xhash },
     body: JSON.stringify({ userName: EPS_USERNAME, password: EPS_PASSWORD })
   });
   const d = await res.json();
-  console.log('EPS GetToken response:', JSON.stringify(d).substring(0,100));
   if (!d.token) throw new Error('EPS auth failed: ' + (d.errorMessage || JSON.stringify(d)));
   return d.token;
 }
@@ -407,7 +392,7 @@ async function epsInitPayment({ token, amount, productName, customerName, custom
     ProductName: productName,
     ProductProfile: 'digital-goods',
     ProductCategory: 'Subscription',
-    ValueA: token, // store fanflix token for callback
+    ValueA: token,
   };
   const res = await fetch(EPS_API + '/v1/EPSEngine/InitializeEPS', {
     method: 'POST',
@@ -671,7 +656,6 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   saveLinks(links); res.json({ success:true });
 });
 
-// Replace account email for single link
 app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
@@ -680,11 +664,10 @@ app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
   const oldEmail = links[req.params.token].email;
   links[req.params.token].email = newEmail.toLowerCase().trim();
   saveLinks(links);
-  cache.clear(); // Clear all cache to ensure fresh data
+  cache.clear();
   res.json({ success:true, oldEmail, newEmail });
 });
 
-// Replace all links for an email
 app.post('/api/admin/replaceall', adminAuth, (req, res) => {
   const { oldEmail, newEmail } = req.body;
   if (!oldEmail||!newEmail) return res.status(400).json({ error:'Missing fields' });
@@ -694,7 +677,7 @@ app.post('/api/admin/replaceall', adminAuth, (req, res) => {
     if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
   }
   saveLinks(links);
-  cache.clear(); // Clear all cache
+  cache.clear();
   res.json({ success:true, count });
 });
 
@@ -717,7 +700,6 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
 
 // ── CUSTOMER LINK ─────────────────────────────────────────────
 
-// Fast endpoint - returns link info instantly without IMAP
 app.get('/api/link/:token/info', (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
@@ -730,32 +712,60 @@ app.get('/api/link/:token/info', (req, res) => {
   res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
 });
 
+// ✅ FIX: Replaced fragile res.json override with a simple `responded` flag
+// Previously, overriding res.json didn't always clear the timeout, causing
+// ERR_HTTP_HEADERS_SENT when both the timeout and normal response fired.
 app.get('/api/link/:token', async (req, res) => {
-  // Overall timeout - respond within 15 seconds
+  let responded = false;
+
   const timeout = setTimeout(() => {
-    if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
+    if (!responded) {
+      responded = true;
+      res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
+    }
   }, 15000);
-  const origJson = res.json.bind(res);
-  res.json = (data) => { clearTimeout(timeout); return origJson(data); };
+
   const links = loadLinks();
   const link = links[req.params.token];
-  if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
-  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+
+  if (!link) {
+    clearTimeout(timeout); responded = true;
+    return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
+  }
+  if (!link.active) {
+    clearTimeout(timeout); responded = true;
+    return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+  }
+
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
-  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
+
+  if (now > link.expiresAt) {
+    clearTimeout(timeout); responded = true;
+    return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
+  }
+
   link.uses += 1; link.lastUsed = now; saveLinks(links);
   trackAnalytics(req.params.token);
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   trackVisitor(ip);
   const ipCount = trackIP(req.params.token, ip);
+
   try {
     const codes = await fetchNetflixEmails(link.email, true);
-    if (codes.length > 0) totalToday += 1;
-    res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    if (!responded) {
+      responded = true;
+      clearTimeout(timeout);
+      if (codes.length > 0) totalToday += 1;
+      res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    }
   } catch(err) {
-    res.status(500).json({ success:false, error:'server', message:'Server error. Try again.' });
+    if (!responded) {
+      responded = true;
+      clearTimeout(timeout);
+      res.status(500).json({ success:false, error:'server', message:'Server error. Try again.' });
+    }
   }
 });
 
@@ -804,7 +814,6 @@ app.get('/api/stats', (req, res) => {
   res.json({ live:getLiveVisitors(), today:totalToday });
 });
 
-// Geo flags endpoint for admin
 app.get('/api/admin/geo', (req, res) => {
   try {
     if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
@@ -840,7 +849,7 @@ app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
-// Prevent crashes from uncaught errors
+// ✅ Prevent crashes from uncaught errors
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
   console.error(err.stack);
