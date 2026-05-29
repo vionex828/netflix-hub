@@ -626,7 +626,7 @@ app.get('/api/admin/links', adminAuth, (req, res) => {
 });
 
 app.post('/api/admin/create', adminAuth, (req, res) => {
-  const { email, profile, pin, days } = req.body;
+  const { email, profile, pin, days, phone } = req.body;
   if (!email||!profile||!pin||!days) return res.status(400).json({ error:'Missing fields' });
   const links = loadLinks();
   const now = Date.now();
@@ -635,7 +635,7 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
   if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
   const token = generateToken();
-  links[token] = { token, email:email.toLowerCase(), profile, pin, days:parseInt(days), createdAt:now, expiresAt:now+parseInt(days)*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+  links[token] = { token, email:email.toLowerCase(), profile, pin, phone:phone||'', days:parseInt(days), createdAt:now, expiresAt:now+parseInt(days)*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
   saveLinks(links);
   res.json({ success:true, token, link:`/c/${token}` });
 });
@@ -696,6 +696,16 @@ app.post('/api/admin/replaceall', adminAuth, (req, res) => {
   saveLinks(links);
   cache.clear(); // Clear all cache
   res.json({ success:true, count });
+});
+
+// Update phone for a link
+app.post('/api/admin/update-phone/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  const { phone } = req.body;
+  links[req.params.token].phone = phone || '';
+  saveLinks(links);
+  res.json({ success:true });
 });
 
 app.delete('/api/admin/delete/:token', adminAuth, (req, res) => {
@@ -837,6 +847,7 @@ app.get('/api/codes', async (req, res) => {
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
+app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
