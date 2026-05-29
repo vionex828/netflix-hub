@@ -1052,17 +1052,13 @@ function showSection(s) {
   closeMobNav();
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   if(event && event.currentTarget) event.currentTarget.classList.add('active');
-
-  // Hide special sections first
-  const accEl = document.getElementById('section-accounts');
-  const setEl = document.getElementById('section-settings');
-  if(accEl) accEl.style.display = 'none';
-  if(setEl) setEl.style.display = 'none';
-
-  if(s==='accounts') { if(accEl){accEl.style.display='block';} loadAccounts(); return; }
-  if(s==='settings') { if(setEl){setEl.style.display='block';} loadSettingsData(); return; }
-  if(s==='create') { document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'}); return; }
-  if(s==='links') { document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'}); return; }
+  // Hide special sections
+  document.getElementById('section-accounts').style.display='none';
+  document.getElementById('section-settings').style.display='none';
+  if(s==='accounts'){ document.getElementById('section-accounts').style.display='block'; loadAccounts(); return; }
+  if(s==='settings'){ document.getElementById('section-settings').style.display='block'; loadSettingsData(); return; }
+  if(s==='create'){ document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'}); return; }
+  if(s==='links'){ document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'}); return; }
 }
 
 function renderLinks(links, page) {
@@ -1324,7 +1320,7 @@ async function loadAccounts() {
     renderAccounts(d.accounts||[]);
   } catch(e) {
     console.error('loadAccounts error:', e);
-    if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error loading accounts: '+e.message+'<br><br><button onclick="loadAccounts()" style="background:var(--s3);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">Retry</button></div>';
+    if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';
   }
 }
 function renderAccounts(accounts) {
