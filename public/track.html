@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FanFlix — Track Subscription</title>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red: #E50914;
+  --red2: #a50000;
+  --bg: #060606;
+  --s1: #0e0e0e;
+  --s2: #141414;
+  --s3: #1a1a1a;
+  --border: rgba(255,255,255,.07);
+  --border2: rgba(255,255,255,.15);
+  --text: #fff;
+  --muted: #888;
+  --muted2: #444;
+  --green: #46d369;
+  --f: 'Inter', sans-serif;
+  --m: 'IBM Plex Mono', monospace;
+  --h: 'Anton', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { overflow-x: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--f);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* BG */
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.bg::before {
+  content: '';
+  position: absolute;
+  top: -40%;
+  left: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(ellipse, rgba(229,9,20,.12), transparent 65%);
+  animation: drift 14s ease-in-out infinite;
+}
+.bg::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  right: -10%;
+  width: 60%;
+  height: 60%;
+  background: radial-gradient(ellipse, rgba(229,9,20,.06), transparent 65%);
+  animation: drift 18s ease-in-out infinite reverse;
+}
+@keyframes drift { 0%,100%{transform:translate(0,0)} 50%{transform:translate(3%,4%)} }
+
+/* NAV */
+nav {
+  position: relative;
+  z-index: 10;
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(6,6,6,.9);
+  backdrop-filter: blur(20px);
+}
+.logo { font-family: var(--h); font-size: 1.7rem; letter-spacing: 3px; }
+.logo .f { color: var(--red); }
+.logo .l { color: var(--text); }
+.nav-help {
+  font-family: var(--m);
+  font-size: .62rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-decoration: none;
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 100px;
+  transition: all .2s;
+}
+.nav-help:hover { border-color: var(--border2); color: var(--text); }
+
+/* MAIN */
+main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.2rem;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 440px;
+  animation: fadeUp .7s ease both;
+}
+
+@keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:none} }
+
+/* ICON */
+.track-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(229,9,20,.2), rgba(229,9,20,.05));
+  border: 1px solid rgba(229,9,20,.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  position: relative;
+}
+.track-icon::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 26px;
+  border: 1px solid rgba(229,9,20,.1);
+  animation: pulse 2.5s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(1.05)} }
+
+/* HEADING */
+.heading {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.heading h1 {
+  font-family: var(--h);
+  font-size: 2.2rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: .5rem;
+  line-height: 1.1;
+}
+.heading h1 span { color: var(--red); }
+.heading p {
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.7;
+  font-family: var(--m);
+}
+
+/* CARD */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2rem;
+  margin-bottom: 1rem;
+}
+
+/* INPUT */
+.input-wrap {
+  position: relative;
+  margin-bottom: 1rem;
+}
+.input-label {
+  font-family: var(--m);
+  font-size: .58rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: .5rem;
+  display: block;
+}
+.phone-input {
+  width: 100%;
+  background: var(--s2);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  color: var(--text);
+  font-family: var(--m);
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  outline: none;
+  transition: all .2s;
+  -webkit-appearance: none;
+}
+.phone-input::placeholder { color: var(--muted2); letter-spacing: 1px; font-size: .9rem; }
+.phone-input:focus {
+  border-color: var(--red);
+  background: var(--s3);
+  box-shadow: 0 0 0 3px rgba(229,9,20,.1);
+}
+
+/* BTN */
+.track-btn {
+  width: 100%;
+  background: linear-gradient(135deg, var(--red), var(--red2));
+  border: none;
+  border-radius: 12px;
+  padding: 1.1rem;
+  color: #fff;
+  font-family: var(--h);
+  font-size: 1.1rem;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .7rem;
+}
+.track-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.08), transparent);
+  pointer-events: none;
+}
+.track-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(229,9,20,.35); }
+.track-btn:active { transform: translateY(0); }
+.track-btn.loading { opacity: .7; cursor: not-allowed; }
+.btn-arrow { transition: transform .2s; }
+.track-btn:hover .btn-arrow { transform: translateX(4px); }
+
+/* DIVIDER */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  margin: 1.2rem 0;
+}
+.divider-line { flex: 1; height: 1px; background: var(--border); }
+.divider-text { font-family: var(--m); font-size: .58rem; color: var(--muted2); letter-spacing: 1px; }
+
+/* WA BUTTON */
+.wa-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: .9rem;
+  color: var(--muted);
+  font-family: var(--f);
+  font-size: .82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  text-decoration: none;
+}
+.wa-btn:hover { border-color: #25D366; color: #25D366; background: rgba(37,211,102,.05); }
+
+/* INFO PILLS */
+.info-pills {
+  display: flex;
+  gap: .5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-family: var(--m);
+  font-size: .58rem;
+  color: var(--muted);
+  letter-spacing: .5px;
+}
+.pill-dot { width: 5px; height: 5px; border-radius: 50%; }
+.pill-dot.green { background: var(--green); }
+.pill-dot.red { background: var(--red); }
+
+/* RESULT STATES */
+.result {
+  display: none;
+  animation: fadeUp .4s ease both;
+}
+
+.result-found {
+  background: linear-gradient(135deg, rgba(70,211,105,.08), rgba(70,211,105,.02));
+  border: 1px solid rgba(70,211,105,.2);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+}
+.result-found .check {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(70,211,105,.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto .8rem;
+}
+.result-found h3 { font-size: 1rem; font-weight: 700; color: var(--green); margin-bottom: .3rem; }
+.result-found p { font-size: .78rem; color: var(--muted); margin-bottom: 1.2rem; }
+.redirect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--green);
+  color: #000;
+  padding: 10px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: .85rem;
+  transition: all .2s;
+}
+.redirect-btn:hover { background: #2ecc71; transform: translateY(-1px); }
+
+.result-not-found {
+  background: rgba(229,9,20,.05);
+  border: 1px solid rgba(229,9,20,.15);
+  border-radius: 16px;
+  padding: 1.5rem;
+  text-align: center;
+}
+.result-not-found h3 { font-size: 1rem; font-weight: 700; color: var(--red); margin-bottom: .3rem; }
+.result-not-found p { font-size: .78rem; color: var(--muted); margin-bottom: 1.2rem; line-height: 1.6; }
+
+/* FOOTER */
+footer {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 1.5rem;
+  font-family: var(--m);
+  font-size: .6rem;
+  color: var(--muted2);
+  letter-spacing: 1px;
+  border-top: 1px solid var(--border);
+}
+
+/* SHIMMER LOADING */
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+.shimmer {
+  background: linear-gradient(90deg, var(--s2) 25%, var(--s3) 50%, var(--s2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+}
+
+@media(max-width:480px) {
+  .heading h1 { font-size: 1.8rem; }
+  .card { padding: 1.5rem; }
+}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+
+<nav>
+  <div class="logo"><span class="f">FAN</span><span class="l">FLIX</span></div>
+  <a href="https://wa.me/8801928382918" class="nav-help" target="_blank">Need Help?</a>
+</nav>
+
+<main>
+  <div class="wrap">
+
+    <!-- ICON -->
+    <div class="track-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+        <circle cx="12" cy="10" r="3"/>
+      </svg>
+    </div>
+
+    <!-- HEADING -->
+    <div class="heading">
+      <h1>Track Your <span>Subscription</span></h1>
+      <p>Enter your phone number to instantly<br>access your Netflix subscription details.</p>
+    </div>
+
+    <!-- FORM CARD -->
+    <div class="card" id="form-card">
+      <label class="input-label" for="phone-inp">Your Phone Number</label>
+      <div class="input-wrap">
+        <input
+          class="phone-input"
+          id="phone-inp"
+          type="tel"
+          placeholder="01XXXXXXXXX"
+          maxlength="11"
+          autocomplete="tel"
+          inputmode="numeric"
+        />
+      </div>
+
+      <button class="track-btn" onclick="findSubscription()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Find My Subscription
+        <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <div class="divider">
+        <div class="divider-line"></div>
+        <div class="divider-text">OR</div>
+        <div class="divider-line"></div>
+      </div>
+
+      <a href="https://wa.me/8801928382918" class="wa-btn" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        Contact FanFlix BD
+      </a>
+    </div>
+
+    <!-- RESULT: FOUND -->
+    <div class="result" id="result-found">
+      <div class="result-found">
+        <div class="check">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Subscription Found!</h3>
+        <p>Redirecting you to your Netflix dashboard...</p>
+        <a href="#" class="redirect-btn" id="go-btn">
+          Open My Dashboard
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- RESULT: NOT FOUND -->
+    <div class="result" id="result-not-found">
+      <div class="result-not-found">
+        <div style="font-size:2rem;margin-bottom:.5rem">🔍</div>
+        <h3>No Subscription Found</h3>
+        <p>We couldn't find a subscription for this number.<br>Please check your number or contact support.</p>
+        <a href="https://wa.me/8801928382918" class="wa-btn" target="_blank" style="display:inline-flex;width:auto;padding:10px 20px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Contact Support
+        </a>
+      </div>
+    </div>
+
+    <!-- INFO PILLS -->
+    <div class="info-pills">
+      <div class="pill"><div class="pill-dot green"></div>Instant Access</div>
+      <div class="pill"><div class="pill-dot green"></div>Secure</div>
+      <div class="pill"><div class="pill-dot red"></div>BD Only</div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  © 2026 FANFLIX BD — ALL RIGHTS RESERVED
+</footer>
+
+<script>
+function findSubscription() {
+  const phone = document.getElementById('phone-inp').value.trim();
+  if(!phone || phone.length < 10) {
+    document.getElementById('phone-inp').style.borderColor = 'var(--red)';
+    document.getElementById('phone-inp').focus();
+    setTimeout(()=>document.getElementById('phone-inp').style.borderColor='', 1500);
+    return;
+  }
+
+  const btn = document.querySelector('.track-btn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Searching...';
+
+  fetch('/api/track/' + phone)
+    .then(r => r.json())
+    .then(d => {
+      btn.classList.remove('loading');
+      btn.innerHTML = 'Find My Subscription <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>';
+      if(d.success) {
+        // Auto redirect immediately - no extra click
+        window.location.href = '/c/' + d.token;
+      } else {
+        document.getElementById('form-card').style.display = 'none';
+        document.getElementById('result-not-found').style.display = 'block';
+      }
+    })
+    .catch(() => {
+      btn.classList.remove('loading');
+      btn.innerHTML = 'Find My Subscription <svg class="btn-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>';
+      document.getElementById('form-card').style.display = 'none';
+      document.getElementById('result-not-found').style.display = 'block';
+    });
+}
+
+document.getElementById('phone-inp').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') findSubscription();
+});
+
+// Save phone in localStorage
+document.getElementById('phone-inp').addEventListener('input', ()=>{
+  const v = document.getElementById('phone-inp').value;
+  if(v.length >= 10) localStorage.setItem('ff_phone', v);
+});
+
+// Restore saved phone
+const saved = localStorage.getItem('ff_phone');
+if(saved) document.getElementById('phone-inp').value = saved;
+</script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</body>
+</html>
