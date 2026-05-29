@@ -1067,7 +1067,7 @@ function renderLinks(links, page) {
     const outsideBDInfo = hasOutsideBD ? geoFlags[l.token].map(g=>g.country).join(', ') : '';
     const isSelected = selectedLinks.has(l.token);
     const rowCls = (daysLeft<=3&&!expired&&l.active?'row-danger':'') + (isSelected?' row-selected':'');
-    const expiryBadge = expiresInHours ? '<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;letter-spacing:1px;margin-left:4px">TODAY</span>' : '';
+    const expiryBadge = expiresInHours ? `<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;letter-spacing:1px;margin-left:4px">TODAY</span>` : '';
 
     return `<tr class="${rowCls}" id="row-${l.token}">
       <td><input type="checkbox" class="link-checkbox" onchange="toggleSelect('${l.token}')" ${isSelected?'checked':''}></td>
