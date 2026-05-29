@@ -154,7 +154,7 @@ function recycleUnusedLinks() {
   for (const token of Object.keys(links)) {
     const link = links[token];
     if (!link.active || link.expiresAt <= now) continue;
-    if (link.uses > 0) continue; // Already opened
+    if ((link.uses || 0) > 0) continue; // Already opened - never recycle used links
     if (!link.createdAt) continue;
     
     const age = now - link.createdAt;
@@ -918,6 +918,87 @@ app.get('/api/codes', async (req, res) => {
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
+
+// ── NETFLIX ACCOUNTS API ─────────────────────────────────────────────
+app.get('/api/admin/accounts', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const links = loadLinks();
+  const now = Date.now();
+  const result = accounts.map(a => {
+    const active = Object.values(links).filter(l => l.email===a.email && l.active && l.expiresAt>now).length;
+    return { ...a, slotsUsed: active, slotsTotal: 8 };
+  });
+  res.json({ success:true, accounts: result });
+});
+
+app.post('/api/admin/accounts', adminAuth, (req, res) => {
+  const { email, notes, priority } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ success:false, error:'Invalid email' });
+  const accounts = loadAccounts();
+  if (accounts.find(a => a.email === email.toLowerCase().trim())) {
+    return res.status(400).json({ success:false, error:'Account already exists' });
+  }
+  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now() });
+  saveAccounts(accounts);
+  res.json({ success:true });
+});
+
+app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const filtered = accounts.filter(a => a.email !== decodeURIComponent(req.params.email));
+  saveAccounts(filtered);
+  res.json({ success:true });
+});
+
+app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const idx = accounts.findIndex(a => a.email === decodeURIComponent(req.params.email));
+  if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
+  accounts[idx].active = !accounts[idx].active;
+  saveAccounts(accounts);
+  res.json({ success:true, active: accounts[idx].active });
+});
+
+// ── SETTINGS API ─────────────────────────────────────────────────────
+app.get('/api/admin/settings', adminAuth, (req, res) => {
+  res.json({ success:true, settings: loadSettings() });
+});
+
+app.post('/api/admin/settings', adminAuth, (req, res) => {
+  const current = loadSettings();
+  const updated = { ...current, ...req.body };
+  saveSettings(updated);
+  res.json({ success:true, settings: updated });
+});
+
+// ── AUTO CREATE LINK (called by EPS bot) ─────────────────────────────
+app.post('/api/auto-create', (req, res) => {
+  try {
+    const settings = loadSettings();
+    if (!settings.autoLink) return res.status(403).json({ success:false, error:'Auto link is disabled' });
+    const authToken = req.headers['x-admin-token'];
+    if (authToken !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
+    const { phone, days, customerName } = req.body;
+    if (!phone) return res.status(400).json({ error:'Phone required' });
+    const slot = getNextAvailableSlot();
+    if (!slot) {
+      sendTelegram('<b>No Slots Available!</b>\n\nCould not auto-create link for ' + phone + '\nPlease add more Netflix accounts!');
+      return res.status(503).json({ success:false, error:'No slots available' });
+    }
+    const links = loadLinks();
+    const token = generateToken();
+    const now = Date.now();
+    const d = parseInt(days) || 28;
+    links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:phone, customerName:customerName||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    saveLinks(links);
+    sendTelegram('<b>Auto Link Created!</b>\nCustomer: ' + (customerName||'Customer') + '\nPhone: ' + phone + '\nProfile: ' + slot.profile + ' | PIN: ' + slot.pin + '\nLink: /c/' + token + '\nDays: ' + d);
+    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin });
+  } catch(e) {
+    console.error('Auto create error:', e.message);
+    res.status(500).json({ success:false, error: e.message });
+  }
+});
+
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
