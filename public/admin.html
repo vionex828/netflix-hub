@@ -917,6 +917,22 @@ function sortLinks() {
   renderLinks(obj);
 }
 
+async function deleteAccountEmail(email) {
+  if(!confirm('Delete ALL links for: '+email+'?\n\nThis removes the account from slots display.')) return;
+  // Remove from accounts if stored there
+  const r = await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  // Also option to revoke all links for this email
+  const revokeAll = confirm('Also REVOKE all customer links for this email?');
+  if(revokeAll) {
+    const links = Object.values(allLinks).filter(l=>l.email===email);
+    for(const l of links){
+      await fetch('/api/admin/revoke/'+l.token,{method:'POST',headers:{'x-admin-token':adminToken}});
+    }
+  }
+  showToast('Account removed!');
+  loadAll();
+}
+
 async function copyAllLinks(email) {
   const now = Date.now();
   const links = Object.values(allLinks).filter(l=>l.email===email&&l.active&&l.expiresAt>now).sort((a,b)=>a.profile.localeCompare(b.profile));
@@ -1053,14 +1069,24 @@ function filterByStatus(status) {
 }
 
 function showSection(s) {
-  closeMobNav();
+  try { closeMobNav(); } catch(e) {}
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
-  if(event && event.currentTarget) event.currentTarget.classList.add('active');
+  try { if(event && event.currentTarget) event.currentTarget.classList.add('active'); } catch(e) {}
   // Hide special sections
-  document.getElementById('section-accounts').style.display='none';
-  document.getElementById('section-settings').style.display='none';
-  if(s==='accounts'){ document.getElementById('section-accounts').style.display='block'; loadAccounts(); return; }
-  if(s==='settings'){ document.getElementById('section-settings').style.display='block'; loadSettingsData(); return; }
+  const accEl = document.getElementById('section-accounts');
+  const setEl = document.getElementById('section-settings');
+  if(accEl) accEl.style.display='none';
+  if(setEl) setEl.style.display='none';
+  if(s==='accounts'){
+    if(accEl){ accEl.style.display='block'; accEl.scrollIntoView({behavior:'smooth'}); }
+    loadAccounts();
+    return;
+  }
+  if(s==='settings'){
+    if(setEl){ setEl.style.display='block'; setEl.scrollIntoView({behavior:'smooth'}); }
+    loadSettingsData();
+    return;
+  }
   if(s==='create'){ document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'}); return; }
   if(s==='links'){ document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'}); return; }
 }
