@@ -508,6 +508,21 @@ document.getElementById('phone-inp').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') findSubscription();
 });
 
+function loadCustomerDashboard(token) {
+  // Replace entire page content with customer dashboard via iframe
+  document.querySelector('main').innerHTML = 
+    '<iframe src="/c/' + token + '" style="width:100%;height:calc(100vh - 60px);border:none;display:block" allow="autoplay"></iframe>';
+  // Update URL without redirect
+  window.history.pushState({}, '', '/track?t=' + token);
+}
+
+// Check if returning with token in URL
+window.addEventListener('load', () => {
+  const params = new URLSearchParams(window.location.search);
+  const t = params.get('t');
+  if(t) loadCustomerDashboard(t);
+});
+
 // Save phone in localStorage
 document.getElementById('phone-inp').addEventListener('input', ()=>{
   const v = document.getElementById('phone-inp').value;
