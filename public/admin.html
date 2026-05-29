@@ -267,16 +267,43 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .sb-item:hover .gear-icon{animation:gear .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* MOBILE NAV BUTTON */
+.mob-nav-btn{display:none;position:fixed;bottom:1.5rem;left:1.5rem;z-index:300;width:52px;height:52px;border-radius:50%;background:var(--red);border:none;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(229,9,20,.4)}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:199;backdrop-filter:blur(4px)}
+.mob-overlay.show{display:block}
+
 @media(max-width:1024px){
-  .sidebar{display:none}
+  body{overflow:auto}
+  html{height:auto}
+  .sidebar{position:fixed;left:-260px;top:0;bottom:0;z-index:200;transition:left .3s cubic-bezier(.4,0,.2,1);height:100%;overflow-y:auto}
+  .sidebar.open{left:0}
+  .main{height:auto;min-height:100vh;overflow:visible}
+  .content{overflow:visible;height:auto;padding:1rem}
   .grid-2{grid-template-columns:1fr}
   .grid-4{grid-template-columns:1fr 1fr}
   .form-row{grid-template-columns:1fr 1fr}
-  .content{padding:1rem}
+  .mob-nav-btn{display:flex}
+  #section-accounts,#section-settings{display:none}
+  #section-accounts.show,#section-settings.show{display:block}
+  .topbar{position:sticky;top:0;z-index:100}
+}
+@media(max-width:600px){
+  .grid-4{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .table-wrap{font-size:.7rem}
+  th,td{padding:.5rem .4rem}
 }
 </style>
 </head>
 <body>
+<div class="mob-overlay" id="mob-overlay" onclick="closeMobNav()"></div>
+<button class="mob-nav-btn" onclick="toggleMobNav()">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/>
+    <line x1="3" y1="12" x2="21" y2="12"/>
+    <line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -633,7 +660,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 
     <!-- NETFLIX ACCOUNTS SECTION -->
-    <div id="section-accounts" style="display:none;padding:1.5rem">
+    <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
         <div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div>
         <button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button>
@@ -1022,6 +1049,7 @@ function filterByStatus(status) {
 }
 
 function showSection(s) {
+  closeMobNav();
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   if(event && event.currentTarget) event.currentTarget.classList.add('active');
 
@@ -1287,11 +1315,17 @@ function buildMsg(email,profile,pin,link,days){
 }
 
 async function loadAccounts() {
+  const list=document.getElementById('accounts-list');
+  if(list) list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
   try {
     const r=await fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
     const d=await r.json();
     renderAccounts(d.accounts||[]);
-  } catch(e) { const l=document.getElementById('accounts-list'); if(l) l.innerHTML='<div style="color:var(--red);padding:1rem">Failed to load</div>'; }
+  } catch(e) {
+    console.error('loadAccounts error:', e);
+    if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error loading accounts: '+e.message+'<br><br><button onclick="loadAccounts()" style="background:var(--s3);border:1px solid var(--border);color:var(--text);padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">Retry</button></div>';
+  }
 }
 function renderAccounts(accounts) {
   const list=document.getElementById('accounts-list'); if(!list) return;
@@ -1355,6 +1389,22 @@ async function toggleAutoLink(){
   const d=await r.json();
   if(d.success){ settingsData.autoLink=on; renderSettings(); showToast('Auto link '+(on?'ENABLED':'DISABLED')+'!'); }
 }
+function toggleMobNav(){
+  const sb=document.querySelector('.sidebar');
+  const ov=document.getElementById('mob-overlay');
+  if(sb.classList.contains('open')){
+    sb.classList.remove('open');
+    ov.classList.remove('show');
+  } else {
+    sb.classList.add('open');
+    ov.classList.add('show');
+  }
+}
+function closeMobNav(){
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('show');
+}
+
 function showToast(msg,err=false){
   const t=document.getElementById('toast');
   t.textContent=msg;t.className=err?'err show':'show';
