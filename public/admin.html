@@ -895,7 +895,7 @@ async function bulkCreate() {
   for(const p of profiles) {
     // Check duplicate
     const dup = Object.values(allLinks).find(l=>l.email===email&&l.profile===p.profile&&l.active&&l.expiresAt>now&&links.filter(x=>x.profile===p.profile).length < (p.profile==='Profile A'||p.profile==='Profile B'||p.profile==='Profile C'?2:1));
-    const r = await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile:p.profile,pin:p.pin,days})});
+    const r = await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile:p.profile,pin:p.pin,days,phone:document.getElementById('c-phone')?.value.trim()||''})});
     const d = await r.json();
     if(d.success){
       links.push({...p,token:d.token,link:`${SITE}/c/${d.token}`});
@@ -1049,6 +1049,7 @@ function renderLinks(links, page) {
       <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}${expiryBadge}</td>
       <td class="uses-cell">${l.uses}<div class="uses-today">today: ${todayUses}</div></td>
       <td style="font-family:var(--m);font-size:.68rem;color:${ipCount>=4?'var(--red)':ipCount>=2?'var(--amber)':'var(--muted)'}">${ipCount} IP${ipCount!==1?'s':''}</td>
+      <td style="font-family:var(--m);font-size:.68rem;color:var(--muted)">${l.phone||'—'}</td>
       <td class="time-cell">${lastUsed}</td>
       <td><span class="status-badge ${status}">${status}</span></td>
       <td>
@@ -1151,6 +1152,7 @@ async function doCreate() {
   const profile=document.getElementById('c-profile').value.trim();
   const pin=document.getElementById('c-pin').value.trim();
   const days=document.getElementById('c-days').value;
+  const phone=document.getElementById('c-phone')?.value.trim()||'';
   if(!email||!profile||!pin)return showToast('Fill all fields!',true);
   // Duplicate detector
   const now=Date.now();
@@ -1184,6 +1186,15 @@ async function extendLink(token){
   await fetch(`/api/admin/extend/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
   showToast('+28 days added');loadAll();
 }
+async function editPhone(token, currentPhone) {
+  const newPhone = prompt('Edit phone number:\n\nCurrent: ' + (currentPhone||'None') + '\n\nNew phone:');
+  if(newPhone === null) return;
+  const r = await fetch('/api/admin/update-phone/'+token, {method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({phone:newPhone})});
+  const d = await r.json();
+  if(d.success){ showToast('Phone updated!'); loadAll(); }
+  else showToast('Error: '+(d.error||'Unknown'), true);
+}
+
 async function editEmail(token, btn) {
   const currentEmail = btn ? btn.dataset.email : '';
   const newEmail = prompt('Edit Netflix email:\n\nCurrent: ' + currentEmail + '\n\nNew email:');
