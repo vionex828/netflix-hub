@@ -148,7 +148,7 @@ function getNextAvailableSlot() {
 function recycleUnusedLinks() {
   const links = loadLinks();
   const now = Date.now();
-  const oneDayMs = 24 * 60 * 60 * 1000;
+  const oneDayMs = 30 * 60 * 60 * 1000; // 30 hours
   let recycled = 0;
   
   for (const token of Object.keys(links)) {
