@@ -70,7 +70,20 @@ function loadAnalytics() { try { return JSON.parse(fs.readFileSync(ANALYTICS_FIL
 function saveAnalytics(data) { ensureDataDir(); fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2)); }
 function loadIPs() { try { return JSON.parse(fs.readFileSync(IP_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveIPs(data) { ensureDataDir(); fs.writeFileSync(IP_FILE, JSON.stringify(data, null, 2)); }
-const GEO_FILE = DATA_DIR + '/geo.json';
+const GEO_FILE      = DATA_DIR + '/geo.json';
+const ACCOUNTS_FILE = DATA_DIR + '/accounts.json';
+const SETTINGS_FILE = DATA_DIR + '/settings.json';
+// Netflix accounts
+function loadAccounts() { try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,'utf8')); } catch(e) { return []; } }
+function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
+
+// Settings (auto-link toggle etc)
+function loadSettings() { 
+  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } 
+  catch(e) { return { autoLink: false }; } 
+}
+function saveSettings(data) { ensureDataDir(); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data,null,2)); }
+
 function loadGeo() { try { return JSON.parse(fs.readFileSync(GEO_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveGeo(data) { ensureDataDir(); fs.writeFileSync(GEO_FILE, JSON.stringify(data, null, 2)); }
 
@@ -105,6 +118,64 @@ function trackIP(token, ip) {
   }
   return data[token].length;
 }
+
+// Auto assign next available profile for an email
+function getNextAvailableSlot() {
+  const accounts = loadAccounts();
+  const links = loadLinks();
+  const now = Date.now();
+  
+  // Sort accounts by priority
+  const sorted = [...accounts].filter(a => a.active).sort((a,b) => (a.priority||99) - (b.priority||99));
+  
+  for (const account of sorted) {
+    const email = account.email;
+    const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
+    const usedProfiles = activeLinks.map(l => l.profile);
+    
+    // Check each profile slot
+    for (const prof of FIXED_PROFILES) {
+      const used = usedProfiles.filter(p => p === prof.profile).length;
+      if (used < prof.slots) {
+        return { email, profile: prof.profile, pin: prof.pin };
+      }
+    }
+  }
+  return null; // No slots available
+}
+
+// Check for unused links (not opened in 24h) and recycle them
+function recycleUnusedLinks() {
+  const links = loadLinks();
+  const now = Date.now();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  let recycled = 0;
+  
+  for (const token of Object.keys(links)) {
+    const link = links[token];
+    if (!link.active || link.expiresAt <= now) continue;
+    if (link.uses > 0) continue; // Already opened
+    if (!link.createdAt) continue;
+    
+    const age = now - link.createdAt;
+    if (age > oneDayMs) {
+      // Recycle — clear phone, mark as available
+      const oldPhone = link.phone || 'unknown';
+      links[token].phone = '';
+      links[token].recycled = true;
+      links[token].recycledAt = now;
+      recycled++;
+      
+      sendTelegram('<b>Link Recycled</b>\n\nToken: /c/' + token + '\nProfile: ' + link.profile + '\nWas: ' + oldPhone + '\nNot opened 24h - slot available.');
+    }
+  }
+  
+  if (recycled > 0) saveLinks(links);
+  return recycled;
+}
+
+// Run recycle check every hour
+setInterval(recycleUnusedLinks, 60 * 60 * 1000);
 
 function generateToken() { return crypto.randomBytes(4).toString('hex'); }
 
