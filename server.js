@@ -854,6 +854,20 @@ app.get('/api/health', (req, res) => {
   res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
 });
 
+// One-time cleanup — removes malformed account entries (spaces, typos in email)
+app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const before = accounts.length;
+  const cleaned = accounts
+    .map(a => ({ ...a, email: a.email.trim().toLowerCase() }))
+    .filter(a => a.email.includes('@'));
+  // Remove duplicates
+  const seen = new Set();
+  const unique = cleaned.filter(a => { if(seen.has(a.email)) return false; seen.add(a.email); return true; });
+  saveAccounts(unique);
+  res.json({ success:true, before, after:unique.length, removed: before - unique.length });
+});
+
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
