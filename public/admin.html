@@ -395,7 +395,7 @@ function renderSlots(){
     const av=Array.from({length:8},(_,i)=>{const u=i<info.active,l=String.fromCharCode(65+i),c=pc[i]||'#888';return u?`<div class="slot-avatar active" style="background:${c}" title="Profile ${l}">${l}</div>`:`<div class="slot-avatar empty"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;}).join('');
     const circ=2*Math.PI*18,off=circ-(info.active/8)*circ,rc=info.active>=8?'#E50914':info.active>=6?'#f5a623':'#46d369';
     const hc=info.active>=8?'#E50914':'#46d369';
-    return `<div class="slot-row"><div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0"><div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0"></div><div class="slot-email" onclick="filterByEmail('${esc(em)}')" style="cursor:pointer" title="${esc(em)}">${esc(em)}</div><button onclick="copyAllLinks('${esc(em)}')" style="background:var(--s4);border:1px solid var(--border2);color:var(--muted);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0">Copy All</button></div><div class="slot-avatars">${av}</div><div class="slot-ring" style="width:46px;height:46px"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#1a1d22" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="${rc}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s"/></svg><div class="slot-ring-label">${info.active}/8</div></div></div>`;
+    return `<div class="slot-row"><div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0"><div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0"></div><div class="slot-email" onclick="filterByEmail('${esc(em)}')" style="cursor:pointer" title="${esc(em)}">${esc(em)}</div><button onclick="copyAllLinks('${esc(em)}')" style="background:var(--s4);border:1px solid var(--border2);color:var(--muted);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0">Copy All</button><button onclick="deleteSlotEmail('${esc(em)}')" style="background:transparent;border:1px solid rgba(229,9,20,.3);color:var(--red);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0" title="Delete all links for this email">🗑</button></div><div class="slot-avatars">${av}</div><div class="slot-ring" style="width:46px;height:46px"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#1a1d22" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="${rc}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s"/></svg><div class="slot-ring-label">${info.active}/8</div></div></div>`;
   }).join('');
   if(sorted.length>PREV){if(moreW)moreW.style.display='block';const b=$('slots-more-btn');if(b)b.textContent=slotsExpanded?'Show Less ▲':`Show All ${sorted.length} Accounts ▼`;}else{if(moreW)moreW.style.display='none';}
 }
@@ -591,6 +591,22 @@ async function copyAllLinks(em){
   await navigator.clipboard.writeText(msg);toast('All '+ls.length+' links copied!');
 }
 
+// ── Delete ALL links for an email from the slots card ──
+async function deleteSlotEmail(em){
+  const now=Date.now();
+  const links=Object.values(allLinks).filter(l=>l.email===em);
+  if(!links.length)return toast('No links found for this email',1);
+  const active=links.filter(l=>l.active&&l.expiresAt>now).length;
+  if(!confirm(`Delete ALL ${links.length} links for:\n${em}\n\n(${active} active, ${links.length-active} inactive)\n\nThis cannot be undone!`))return;
+  for(const l of links){
+    await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':tok}});
+  }
+  // Also remove from accounts list
+  await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
+  toast(`Deleted ${links.length} links for ${em}`);
+  loadAll();
+}
+
 async function revokeLink(t){if(!confirm('Revoke?'))return;await fetch('/api/admin/revoke/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Revoked');loadAll();}
 async function activateLink(t){await fetch('/api/admin/activate/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Activated');loadAll();}
 
@@ -650,6 +666,18 @@ async function addAccount(){
   if(!em||!em.includes('@'))return toast('Enter valid email',1);
   const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,notes:no})});
   const d=await r.json();if(d.success){toast('Account added!');$('acc-email').value='';$('acc-notes').value='';$('add-acc-form').style.display='none';loadAccounts();}else toast('Error: '+(d.error||'?'),1);
+}
+
+// ── Edit account notes ──
+async function editAccount(em){
+  const acc=allAccounts.find(a=>a.email===em);
+  const newNotes=prompt('Edit notes for:\n'+em+'\n\nCurrent notes: '+(acc?.notes||'None')+'\n\nNew notes (leave blank to clear):');
+  if(newNotes===null)return; // cancelled
+  // Delete old + re-add with new notes
+  await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
+  await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,notes:newNotes.trim()})});
+  toast('Notes updated!');
+  loadAccounts();
 }
 
 // ── FIX: replaceAccEmail — replace email in accounts list AND all links ──
