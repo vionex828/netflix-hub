@@ -211,7 +211,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-section">Monitor</div>
       <div class="sb-item" id="nav-expiring" onclick="setNav('nav-expiring');filterLinks('expiring')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Expiring Soon</div>
       <div class="sb-item" id="nav-expired" onclick="setNav('nav-expired');filterLinks('expired')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Expired Links</div>
-      <div class="sb-item" id="nav-analytics" onclick="setNav('nav-analytics');filterLinks('active')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</div>
       <div class="sb-section">Quick Filters</div>
       <div class="sb-item" id="nav-neverused" onclick="setNav('nav-neverused');filterLinks('neverused')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Never Used</div>
       <div class="sb-item" id="nav-revoked" onclick="setNav('nav-revoked');filterLinks('revoked')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Revoked Links</div>
@@ -251,11 +250,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-revenue" style="color:var(--green)">-</div><div class="stat-lbl">Est. Monthly Revenue</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-link" id="s-revenue-detail" style="color:var(--muted2);font-size:.68rem"></div></div>
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-never-used" style="color:var(--amber)">-</div><div class="stat-lbl">Never Used Links</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div></div><div class="stat-link" onclick="filterLinks('neverused')">View never used <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem">
-          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('today')"><div class="stat-card-top"><div><div class="stat-num" id="exp-today" style="color:var(--red)">-</div><div class="stat-lbl">Expiring Today</div></div><div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
-          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('week')"><div class="stat-card-top"><div><div class="stat-num" id="exp-week" style="color:var(--amber)">-</div><div class="stat-lbl">Expiring This Week</div></div><div class="stat-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('month')"><div class="stat-card-top"><div><div class="stat-num" id="exp-month" style="color:var(--green)">-</div><div class="stat-lbl">Expiring This Month</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
-        </div>
+        
         <div class="grid-2">
           <div>
             <div class="create-card" id="create-section">
@@ -267,21 +262,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
                 <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
                 <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
                   <button class="create-btn" onclick="doCreate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create</button>
-                  <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Bulk (8 Links)</button>
                 </div>
               </div>
             </div>
           </div>
           <div class="right-panel">
-            <div class="chart-card">
-              <div class="card-header"><div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Account Overview</div><span style="font-family:var(--m);font-size:.6rem;color:var(--muted2)">Last 7 days</span></div>
-              <div><div class="chart-num" id="chart-total">-</div><div class="chart-growth">Total Uses</div></div>
+            
               <div class="chart-area" style="margin-top:.8rem"><svg class="chart-svg" viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity=".3"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs><path id="chart-path" d="M0 70 L300 70" fill="url(#chartGrad)" stroke="#a78bfa" stroke-width="2" fill-opacity="0.3"/></svg></div>
             </div>
-            <div class="activity-card">
-              <div class="act-header"><h3>Recent Activity</h3><span class="act-viewall" onclick="showSection('links')">View all</span></div>
-              <div id="activity-feed"><p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">Loading...</p></div>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -296,16 +285,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <div class="table-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Customer Links<span class="card-badge ok" id="active-badge">-</span></div>
             <div style="display:flex;align-items:center;gap:.6rem;margin-left:auto">
               <select id="sort-select" onchange="sortLinks()" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.68rem;padding:6px 10px;border-radius:7px;cursor:pointer"><option value="created">Sort: Newest</option><option value="days-asc">Sort: Days ↑</option><option value="days-desc">Sort: Days ↓</option><option value="uses-desc">Sort: Most Used</option><option value="last-used">Sort: Last Used</option></select>
-              <div class="search-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="search-inp" placeholder="Search email, profile, token..." oninput="onSearch()"/></div>
+              <div class="search-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="search-inp" placeholder="Search email, phone, profile, token..." oninput="onSearch()"/></div>
             </div>
           </div>
           <div class="table-wrap">
             <table>
               <thead><tr>
                 <th><input type="checkbox" id="sel-all" onchange="toggleSelectAll()" style="cursor:pointer"></th>
-                <th>Email</th><th>Profile</th><th>PIN</th><th>Link</th><th>Message</th><th>Days Left</th><th>Uses</th><th>Last Used</th><th>Status</th><th>Actions</th>
+                <th>Email / Phone</th><th>Profile</th><th>PIN</th><th>Link / Country</th><th>Days Left</th><th>Uses / IPs</th><th>Last Used</th><th>Status</th><th>Actions</th>
               </tr></thead>
-              <tbody id="links-tbody"><tr class="empty-row"><td colspan="11">Loading links...</td></tr></tbody>
+              <tbody id="links-tbody"><tr class="empty-row"><td colspan="10">Loading links...</td></tr></tbody>
             </table>
           </div>
           <div id="pg-wrap" style="display:none;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;border-top:1px solid var(--border)"></div>
@@ -363,7 +352,7 @@ window.onload=()=>{updateDate();setInterval(updateDate,6e4);if(tok)boot();};
 function updateDate(){const n=new Date();document.getElementById('tb-date').textContent=n.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
 async function doLogin(){const p=document.getElementById('pass-inp').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const d=await r.json();if(d.success){tok=d.token;sessionStorage.setItem('fanflix_admin',tok);boot();}else document.getElementById('login-err').style.display='block';}
 function doLogout(){sessionStorage.removeItem('fanflix_admin');location.reload();}
-function boot(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.cssText='display:flex;width:100%;flex:1';showSection('dashboard');loadAll();setInterval(loadStats,3e4);setInterval(loadAll,6e4);}
+function boot(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.cssText='display:flex;width:100%;flex:1';showSection('dashboard');loadAll();setInterval(loadStats,3e4);setInterval(()=>{loadLinks();loadSlots();},12e4);}
 async function loadAll(){await Promise.all([loadLinks(),loadStats(),loadSlots(),loadGeo()]);}
 async function loadStats(){try{const r=await fetch('/api/stats');const d=await r.json();$('tb-live').textContent=d.live;$('tb-today').textContent=d.today;}catch(e){}}
 async function loadGeo(){try{const r=await fetch('/api/admin/geo',{headers:{'x-admin-token':tok}});const d=await r.json();geoFlags=d.geo||{};}catch(e){}}
@@ -411,7 +400,7 @@ function applyFilter(){
   else if(curMode==='neverused'){for(const[k,v]of Object.entries(allLinks))if(v.uses===0&&v.active&&v.expiresAt>now)f[k]=v;}
   else if(curMode==='revoked'){for(const[k,v]of Object.entries(allLinks))if(!v.active)f[k]=v;}
   else if(curMode.startsWith('email:')){const em=curMode.slice(6);for(const[k,v]of Object.entries(allLinks))if(v.email===em)f[k]=v;}
-  else if(curMode==='search'){const q=($('search-inp')?.value||'').toLowerCase().replace('/c/','').trim();if(q){for(const[k,v]of Object.entries(allLinks)){const dl=Math.ceil((v.expiresAt-now)/864e5),st=!v.active?'revoked':v.expiresAt<=now?'expired':'active';if(v.email.toLowerCase().includes(q)||(v.profile||'').toLowerCase().includes(q)||k.includes(q)||(v.pin||'').includes(q)||st.includes(q)||String(dl).includes(q))f[k]=v;}}else f={...allLinks};}
+  else if(curMode==='search'){const q=($('search-inp')?.value||'').toLowerCase().replace('/c/','').trim();if(q){for(const[k,v]of Object.entries(allLinks)){const dl=Math.ceil((v.expiresAt-now)/864e5),st=!v.active?'revoked':v.expiresAt<=now?'expired':'active';if(v.email.toLowerCase().includes(q)||(v.profile||'').toLowerCase().includes(q)||k.includes(q)||(v.pin||'').includes(q)||st.includes(q)||String(dl).includes(q)||(v.phone||'').includes(q))f[k]=v;}}else f={...allLinks};}
   else{f={...allLinks};}
   renderLinks(f,0);
   // Update filter chip
@@ -491,7 +480,7 @@ function renderLinks(links,page){
   updatePg(arr.length,tp);
   // Update badge
   const ab=$('active-badge');if(ab){ab.textContent=arr.length+' Links';ab.className='card-badge ok';}
-  if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="11">No links found</td></tr>';return;}
+  if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="10">No links found</td></tr>';return;}
   const now=Date.now(),d3=3*864e5;
   tbody.innerHTML=pa.map(l=>{
     const exp=l.expiresAt<=now,xh=!exp&&(l.expiresAt-now)<864e5,xp=!exp&&(l.expiresAt-now)<=d3;
@@ -503,18 +492,30 @@ function renderLinks(links,page){
     const tu=l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
     const pl=(l.profile||'?').replace('Profile ','').trim().charAt(0);
     const pc2=PC[pl]||'#888';
-    const ip=l.ipCount||0;
+    const ipCount=l.ipCount||0;
     const eb=xh?`<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;margin-left:4px">TODAY</span>`:'';
-    const custMsg='FanFlix BD\\n\\nEmail: '+l.email+'\\nProfile: '+l.profile+'\\nPIN: '+l.pin+'\\n\\nCode Link: '+fl+'\\n\\nValid: '+dl+' days';
+    const outsideGeo=geoFlags[l.token]||[];
+    const countryLine=outsideGeo.length?`<div style="font-family:var(--m);font-size:.58rem;color:var(--amber);margin-top:2px">${[...new Set(outsideGeo.map(g=>g.country||g))].join(', ')}</div>`:'';
     return `<tr id="row-${l.token}">
       <td><input type="checkbox" onchange="toggleSel('${l.token}')" ${selLinks.has(l.token)?'checked':''}></td>
-      <td><div class="email-cell" style="font-family:var(--m);font-size:.7rem;color:var(--text2)" title="${esc(l.email)}">${esc(l.email)}</div></td>
+      <td>
+        <div class="email-cell" style="font-family:var(--m);font-size:.7rem;color:var(--text2)" title="${esc(l.email)}">${esc(l.email)}</div>
+        ${l.phone?`<div style="font-family:var(--m);font-size:.6rem;color:var(--muted);margin-top:1px">📞 ${esc(l.phone)}</div>`:''}
+      </td>
       <td><div class="profile-cell"><div class="profile-avatar" style="background:${pc2};cursor:pointer" onclick="copyTxt('${esc(fl)}',this)">${pl}</div><span>${esc(l.profile||'-')}</span></div></td>
       <td class="mono-cell">${esc(l.pin||'-')}</td>
-      <td><div class="link-cell"><span class="link-text" style="cursor:pointer" onclick="copyTxt('${esc(fl)}',this)">/c/${l.token}</span>${geoFlags[l.token]?.length?`<span title="Outside BD" style="cursor:help">🚩</span>`:''}<button class="icon-btn" onclick="copyTxt('${esc(fl)}',this)" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></td>
-      <td><button onclick="copyTxt(${JSON.stringify(custMsg.replace(/\\n/g,'\n'))},this)" style="background:var(--s3);border:1px solid var(--border);color:var(--muted2);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer">📋 Copy Msg</button></td>
+      <td>
+        <div class="link-cell">
+          <span class="link-text" style="cursor:pointer" onclick="copyTxt('${esc(fl)}',this)">/c/${l.token}</span>
+          <button class="icon-btn" onclick="copyTxt('${esc(fl)}',this)" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+        </div>
+        ${countryLine}
+      </td>
       <td class="days-cell ${dc}">${exp?'Expired':`${dl}d left`}${eb}</td>
-      <td class="uses-cell">${l.uses}<div class="uses-today">today: ${tu}</div></td>
+      <td class="uses-cell">
+        ${l.uses}<div class="uses-today">today: ${tu}</div>
+        <div style="font-family:var(--m);font-size:.58rem;color:${ipCount>=4?'var(--red)':ipCount>=2?'var(--amber)':'var(--muted2)'}" title="${ipCount} unique IPs">🖥 ${ipCount} IP${ipCount!==1?'s':''}</div>
+      </td>
       <td class="time-cell">${lu}</td>
       <td><span class="status-badge ${st}">${st}</span></td>
       <td><div class="action-btns">
@@ -598,8 +599,8 @@ async function deleteSlotEmail(em){
   loadAll();
 }
 
-async function revokeLink(t){if(!confirm('Revoke?'))return;await fetch('/api/admin/revoke/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Revoked');loadAll();}
-async function activateLink(t){await fetch('/api/admin/activate/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Activated');loadAll();}
+async function revokeLink(t){if(!confirm('Revoke?'))return;await fetch('/api/admin/revoke/'+t,{method:'POST',headers:{'x-admin-token':tok}});if(allLinks[t])allLinks[t].active=false;toast('Revoked');applyFilter();}
+async function activateLink(t){await fetch('/api/admin/activate/'+t,{method:'POST',headers:{'x-admin-token':tok}});if(allLinks[t])allLinks[t].active=true;toast('Activated');applyFilter();}
 
 // ── FIX: editEmail — clean prompt, proper update ──
 async function editEmail(t,cur){
@@ -611,8 +612,8 @@ async function editEmail(t,cur){
   if(d.success){toast('✅ Email updated → '+ne);loadAll();}else toast('Error: '+(d.error||'?'),1);
 }
 
-async function renewLink(t){const dy=confirm('Renew 28d? Cancel=85d')?28:85;const r=await fetch('/api/admin/renew/'+t,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({days:dy})});const d=await r.json();if(d.success){toast('Renewed '+dy+'d!');loadAll();}else toast('Error',1);}
-async function delLink(t){if(!confirm('Delete permanently?'))return;await fetch('/api/admin/delete/'+t,{method:'DELETE',headers:{'x-admin-token':tok}});toast('Deleted');loadAll();}
+async function renewLink(t){const dy=confirm('Renew 28d? Cancel=85d')?28:85;const r=await fetch('/api/admin/renew/'+t,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({days:dy})});const d=await r.json();if(d.success){if(allLinks[t]){allLinks[t].expiresAt=Date.now()+dy*864e5;allLinks[t].active=true;allLinks[t].warningSent=false;}toast('Renewed '+dy+'d!');applyFilter();updateStats(allLinks);}else toast('Error',1);}
+async function delLink(t){if(!confirm('Delete permanently?'))return;await fetch('/api/admin/delete/'+t,{method:'DELETE',headers:{'x-admin-token':tok}});delete allLinks[t];toast('Deleted');applyFilter();updateStats(allLinks);}
 
 function copyTxt(txt,btn){navigator.clipboard.writeText(txt).then(()=>{if(btn){const o=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=o,2e3);}toast('Copied!');});}
 
