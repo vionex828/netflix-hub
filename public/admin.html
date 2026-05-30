@@ -258,16 +258,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
         </div>
         <div class="grid-2">
           <div>
-            <div class="slots-card">
-              <div class="card-header">
-                <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Netflix Account Slots</div>
-                <span class="card-badge ok" id="slots-badge">Loading...</span>
-              </div>
-              <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
-              <div id="slots-more-wrap" style="display:none;margin-top:.6rem">
-                <button id="slots-more-btn" onclick="toggleSlotsExpand()" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.63rem;padding:7px;border-radius:7px;cursor:pointer">Show All Accounts ▼</button>
-              </div>
-            </div>
             <div class="create-card" id="create-section">
               <div class="card-header" style="margin-bottom:.8rem"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Customer Link</div></div>
               <div class="form-row">
@@ -328,6 +318,19 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div>
           <button class="create-btn" onclick="showAddAccForm()">+ Add Account</button>
         </div>
+
+        <!-- SLOTS OVERVIEW (moved from dashboard) -->
+        <div class="slots-card" style="margin-bottom:1.2rem">
+          <div class="card-header">
+            <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Account Slots Overview</div>
+            <span class="card-badge ok" id="slots-badge">Loading...</span>
+          </div>
+          <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
+          <div id="slots-more-wrap" style="display:none;margin-top:.6rem">
+            <button id="slots-more-btn" onclick="toggleSlotsExpand()" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.63rem;padding:7px;border-radius:7px;cursor:pointer">Show All Accounts ▼</button>
+          </div>
+        </div>
+
         <div id="add-acc-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
             <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
@@ -453,7 +456,7 @@ function showSection(s){
   if(s==='dashboard'){$('sec-dashboard').style.display='block';setNav('nav-dashboard');}
   else if(s==='links'){$('sec-links').style.display='block';setNav('nav-links');applyFilter();}
   else if(s==='create'){$('sec-dashboard').style.display='block';setNav('nav-create');setTimeout(()=>$('create-section')?.scrollIntoView({behavior:'smooth'}),100);}
-  else if(s==='accounts'){$('sec-accounts').style.display='block';setNav('nav-accounts');loadAccounts();}
+  else if(s==='accounts'){$('sec-accounts').style.display='block';setNav('nav-accounts');loadAccounts();loadSlots();}
   else if(s==='settings'){$('sec-settings').style.display='block';setNav('nav-settings');loadSettingsData();}
 }
 
@@ -699,7 +702,22 @@ async function replaceAccEmail(oe){
 }
 
 async function toggleAccount(em){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em)+'/toggle',{method:'POST',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success)loadAccounts();else toast('Error',1);}
-async function deleteAccount(em){if(!confirm('Delete account: '+em+'?'))return;const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success){toast('Deleted!');loadAccounts();}else toast('Error',1);}
+async function deleteAccount(em){
+  const links=Object.values(allLinks).filter(l=>l.email===em);
+  const msg=links.length>0
+    ?`Delete account: ${em}\n\nThis will also delete ALL ${links.length} customer links for this email.\n\nAre you sure?`
+    :`Delete account: ${em}?\n\nNo customer links found for this email.`;
+  if(!confirm(msg))return;
+  // Delete all customer links first
+  for(const l of links){
+    await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':tok}});
+  }
+  // Then delete account record
+  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
+  const d=await r.json();
+  if(d.success){toast(`Deleted account + ${links.length} links!`);await loadAll();loadAccounts();loadSlots();}
+  else toast('Error deleting account',1);
+}
 
 let settingsData={};
 async function loadSettingsData(){try{const r=await fetch('/api/admin/settings',{headers:{'x-admin-token':tok}});const d=await r.json();settingsData=d.settings||{};renderSettings();}catch(e){}}
