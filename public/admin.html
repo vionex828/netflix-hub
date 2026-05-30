@@ -319,18 +319,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <button class="create-btn" onclick="showAddAccForm()">+ Add Account</button>
         </div>
 
-        <!-- SLOTS OVERVIEW (moved from dashboard) -->
-        <div class="slots-card" style="margin-bottom:1.2rem">
-          <div class="card-header">
-            <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Account Slots Overview</div>
-            <span class="card-badge ok" id="slots-badge">Loading...</span>
-          </div>
-          <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
-          <div id="slots-more-wrap" style="display:none;margin-top:.6rem">
-            <button id="slots-more-btn" onclick="toggleSlotsExpand()" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.63rem;padding:7px;border-radius:7px;cursor:pointer">Show All Accounts ▼</button>
-          </div>
-        </div>
-
         <div id="add-acc-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
             <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
@@ -640,29 +628,46 @@ function renderAccounts(){
   if(!total){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts yet. Click + Add Account.</div>';$('acc-pg').style.display='none';return;}
   const tp=Math.ceil(total/ACC_PS);
   const page=allAccounts.slice(accPage*ACC_PS,(accPage+1)*ACC_PS);
-  list.innerHTML=page.map(a=>`
-    <div class="acc-row">
-      <div style="width:8px;height:8px;border-radius:50%;background:${a.active?'var(--green)':'var(--muted2)'};flex-shrink:0"></div>
-      <div style="flex:1;min-width:0">
-        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-          <span style="color:var(--muted2);margin-right:6px">✉</span>${esc(a.email)}
-        </div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${a.notes||'No notes'} · ${a.addedAt?timeAgo(a.addedAt):'—'}</div>
+  const pc=['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
+  list.innerHTML=page.map(a=>{
+    const used=a.slotsUsed||0;
+    const circ=2*Math.PI*18,off=circ-(used/8)*circ;
+    const rc=used>=8?'#E50914':used>=6?'#f5a623':'#46d369';
+    const hc=used>=8?'#E50914':'#46d369';
+    const avatars=Array.from({length:8},(_,i)=>{
+      const letter=String.fromCharCode(65+i);
+      const col=pc[i]||'#888';
+      return i<used
+        ?`<div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;border:2px solid var(--bg);flex-shrink:0;position:relative">${letter}<div style="position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg)"></div></div>`
+        :`<div style="width:26px;height:26px;border-radius:50%;background:var(--s4);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:var(--muted2);border:2px solid var(--s5);flex-shrink:0">${letter}</div>`;
+    }).join('');
+    return `<div class="acc-row" style="flex-wrap:wrap;gap:.8rem">
+      <div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0;margin-top:4px"></div>
+      <div style="flex:1;min-width:160px">
+        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)">${esc(a.email)}</div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">${a.notes||'No notes'} · ${a.addedAt?timeAgo(a.addedAt):'—'}</div>
       </div>
-      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
-        ${Array.from({length:8},(_,i)=>`<div style="width:8px;height:8px;border-radius:50%;background:${i<(a.slotsUsed||0)?'var(--green)':'var(--s4)'}"></div>`).join('')}
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${avatars}</div>
+      <div style="position:relative;width:44px;height:44px;flex-shrink:0">
+        <svg width="44" height="44" viewBox="0 0 44 44">
+          <circle cx="22" cy="22" r="18" fill="none" stroke="var(--s4)" stroke-width="4"/>
+          <circle cx="22" cy="22" r="18" fill="none" stroke="${rc}" stroke-width="4" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%"/>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.62rem;font-weight:700;color:var(--text)">${used}/8</div>
       </div>
-      <div style="font-family:var(--m);font-size:1rem;font-weight:700;color:${(a.slotsUsed||0)>=8?'var(--red)':(a.slotsUsed||0)>=6?'var(--amber)':'var(--green)'};flex-shrink:0;min-width:36px;text-align:right">${a.slotsUsed||0}/8</div>
-      <div style="display:flex;gap:.4rem;flex-shrink:0">
+      <div style="display:flex;gap:.35rem;flex-shrink:0;align-items:center">
         <button class="icon-btn" onclick="editAccount('${esc(a.email)}')" title="Edit notes" style="color:var(--amber)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-        <button class="icon-btn" onclick="replaceAccEmail('${esc(a.email)}')" title="Replace email (updates all links)" style="color:var(--blue)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
+        <button class="icon-btn" onclick="replaceAccEmail('${esc(a.email)}')" title="Replace email" style="color:var(--blue)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
         <button class="icon-btn" onclick="toggleAccount('${esc(a.email)}')" title="${a.active?'Deactivate':'Activate'}" style="color:${a.active?'var(--green)':'var(--muted)'}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/>${a.active?'<polyline points="9 12 11 14 15 10"/>':'<line x1="8" y1="12" x2="16" y2="12"/>'}</svg></button>
-        <button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        <button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')" title="Delete" style="color:var(--red)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const pg=$('acc-pg');
-  if(tp<=1){pg.style.display='none';}else{pg.style.display='flex';pg.innerHTML=`<button onclick="accPage=${accPage-1};renderAccounts()" ${accPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">← Prev</button><span style="font-family:var(--m);font-size:.68rem;color:var(--muted);padding:0 .8rem;align-self:center">${total} accounts · Page ${accPage+1}/${tp}</span><button onclick="accPage=${accPage+1};renderAccounts()" ${accPage>=tp-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">Next →</button>`;}
+  if(tp<=1){pg.style.display='none';}
+  else{pg.style.display='flex';pg.innerHTML=`<button onclick="accPage=${accPage-1};renderAccounts()" ${accPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">← Prev</button><span style="font-family:var(--m);font-size:.68rem;color:var(--muted);padding:0 .8rem;align-self:center">${total} accounts · Page ${accPage+1}/${tp}</span><button onclick="accPage=${accPage+1};renderAccounts()" ${accPage>=tp-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">Next →</button>`;}
 }
+
 function showAddAccForm(){const f=$('add-acc-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
 async function addAccount(){
   const em=$('acc-email').value.trim(),no=$('acc-notes').value.trim();
@@ -703,20 +708,22 @@ async function replaceAccEmail(oe){
 
 async function toggleAccount(em){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em)+'/toggle',{method:'POST',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success)loadAccounts();else toast('Error',1);}
 async function deleteAccount(em){
-  const links=Object.values(allLinks).filter(l=>l.email===em);
-  const msg=links.length>0
-    ?`Delete account: ${em}\n\nThis will also delete ALL ${links.length} customer links for this email.\n\nAre you sure?`
-    :`Delete account: ${em}?\n\nNo customer links found for this email.`;
-  if(!confirm(msg))return;
-  // Delete all customer links first
-  for(const l of links){
-    await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':tok}});
-  }
-  // Then delete account record
-  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
-  const d=await r.json();
-  if(d.success){toast(`Deleted account + ${links.length} links!`);await loadAll();loadAccounts();loadSlots();}
-  else toast('Error deleting account',1);
+  if(!confirm(`Delete account + ALL customer links for:\n\n${em}\n\nThis cannot be undone!`))return;
+  try{
+    // Fetch fresh links from server to make sure we get all
+    const r0=await fetch('/api/admin/links',{headers:{'x-admin-token':tok}});
+    const d0=await r0.json();
+    const freshLinks=Object.values(d0.links||{}).filter(l=>l.email===em.toLowerCase());
+    // Delete all customer links
+    for(const l of freshLinks){
+      await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':tok}});
+    }
+    // Delete account record
+    await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
+    toast(`✅ Deleted account + ${freshLinks.length} links`);
+    await loadAll();
+    loadAccounts();
+  }catch(e){toast('Error: '+e.message,1);}
 }
 
 let settingsData={};
