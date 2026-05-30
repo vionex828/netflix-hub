@@ -112,8 +112,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-w
 .search-wrap{display:flex;align-items:center;gap:.5rem;background:var(--s3);border:1px solid var(--s4);border-radius:7px;padding:7px 12px;flex:1;max-width:280px;margin-left:auto}
 .search-wrap input{background:transparent;border:none;color:var(--text);font-family:var(--m);font-size:.73rem;outline:none;width:100%}
 .search-wrap input::placeholder{color:var(--muted2)}
-.table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:900px}
 th{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--s2);}
 td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.025);font-size:.8rem;vertical-align:middle}
 tr:last-child td{border-bottom:none}
@@ -175,7 +175,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   .sidebar{position:fixed;left:-260px;top:0;bottom:0;z-index:200;transition:left .3s;height:100%;overflow-y:auto}
   .sidebar.open{left:0}
   .main{height:auto;min-height:100vh;overflow:visible}
-  .content{overflow:visible;height:auto;padding:1rem}
+  .content{overflow-y:auto !important;height:calc(100vh - 58px) !important;padding:1rem}
   .grid-2{grid-template-columns:1fr}.grid-4{grid-template-columns:1fr 1fr}
   .form-row{grid-template-columns:1fr 1fr}
   .mob-nav-btn{display:flex}
@@ -244,7 +244,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-active">-</div><div class="stat-lbl">Active Links</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div></div><div class="stat-link" onclick="filterLinks('active')">View active <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-link" onclick="filterLinks('expiring')">View expiring <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expired">-</div><div class="stat-lbl">Expired</div></div><div class="stat-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div><div class="stat-link" onclick="filterLinks('expired')">View expired <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
-          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div><div class="stat-link">Usage analytics</div></div>
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div><div class="stat-link" onclick="filterLinks('all');setNav('nav-links')">View all links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
           <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-revenue" style="color:var(--green)">-</div><div class="stat-lbl">Est. Monthly Revenue</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-link" id="s-revenue-detail" style="color:var(--muted2);font-size:.68rem"></div></div>
