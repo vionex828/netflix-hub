@@ -21,53 +21,27 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-webkit-font-smoothing:antialiased}
-
-/* ── SIDEBAR ── */
-.sidebar{
-  width:var(--sidebar);flex-shrink:0;
-  background:var(--s1);border-right:1px solid var(--border);
-  display:flex;flex-direction:column;height:100vh;
-  position:sticky;top:0;
-}
+.sidebar{width:var(--sidebar);flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;}
 .sb-logo{padding:1.2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .sb-logo-text{font-family:'IBM Plex Mono',monospace;font-size:1.1rem;font-weight:500;letter-spacing:2px;line-height:1}
 .sb-logo-text .f{color:var(--red)}.sb-logo-text .l{color:var(--text)}
 .sb-logo-sub{font-size:.55rem;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;font-family:var(--m);margin-top:2px}
-
 .sb-nav{flex:1;padding:.8rem 0;overflow-y:auto;scrollbar-width:none}
 .sb-nav::-webkit-scrollbar{display:none}
 .sb-section{font-family:var(--m);font-size:.52rem;letter-spacing:3px;color:var(--muted2);text-transform:uppercase;padding:.4rem 1.4rem;margin-top:.5rem}
-.sb-item{
-  display:flex;align-items:center;gap:.75rem;
-  padding:.6rem 1.4rem;cursor:pointer;
-  transition:all .18s;position:relative;
-  border-left:2px solid transparent;
-  color:var(--muted);font-size:.82rem;font-weight:500;
-}
+.sb-item{display:flex;align-items:center;gap:.75rem;padding:.6rem 1.4rem;cursor:pointer;transition:all .18s;position:relative;border-left:2px solid transparent;color:var(--muted);font-size:.82rem;font-weight:500;}
 .sb-item:hover{background:var(--s2);color:var(--text)}
 .sb-item.active{background:rgba(229,9,20,.08);border-left-color:var(--red);color:var(--red)}
-.sb-item svg{flex-shrink:0;transition:transform .2s}
-.sb-item:hover svg{transform:scale(1.1)}
-.sb-item.active svg{color:var(--red)}
+.sb-item svg{flex-shrink:0}
 .sb-badge{background:var(--red);color:#fff;font-family:var(--m);font-size:.55rem;padding:2px 6px;border-radius:100px;margin-left:auto;font-weight:500}
-
 .sb-user{border-top:1px solid var(--border);padding:1rem 1.4rem;display:flex;align-items:center;gap:.75rem}
 .sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0}
 .sb-uname{font-size:.8rem;font-weight:600;color:var(--text)}
 .sb-uemail{font-family:var(--m);font-size:.58rem;color:var(--muted2)}
 .sb-logout{margin-left:auto;background:transparent;border:none;color:var(--muted2);cursor:pointer;padding:4px;transition:color .18s;flex-shrink:0}
 .sb-logout:hover{color:var(--red)}
-
-/* ── MAIN ── */
 .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-width:0}
-
-/* TOPBAR */
-.topbar{
-  background:var(--s1);border-bottom:1px solid var(--border);
-  padding:0 1.8rem;height:58px;
-  display:flex;align-items:center;justify-content:space-between;
-  flex-shrink:0;
-}
+.topbar{background:var(--s1);border-bottom:1px solid var(--border);padding:0 1.8rem;height:58px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .topbar-left h1{font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:1px}
 .topbar-left p{font-size:.72rem;color:var(--muted);font-weight:400}
 .topbar-left p span{color:var(--red);font-weight:600}
@@ -77,22 +51,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-w
 .tb-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:tbpulse 2s ease infinite}
 @keyframes tbpulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 4px rgba(70,211,105,0)}}
 .tb-date{font-family:var(--m);font-size:.62rem;color:var(--muted2);border-left:1px solid var(--border);padding-left:1rem}
-
-/* CONTENT */
 .content{flex:1;overflow-y:auto;padding:1.4rem 1.8rem 2rem;scrollbar-width:thin;scrollbar-color:var(--s4) transparent}
 .content::-webkit-scrollbar{width:4px}
 .content::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px}
-
-/* GRID */
 .grid-2{display:grid;grid-template-columns:1fr 320px;gap:1.2rem;margin-bottom:1.2rem}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.2rem}
-
-/* STAT CARDS */
-.stat-card{
-  background:var(--s1);border:1px solid var(--border);border-radius:12px;
-  padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;
-  transition:border-color .2s,box-shadow .2s;cursor:default;
-}
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.2rem;display:flex;flex-direction:column;gap:.8rem;transition:border-color .2s,box-shadow .2s;cursor:default;}
 .stat-card:hover{border-color:var(--border2);box-shadow:0 4px 20px rgba(0,0,0,.3)}
 .stat-card-top{display:flex;align-items:center;justify-content:space-between}
 .stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -101,79 +65,36 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-w
 .stat-lbl{font-size:.78rem;color:var(--muted);font-weight:400;margin-top:2px}
 .stat-link{font-family:var(--m);font-size:.6rem;color:var(--muted2);display:flex;align-items:center;gap:4px;cursor:pointer;transition:color .2s;text-decoration:none;margin-top:.3rem}
 .stat-link:hover{color:var(--text)}
-
-/* SLOTS CARD */
 .slots-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem;margin-bottom:1.2rem}
 .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
 .card-title{font-size:.9rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:.5rem}
 .card-badge{font-family:var(--m);font-size:.58rem;padding:3px 9px;border-radius:100px;font-weight:500}
 .card-badge.full{background:rgba(229,9,20,.15);color:var(--red);border:1px solid rgba(229,9,20,.2)}
 .card-badge.ok{background:var(--green-dim);color:var(--green);border:1px solid rgba(70,211,105,.2)}
-
 .slot-row{display:flex;align-items:center;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--border)}
 .slot-row:last-child{border-bottom:none}
 .slot-email{font-family:var(--m);font-size:.72rem;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .slot-avatars{display:flex;gap:4px;align-items:center}
-.slot-avatar{
-  width:28px;height:28px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:.7rem;font-weight:700;color:#fff;
-  border:2px solid var(--bg);position:relative;
-  flex-shrink:0;
-}
-.slot-avatar.active::after{
-  content:'';position:absolute;bottom:-1px;right:-1px;
-  width:8px;height:8px;border-radius:50%;
-  background:var(--green);border:1.5px solid var(--bg);
-}
+.slot-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff;border:2px solid var(--bg);position:relative;flex-shrink:0;}
+.slot-avatar.active::after{content:'';position:absolute;bottom:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg);}
 .slot-avatar.empty{background:var(--s4);border-color:var(--s5)}
-.slot-avatar svg{color:var(--muted2)}
 .slot-ring{position:relative;flex-shrink:0}
-.slot-ring svg{transform:rotate(-90deg)}
 .slot-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.65rem;font-weight:600;color:var(--text)}
-
-/* PROFILE COLORS */
-.pa{background:#E50914}.pb{background:#f5a623}.pc{background:#46d369}.pd{background:#4da6ff}.pe{background:#a78bfa}
-
-/* CREATE FORM */
 .create-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem;margin-bottom:1.2rem}
 .form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.7rem;align-items:end}
 .field-label{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.4rem}
-.field-inp{
-  width:100%;background:var(--s3);border:1px solid var(--s4);
-  color:var(--text);padding:9px 12px;border-radius:7px;
-  font-family:var(--m);font-size:.78rem;outline:none;
-  transition:border-color .18s;
-}
+.field-inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:9px 12px;border-radius:7px;font-family:var(--m);font-size:.78rem;outline:none;transition:border-color .18s;}
 .field-inp:focus{border-color:rgba(255,255,255,.2)}
 .field-inp::placeholder{color:var(--muted2)}
-.field-select{
-  width:100%;background:var(--s3);border:1px solid var(--s4);
-  color:var(--text);padding:9px 12px;border-radius:7px;
-  font-family:var(--m);font-size:.75rem;outline:none;cursor:pointer;
-  appearance:none;
-}
-.create-btn{
-  background:var(--red);border:none;color:#fff;
-  padding:9px 18px;border-radius:7px;
-  font-family:var(--f);font-size:.82rem;font-weight:600;
-  cursor:pointer;white-space:nowrap;transition:background .15s;
-  display:flex;align-items:center;gap:6px;height:38px;
-}
+.field-select{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:9px 12px;border-radius:7px;font-family:var(--m);font-size:.75rem;outline:none;cursor:pointer;appearance:none;}
+.create-btn{background:var(--red);border:none;color:#fff;padding:9px 18px;border-radius:7px;font-family:var(--f);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;display:flex;align-items:center;gap:6px;height:38px;}
 .create-btn:hover{background:var(--red2)}
-
-/* RIGHT PANEL */
 .right-panel{display:flex;flex-direction:column;gap:1.2rem}
-
-/* OVERVIEW CHART */
 .chart-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem}
-.chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
 .chart-num{font-size:1.6rem;font-weight:700;color:var(--text);line-height:1}
 .chart-growth{font-family:var(--m);font-size:.62rem;color:var(--green);margin-top:2px}
 .chart-area{height:70px;position:relative;overflow:hidden}
 .chart-svg{width:100%;height:100%}
-
-/* RECENT ACTIVITY */
 .activity-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem}
 .act-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem}
 .act-header h3{font-size:.88rem;font-weight:600}
@@ -181,34 +102,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-w
 .act-item{display:flex;align-items:flex-start;gap:.7rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.03)}
 .act-item:last-child{border-bottom:none}
 .act-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-.act-icon.green{background:var(--green-dim)}.act-icon.red{background:var(--red-dim)}.act-icon.amber{background:var(--amber-dim)}.act-icon.blue{background:var(--blue-dim)}
+.act-icon.green{background:var(--green-dim)}.act-icon.red{background:var(--red-dim)}.act-icon.blue{background:var(--blue-dim)}
 .act-title{font-size:.78rem;font-weight:500;color:var(--text)}
 .act-sub{font-family:var(--m);font-size:.62rem;color:var(--muted2);margin-top:1px}
 .act-time{font-family:var(--m);font-size:.58rem;color:var(--muted2);margin-left:auto;flex-shrink:0;padding-top:2px}
-.act-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
-.act-dot.green{background:var(--green)}.act-dot.red{background:var(--red)}.act-dot.amber{background:var(--amber)}.act-dot.blue{background:var(--blue)}
-
-/* LINKS TABLE */
 .table-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .table-header{padding:1rem 1.3rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
 .table-title{font-size:.88rem;font-weight:600;display:flex;align-items:center;gap:.6rem}
 .search-wrap{display:flex;align-items:center;gap:.5rem;background:var(--s3);border:1px solid var(--s4);border-radius:7px;padding:7px 12px;flex:1;max-width:280px;margin-left:auto}
 .search-wrap input{background:transparent;border:none;color:var(--text);font-family:var(--m);font-size:.73rem;outline:none;width:100%}
 .search-wrap input::placeholder{color:var(--muted2)}
-
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
-th{
-  font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;
-  text-transform:uppercase;color:var(--muted2);
-  padding:.75rem 1rem;text-align:left;
-  border-bottom:1px solid var(--border);white-space:nowrap;
-  background:var(--s2);
-}
+th{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--s2);}
 td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.025);font-size:.8rem;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:rgba(255,255,255,.015)}
-
 .profile-cell{display:flex;align-items:center;gap:.5rem}
 .profile-avatar{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;flex-shrink:0}
 .email-cell{font-family:var(--m);font-size:.7rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -220,24 +129,25 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .uses-cell{font-family:var(--m);font-size:.72rem;text-align:center}
 .uses-today{font-size:.6rem;color:var(--muted2)}
 .time-cell{font-family:var(--m);font-size:.67rem;color:var(--muted2)}
-
 .status-badge{font-family:var(--m);font-size:.56rem;letter-spacing:1px;padding:3px 8px;border-radius:4px;font-weight:500;text-transform:uppercase;white-space:nowrap}
 .status-badge.active{background:var(--green-dim);color:var(--green);border:1px solid rgba(70,211,105,.2)}
 .status-badge.revoked{background:var(--red-dim);color:var(--red);border:1px solid rgba(229,9,20,.15)}
 .status-badge.expired{background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border)}
 .status-badge.expiring{background:var(--amber-dim);color:var(--amber);border:1px solid rgba(245,166,35,.2)}
-
 .action-btns{display:flex;align-items:center;gap:.3rem}
 .icon-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--s4);background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;color:var(--muted2);flex-shrink:0}
 .icon-btn:hover{border-color:var(--border2);color:var(--text);background:var(--s3)}
 .icon-btn.danger:hover{border-color:rgba(229,9,20,.3);color:var(--red);background:var(--red-dim)}
 .icon-btn.success:hover{border-color:rgba(70,211,105,.3);color:var(--green);background:var(--green-dim)}
-.wa-icon-btn{width:28px;height:28px;border-radius:6px;background:#25D366;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .18s;flex-shrink:0;border:none}
-.wa-icon-btn:hover{background:#1ebe5d;transform:scale(1.05)}
-
 .empty-row td{text-align:center;padding:2.5rem;color:var(--muted);font-family:var(--m);font-size:.75rem}
-
-/* LOGIN */
+.filter-chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--red-dim);border:1px solid rgba(229,9,20,.2);color:var(--red);font-family:var(--m);font-size:.6rem;padding:4px 10px;border-radius:100px;cursor:pointer;margin-bottom:.8rem}
+.filter-chip:hover{background:rgba(229,9,20,.2)}
+.acc-row{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem;transition:border-color .2s}
+.acc-row:hover{border-color:var(--border2)}
+.form-label{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.4rem}
+.form-inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:9px 12px;border-radius:7px;font-family:var(--m);font-size:.78rem;outline:none;transition:border-color .18s}
+.form-inp:focus{border-color:rgba(255,255,255,.2)}
+.form-inp::placeholder{color:var(--muted2)}
 #login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
 .login-box{background:var(--s1);border:1px solid var(--border);border-radius:14px;padding:2.5rem;width:360px}
 .login-logo{font-family:var(--m);font-size:1.2rem;font-weight:500;letter-spacing:2px;margin-bottom:1.5rem;text-align:center}
@@ -251,1191 +161,525 @@ tr:hover td{background:rgba(255,255,255,.015)}
 .login-btn{width:100%;background:var(--red);border:none;color:#fff;padding:11px;border-radius:8px;font-family:var(--f);font-size:.88rem;font-weight:600;cursor:pointer;transition:background .15s}
 .login-btn:hover{background:var(--red2)}
 .login-err{font-family:var(--m);font-size:.7rem;color:var(--red);margin-top:.5rem;display:none}
-
-/* TOAST */
 #toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;background:var(--green);color:#000;font-family:var(--m);font-size:.72rem;padding:10px 18px;border-radius:8px;letter-spacing:1px;opacity:0;transition:all .28s;pointer-events:none;white-space:nowrap;font-weight:500;box-shadow:0 4px 20px rgba(70,211,105,.3)}
 #toast.show{opacity:1}
 #toast.err{background:var(--red);color:#fff;box-shadow:0 4px 20px rgba(229,9,20,.3)}
-
-/* SCROLLBAR */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px}
-
-/* GEAR SPIN */
-@keyframes gear{to{transform:rotate(360deg)}}
-.sb-item:hover .gear-icon{animation:gear .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* MOBILE NAV BUTTON */
 .mob-nav-btn{display:none;position:fixed;bottom:1.5rem;left:1.5rem;z-index:300;width:52px;height:52px;border-radius:50%;background:var(--red);border:none;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(229,9,20,.4)}
 .mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:199;backdrop-filter:blur(4px)}
 .mob-overlay.show{display:block}
-
 @media(max-width:1024px){
-  body{overflow:auto}
-  html{height:auto}
-  .sidebar{position:fixed;left:-260px;top:0;bottom:0;z-index:200;transition:left .3s cubic-bezier(.4,0,.2,1);height:100%;overflow-y:auto}
+  body{overflow:auto}html{height:auto}
+  .sidebar{position:fixed;left:-260px;top:0;bottom:0;z-index:200;transition:left .3s;height:100%;overflow-y:auto}
   .sidebar.open{left:0}
   .main{height:auto;min-height:100vh;overflow:visible}
   .content{overflow:visible;height:auto;padding:1rem}
-  .grid-2{grid-template-columns:1fr}
-  .grid-4{grid-template-columns:1fr 1fr}
+  .grid-2{grid-template-columns:1fr}.grid-4{grid-template-columns:1fr 1fr}
   .form-row{grid-template-columns:1fr 1fr}
   .mob-nav-btn{display:flex}
-  #section-accounts,#section-settings{display:none}
-  #section-accounts.show,#section-settings.show{display:block}
   .topbar{position:sticky;top:0;z-index:100}
 }
-@media(max-width:600px){
-  .grid-4{grid-template-columns:1fr}
-  .form-row{grid-template-columns:1fr}
-  .table-wrap{font-size:.7rem}
-  th,td{padding:.5rem .4rem}
-}
+@media(max-width:600px){.grid-4{grid-template-columns:1fr}.form-row{grid-template-columns:1fr}.table-wrap{font-size:.7rem}th,td{padding:.5rem .4rem}}
 </style>
 </head>
 <body>
 <div class="mob-overlay" id="mob-overlay" onclick="closeMobNav()"></div>
 <button class="mob-nav-btn" onclick="toggleMobNav()">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
 </button>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo"><span class="f">FAN</span><span class="l">FLIX</span><sub>Admin Panel</sub></div>
-    <h2>Welcome back</h2>
-    <p>Enter your admin password to access the dashboard</p>
+    <h2>Welcome back</h2><p>Enter your admin password to access the dashboard</p>
     <input class="login-inp" type="password" id="pass-inp" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()"/>
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-err" id="login-err">Wrong password. Try again.</div>
   </div>
 </div>
 
-<!-- DASHBOARD -->
 <div id="dashboard" style="display:none;width:100%;flex:1">
-
-  <!-- SIDEBAR -->
   <div class="sidebar">
-    <div class="sb-logo">
-      <div>
-        <div class="sb-logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div>
-        <div class="sb-logo-sub">Admin Panel</div>
-      </div>
-    </div>
-
+    <div class="sb-logo"><div><div class="sb-logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="sb-logo-sub">Admin Panel</div></div></div>
     <nav class="sb-nav">
       <div class="sb-section">Main</div>
-      <div class="sb-item active" onclick="showSection('dashboard')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-        Dashboard
-      </div>
-      <div class="sb-item" onclick="showSection('links')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        Customer Links
-        <span class="sb-badge" id="sb-active-count">0</span>
-      </div>
-      <div class="sb-item" onclick="showSection('create')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-        Create Link
-      </div>
-
+      <div class="sb-item active" id="nav-dashboard" onclick="showSection('dashboard')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</div>
+      <div class="sb-item" id="nav-links" onclick="showSection('links')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Customer Links<span class="sb-badge" id="sb-active-count">0</span></div>
+      <div class="sb-item" id="nav-create" onclick="showSection('create')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Link</div>
       <div class="sb-section">Monitor</div>
-      <div class="sb-item" onclick="filterByStatus('expiring')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Expiring Soon
-      </div>
-      <div class="sb-item" onclick="filterByStatus('expired')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        Expired Links
-      </div>
-      <div class="sb-item" onclick="filterByStatus('active')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        Analytics
-      </div>
-
+      <div class="sb-item" id="nav-expiring" onclick="setNav('nav-expiring');filterLinks('expiring')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Expiring Soon</div>
+      <div class="sb-item" id="nav-expired" onclick="setNav('nav-expired');filterLinks('expired')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Expired Links</div>
+      <div class="sb-item" id="nav-analytics" onclick="setNav('nav-analytics');filterLinks('active')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</div>
       <div class="sb-section">Quick Filters</div>
-      <div class="sb-item" onclick="showNeverUsed()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Never Used
-      </div>
-      <div class="sb-item" onclick="showRevoked()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        Revoked Links
-      </div>
-      <div class="sb-item" onclick="replaceAllLinks()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
-        Replace Account
-      </div>
-
+      <div class="sb-item" id="nav-neverused" onclick="setNav('nav-neverused');filterLinks('neverused')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Never Used</div>
+      <div class="sb-item" id="nav-revoked" onclick="setNav('nav-revoked');filterLinks('revoked')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Revoked Links</div>
+      <div class="sb-item" id="nav-replace" onclick="setNav('nav-replace');replaceAllLinks()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>Replace Account</div>
       <div class="sb-section">System</div>
-      <div class="sb-item" onclick="showSection('accounts')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        Netflix Accounts
-      </div>
-      <div class="sb-item" onclick="showSection('settings')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
-      </div>
-
+      <div class="sb-item" id="nav-accounts" onclick="showSection('accounts')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Netflix Accounts</div>
+      <div class="sb-item" id="nav-settings" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
-
     <div class="sb-user">
       <div class="sb-avatar">A</div>
-      <div>
-        <div class="sb-uname">Admin</div>
-        <div class="sb-uemail">fanflixbd.com</div>
-      </div>
-      <button class="sb-logout" onclick="doLogout()" title="Logout">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </button>
+      <div><div class="sb-uname">Admin</div><div class="sb-uemail">fanflixbd.com</div></div>
+      <button class="sb-logout" onclick="doLogout()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
     </div>
   </div>
 
-  <!-- MAIN -->
   <div class="main">
-    <!-- TOPBAR -->
     <div class="topbar">
-      <div class="topbar-left">
-        <h1>Dashboard</h1>
-        <p>Welcome back, <span>Admin</span></p>
-      </div>
+      <div class="topbar-left"><h1 id="topbar-title">Dashboard</h1><p>Welcome back, <span>Admin</span></p></div>
       <div class="topbar-right">
         <div class="tb-stat"><div class="tb-dot"></div><b id="tb-live">-</b> online</div>
-        <div class="tb-stat">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          <b id="tb-today">-</b> today
-        </div>
+        <div class="tb-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><b id="tb-today">-</b> today</div>
         <div class="tb-date" id="tb-date"></div>
       </div>
     </div>
 
-    <!-- CONTENT -->
     <div class="content" id="content">
 
-      <!-- STAT CARDS -->
-      <div class="grid-4">
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-active">-</div>
-              <div class="stat-lbl">Active Links</div>
-            </div>
-            <div class="stat-icon green">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            </div>
-          </div>
-          <div class="stat-link" onclick="filterByStatus('active')">View all active links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+      <!-- DASHBOARD -->
+      <div id="sec-dashboard">
+        <div class="grid-4">
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-active">-</div><div class="stat-lbl">Active Links</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div></div><div class="stat-link" onclick="filterLinks('active')">View active <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-link" onclick="filterLinks('expiring')">View expiring <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expired">-</div><div class="stat-lbl">Expired</div></div><div class="stat-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div><div class="stat-link" onclick="filterLinks('expired')">View expired <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div><div class="stat-link">Usage analytics</div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-expiring">-</div>
-              <div class="stat-lbl">Expiring Soon</div>
-            </div>
-            <div class="stat-icon amber">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-          </div>
-          <div class="stat-link" onclick="filterByStatus('expiring')">View expiring links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-revenue" style="color:var(--green)">-</div><div class="stat-lbl">Est. Monthly Revenue</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-link" id="s-revenue-detail" style="color:var(--muted2);font-size:.68rem"></div></div>
+          <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-never-used" style="color:var(--amber)">-</div><div class="stat-lbl">Never Used Links</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div></div><div class="stat-link" onclick="filterLinks('neverused')">View never used <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-expired">-</div>
-              <div class="stat-lbl">Expired</div>
-            </div>
-            <div class="stat-icon red">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-            </div>
-          </div>
-          <div class="stat-link" onclick="filterByStatus('expired')">View expired links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem">
+          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('today')"><div class="stat-card-top"><div><div class="stat-num" id="exp-today" style="color:var(--red)">-</div><div class="stat-lbl">Expiring Today</div></div><div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
+          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('week')"><div class="stat-card-top"><div><div class="stat-num" id="exp-week" style="color:var(--amber)">-</div><div class="stat-lbl">Expiring This Week</div></div><div class="stat-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+          <div class="stat-card" style="cursor:pointer" onclick="filterLinks('month')"><div class="stat-card-top"><div><div class="stat-num" id="exp-month" style="color:var(--green)">-</div><div class="stat-lbl">Expiring This Month</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-uses">-</div>
-              <div class="stat-lbl">Total Uses</div>
-            </div>
-            <div class="stat-icon blue">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            </div>
-          </div>
-          <div class="stat-link">View usage analytics <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
-        </div>
-      </div>
-
-      <!-- REVENUE CARD -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-revenue" style="color:var(--green)">-</div>
-              <div class="stat-lbl">Est. Monthly Revenue</div>
-            </div>
-            <div class="stat-icon green">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            </div>
-          </div>
-          <div class="stat-link" id="s-revenue-detail" style="color:var(--muted2);font-size:.68rem"></div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-top">
-            <div>
-              <div class="stat-num" id="s-never-used" style="color:var(--amber)">-</div>
-              <div class="stat-lbl">Never Used Links</div>
-            </div>
-            <div class="stat-icon amber">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-          </div>
-          <div class="stat-link" onclick="showNeverUsed()" style="cursor:pointer">View never used links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div>
-        </div>
-      </div>
-
-      <!-- EXPIRY CALENDAR -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem" id="expiry-cal">
-        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('today')">
-          <div class="stat-card-top"><div><div class="stat-num" id="exp-today" style="color:var(--red)">-</div><div class="stat-lbl">Expiring Today</div></div><div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
-        </div>
-        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('week')">
-          <div class="stat-card-top"><div><div class="stat-num" id="exp-week" style="color:var(--amber)">-</div><div class="stat-lbl">Expiring This Week</div></div><div class="stat-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
-        </div>
-        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('month')">
-          <div class="stat-card-top"><div><div class="stat-num" id="exp-month" style="color:var(--green)">-</div><div class="stat-lbl">Expiring This Month</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div>
-        </div>
-      </div>
-
-      <!-- SLOTS + RIGHT PANEL -->
-      <div class="grid-2">
-        <div>
-          <!-- SLOTS -->
-          <div class="slots-card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
-                Netflix Account Slots
+        <div class="grid-2">
+          <div>
+            <div class="slots-card">
+              <div class="card-header">
+                <div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Netflix Account Slots</div>
+                <span class="card-badge ok" id="slots-badge">Loading...</span>
               </div>
-              <span class="card-badge ok" id="slots-badge">Loading...</span>
-            </div>
-            <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">Loading slots...</p></div>
-          </div>
-
-          <!-- CREATE FORM -->
-          <div class="create-card" id="create-section">
-            <div class="card-header" style="margin-bottom:.8rem">
-              <div class="card-title">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                Create Customer Link
+              <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">Loading...</p></div>
+              <div id="slots-more-wrap" style="display:none;margin-top:.6rem">
+                <button id="slots-more-btn" onclick="toggleSlotsExpand()" style="width:100%;background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.63rem;padding:7px;border-radius:7px;cursor:pointer">Show All Accounts ▼</button>
               </div>
             </div>
-            <div class="form-row">
-              <div>
-                <label class="field-label">Netflix Email</label>
-                <input class="field-inp" id="c-email" placeholder="email@gmail.com" type="email"/>
-              </div>
-              <div>
-                <label class="field-label">Profile</label>
-                <input class="field-inp" id="c-profile" placeholder="Profile A"/>
-              </div>
-              <div>
-                <label class="field-label">PIN</label>
-                <input class="field-inp" id="c-pin" placeholder="5651"/>
-              </div>
-              <div>
-                <label class="field-label">Expiry</label>
-                <select class="field-select" id="c-days">
-                  <option value="28">1 Month (28d)</option>
-                  <option value="85">3 Months (85d)</option>
-                </select>
-              </div>
-              <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
-                <button class="create-btn" onclick="doCreate()">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  Create
-                </button>
-                <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><line x1="5" y1="6" x2="19" y2="6"/></svg>
-                  Bulk (8 Links)
-                </button>
+            <div class="create-card" id="create-section">
+              <div class="card-header" style="margin-bottom:.8rem"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Customer Link</div></div>
+              <div class="form-row">
+                <div><label class="field-label">Netflix Email</label><input class="field-inp" id="c-email" placeholder="email@icloud.com" type="email"/></div>
+                <div><label class="field-label">Profile</label><input class="field-inp" id="c-profile" placeholder="Profile A"/></div>
+                <div><label class="field-label">PIN</label><input class="field-inp" id="c-pin" placeholder="5651"/></div>
+                <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
+                <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
+                  <button class="create-btn" onclick="doCreate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create</button>
+                  <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Bulk (8 Links)</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- RIGHT -->
-        <div class="right-panel">
-          <!-- CHART -->
-          <div class="chart-card">
-            <div class="card-header">
-              <div class="card-title">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-                Account Overview
-              </div>
-              <span style="font-family:var(--m);font-size:.6rem;color:var(--muted2)">Last 7 days</span>
+          <div class="right-panel">
+            <div class="chart-card">
+              <div class="card-header"><div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Account Overview</div><span style="font-family:var(--m);font-size:.6rem;color:var(--muted2)">Last 7 days</span></div>
+              <div><div class="chart-num" id="chart-total">-</div><div class="chart-growth">Total Uses</div></div>
+              <div class="chart-area" style="margin-top:.8rem"><svg class="chart-svg" viewBox="0 0 300 70" preserveAspectRatio="none"><defs><linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity=".3"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs><path id="chart-path" d="M0 70 L300 70" fill="url(#chartGrad)" stroke="#a78bfa" stroke-width="2" fill-opacity="0.3"/></svg></div>
             </div>
-            <div>
-              <div class="chart-num" id="chart-total">-</div>
-              <div class="chart-growth">Total Uses</div>
-            </div>
-            <div class="chart-area" style="margin-top:.8rem">
-              <svg class="chart-svg" viewBox="0 0 300 70" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#a78bfa" stop-opacity=".3"/>
-                    <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
-                  </linearGradient>
-                </defs>
-                <path id="chart-path" d="M0 70 L300 70" fill="url(#chartGrad)" stroke="#a78bfa" stroke-width="2" fill-opacity="0.3"/>
-              </svg>
-            </div>
-          </div>
-
-          <!-- RECENT ACTIVITY -->
-          <div class="activity-card">
-            <div class="act-header">
-              <h3>Recent Activity</h3>
-              <span class="act-viewall">View all</span>
-            </div>
-            <div id="activity-feed">
-              <p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">Loading...</p>
+            <div class="activity-card">
+              <div class="act-header"><h3>Recent Activity</h3><span class="act-viewall" onclick="showSection('links')">View all</span></div>
+              <div id="activity-feed"><p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">Loading...</p></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- LINKS TABLE -->
-      <div class="table-card">
-        <div class="table-header">
-          <div class="table-title">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            Customer Links
-            <span class="card-badge ok" id="active-badge">-</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:.6rem;margin-left:auto">
-            <select id="sort-select" onchange="sortLinks()" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.68rem;padding:6px 10px;border-radius:7px;cursor:pointer">
-              <option value="created">Sort: Newest</option>
-              <option value="days-asc">Sort: Days ↑</option>
-              <option value="days-desc">Sort: Days ↓</option>
-              <option value="uses-desc">Sort: Most Used</option>
-              <option value="last-used">Sort: Last Used</option>
-            </select>
-            <div class="search-wrap">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="search-inp" placeholder="Search email, profile or /c/token..." oninput="filterLinks()"/>
+      <!-- LINKS SECTION -->
+      <div id="sec-links" style="display:none">
+        <div id="filter-chip-wrap" style="display:none;margin-bottom:.8rem">
+          <span class="filter-chip" onclick="clearFilter()"><span id="filter-chip-text"></span> <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Clear</span>
+        </div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Customer Links<span class="card-badge ok" id="active-badge">-</span></div>
+            <div style="display:flex;align-items:center;gap:.6rem;margin-left:auto">
+              <select id="sort-select" onchange="sortLinks()" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.68rem;padding:6px 10px;border-radius:7px;cursor:pointer"><option value="created">Sort: Newest</option><option value="days-asc">Sort: Days ↑</option><option value="days-desc">Sort: Days ↓</option><option value="uses-desc">Sort: Most Used</option><option value="last-used">Sort: Last Used</option></select>
+              <div class="search-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="search-inp" placeholder="Search email, profile, token..." oninput="onSearch()"/></div>
             </div>
           </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Profile</th>
-                <th>PIN</th>
-                <th>Link</th>
-                <th>Message</th>
-                <th>Days Left</th>
-                <th>Uses</th>
-                <th>Last Used</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="links-tbody">
-              <tr class="empty-row"><td colspan="10">Loading links...</td></tr>
-            </tbody>
-          </table>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th><input type="checkbox" id="sel-all" onchange="toggleSelectAll()" style="cursor:pointer"></th>
+                <th>Email</th><th>Profile</th><th>PIN</th><th>Link</th><th>Message</th><th>Days Left</th><th>Uses</th><th>Last Used</th><th>Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="links-tbody"><tr class="empty-row"><td colspan="11">Loading links...</td></tr></tbody>
+            </table>
+          </div>
+          <div id="pg-wrap" style="display:none;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;border-top:1px solid var(--border)"></div>
         </div>
       </div>
 
-    
-
-    <!-- NETFLIX ACCOUNTS SECTION -->
-    <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
-        <div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div>
-        <button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button>
+      <!-- ACCOUNTS SECTION -->
+      <div id="sec-accounts" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+          <div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div>
+          <button class="create-btn" onclick="showAddAccForm()">+ Add Account</button>
+        </div>
+        <div id="add-acc-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
+            <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
+            <div><label class="form-label">Notes (optional)</label><input class="form-inp" id="acc-notes" placeholder="e.g. Main account"/></div>
+            <button class="create-btn" onclick="addAccount()">Add</button>
+          </div>
+        </div>
+        <div id="acc-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+        <div id="acc-pg" style="display:none;margin-top:.8rem;justify-content:center;gap:.5rem"></div>
       </div>
-      <div id="add-account-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
-          <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
-          <div><label class="form-label">Notes (optional)</label><input class="form-inp" id="acc-notes" placeholder="e.g. Main account"/></div>
-          <button class="create-btn" onclick="addAccount()">Add</button>
+
+      <!-- SETTINGS SECTION -->
+      <div id="sec-settings" style="display:none">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:1.2rem">Settings</div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:500px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+            <div><div style="font-weight:600;margin-bottom:4px">Auto Link Creation</div><div style="font-size:.75rem;color:var(--muted);line-height:1.5">When ON — EPS payment auto creates FanFlix link.<br>OFF by default.</div></div>
+            <div style="position:relative;width:52px;height:28px;flex-shrink:0;cursor:pointer" onclick="toggleAutoLink()"><div id="al-bg" style="position:absolute;inset:0;background:var(--s4);border-radius:100px;transition:background .3s"></div><div id="al-knob" style="position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .3s;box-shadow:0 2px 4px rgba(0,0,0,.3)"></div></div>
+          </div>
+          <div><div style="font-family:var(--m);font-size:.62rem;color:var(--muted2);margin-bottom:6px">AUTO-CREATE API URL</div><div style="font-family:var(--m);font-size:.65rem;color:var(--blue);background:var(--s2);padding:.7rem 1rem;border-radius:8px;word-break:break-all" id="al-url"></div></div>
         </div>
       </div>
-      <div id="accounts-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+
     </div>
-    <!-- SETTINGS SECTION -->
-    <div id="section-settings" style="display:none;padding:1.5rem">
-      <div style="font-size:1.1rem;font-weight:700;margin-bottom:1.2rem">Settings</div>
-      <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:500px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
-          <div><div style="font-weight:600;margin-bottom:4px">Auto Link Creation</div><div style="font-size:.75rem;color:var(--muted);line-height:1.5">When ON — EPS payment auto creates FanFlix link.<br>OFF by default.</div></div>
-          <div style="position:relative;width:52px;height:28px;flex-shrink:0;cursor:pointer" onclick="toggleAutoLink()">
-            <div id="auto-link-bg" style="position:absolute;inset:0;background:var(--s4);border-radius:100px;transition:background .3s"></div>
-            <div id="auto-link-knob" style="position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .3s;box-shadow:0 2px 4px rgba(0,0,0,.3)"></div>
-          </div>
-        </div>
-        <div><div style="font-family:var(--m);font-size:.62rem;color:var(--muted2);margin-bottom:6px">AUTO-CREATE API URL</div><div style="font-family:var(--m);font-size:.65rem;color:var(--blue);background:var(--s2);padding:.7rem 1rem;border-radius:8px;word-break:break-all" id="auto-link-url"></div></div>
-      </div>
-    </div>
-
-<div id="toast"></div>
-
-  </div>
   </div>
 </div>
-
-
-
+<div id="toast"></div>
 
 <script>
-const SITE = window.location.origin;
-const PROFILE_COLORS = {A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
-let adminToken = sessionStorage.getItem('fanflix_admin');
-let allLinks = {}, activityLog = [], curFilter = '', currentPage = 0, currentFiltered = {}, selectedLinks = new Set(), geoFlags = {};
-const PAGE_SIZE = 50;
+const SITE=window.location.origin;
+const PC={'A':'#E50914','B':'#f5a623','C':'#46d369','D':'#4da6ff','E':'#a78bfa'};
+let tok=sessionStorage.getItem('fanflix_admin');
+let allLinks={},curFiltered={},curPage=0,selLinks=new Set(),geoFlags={};
+let slotsAll={},slotsExpanded=false;
+// FIX: track current filter mode so reload doesn't reset view
+let curMode='all'; // all|active|expiring|expired|today|week|month|neverused|revoked|email:X|search
+let allAccounts=[];
+let accPage=0;
+const PS=50,ACC_PS=10;
 
-window.onload = () => {
-  updateDate();
-  setInterval(updateDate, 60000);
-  if (adminToken) showDashboard();
-};
+window.onload=()=>{updateDate();setInterval(updateDate,6e4);if(tok)boot();};
+function updateDate(){const n=new Date();document.getElementById('tb-date').textContent=n.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+async function doLogin(){const p=document.getElementById('pass-inp').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:p})});const d=await r.json();if(d.success){tok=d.token;sessionStorage.setItem('fanflix_admin',tok);boot();}else document.getElementById('login-err').style.display='block';}
+function doLogout(){sessionStorage.removeItem('fanflix_admin');location.reload();}
+function boot(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.cssText='display:flex;width:100%;flex:1';showSection('dashboard');loadAll();setInterval(loadStats,3e4);setInterval(loadAll,6e4);}
+async function loadAll(){await Promise.all([loadLinks(),loadStats(),loadSlots(),loadGeo()]);}
+async function loadStats(){try{const r=await fetch('/api/stats');const d=await r.json();$('tb-live').textContent=d.live;$('tb-today').textContent=d.today;}catch(e){}}
+async function loadGeo(){try{const r=await fetch('/api/admin/geo',{headers:{'x-admin-token':tok}});const d=await r.json();geoFlags=d.geo||{};}catch(e){}}
+function $(id){return document.getElementById(id);}
 
-function updateDate() {
-  const now = new Date();
-  document.getElementById('tb-date').textContent = now.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + ' ' + now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+// ── FIX 1: Slots — show all with expand/collapse ──
+async function loadSlots(){
+  try{const r=await fetch('/api/admin/slots',{headers:{'x-admin-token':tok}});const d=await r.json();slotsAll=d.slots||{};renderSlots();}catch(e){}
 }
-
-async function doLogin() {
-  const pass = document.getElementById('pass-inp').value;
-  const r = await fetch('/api/admin/login', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});
-  const d = await r.json();
-  if (d.success) { adminToken = d.token; sessionStorage.setItem('fanflix_admin', adminToken); showDashboard(); }
-  else { document.getElementById('login-err').style.display = 'block'; }
-}
-
-function doLogout() { sessionStorage.removeItem('fanflix_admin'); location.reload(); }
-
-function showDashboard() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'flex';
-  document.getElementById('dashboard').style.width = '100%';
-  loadAll();
-  setInterval(loadStats, 30000);
-  setInterval(loadAll, 60000);
-}
-
-async function loadAll() { await Promise.all([loadLinks(), loadStats(), loadSlots(), loadGeoFlags()]); }
-
-async function loadStats() {
-  try {
-    const r = await fetch('/api/stats');
-    const d = await r.json();
-    const el = document.getElementById('tb-live');
-    const et = document.getElementById('tb-today');
-    if(el) el.textContent = d.live;
-    if(et) et.textContent = d.today;
-  } catch(e){}
-}
-
-async function loadGeoFlags() {
-  try {
-    const r = await fetch('/api/admin/geo', {headers:{'x-admin-token':adminToken}});
-    const d = await r.json();
-    geoFlags = d.geo || {};
-  } catch(e) {}
-}
-
-async function loadSlots() {
-  try {
-    const r = await fetch('/api/admin/slots', {headers:{'x-admin-token':adminToken}});
-    const d = await r.json();
-    const slots = d.slots || {};
-    const container = document.getElementById('slots-list');
-    const badge = document.getElementById('slots-badge');
-
-    if (!Object.keys(slots).length) {
-      container.innerHTML = '<p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">No accounts yet</p>';
-      if(badge){badge.textContent='Empty';badge.className='card-badge ok';}
-      return;
-    }
-
-    const totalActive = Object.values(slots).reduce((s,v)=>s+v.active,0);
-    const totalSlots = Object.keys(slots).length * 8;
-    if(badge){
-      badge.textContent = totalActive >= totalSlots ? 'Full' : `${totalActive}/${totalSlots} Used`;
-      badge.className = 'card-badge ' + (totalActive >= totalSlots ? 'full' : 'ok');
-    }
-
-    // Sort by most recently created (using allLinks data) and show only last 5
-    const emailsByRecent = Object.keys(allLinks).length ? 
-      [...new Set(Object.values(allLinks).sort((a,b)=>b.createdAt-a.createdAt).map(l=>l.email))] : 
-      Object.keys(slots);
-    const recentEmails = emailsByRecent.filter(e=>slots[e]).slice(0,5);
-    const displaySlots = recentEmails.reduce((obj,e)=>{obj[e]=slots[e];return obj;},{});
-    
-    container.innerHTML = Object.entries(displaySlots).map(([email, info]) => {
-      const pColors = ['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
-      const avatars = Array.from({length:8},(_,i) => {
-        const isUsed = i < info.active;
-        const letter = String.fromCharCode(65+i);
-        const col = pColors[i] || '#888';
-        return isUsed
-          ? `<div class="slot-avatar active" style="background:${col}" title="Profile ${letter}">${letter}</div>`
-          : `<div class="slot-avatar empty"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;
-      }).join('');
-
-      const pct = (info.active/8)*100;
-      const circumference = 2*Math.PI*18;
-      const offset = circumference - (pct/100)*circumference;
-      const ringColor = info.active >= 8 ? '#E50914' : info.active >= 6 ? '#f5a623' : '#46d369';
-
-      const healthColor = info.active >= 8 ? '#E50914' : '#46d369';
-      return `<div class="slot-row">
-        <div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0">
-          <div style="width:8px;height:8px;border-radius:50%;background:${healthColor};flex-shrink:0"></div>
-          <div class="slot-email" onclick="filterByEmail('${esc(email)}')" style="cursor:pointer" title="Filter links">${esc(email)}</div>
-          <button onclick="copyAllLinks('${esc(email)}')" style="background:var(--s4);border:1px solid var(--border2);color:var(--muted);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0">Copy All</button>
-        </div>
-        <div class="slot-avatars">${avatars}</div>
-        <div class="slot-ring" style="width:46px;height:46px">
-          <svg width="46" height="46" viewBox="0 0 46 46">
-            <circle cx="23" cy="23" r="18" fill="none" stroke="#1a1d22" stroke-width="4"/>
-            <circle cx="23" cy="23" r="18" fill="none" stroke="${ringColor}" stroke-width="4" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s ease"/>
-          </svg>
-          <div class="slot-ring-label" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.6rem;font-weight:600">${info.active}/8</div>
-        </div>
-      </div>`;
-    }).join('');
-  } catch(e) {}
-}
-
-async function loadLinks() {
-  try {
-    const r = await fetch('/api/admin/links', {headers:{'x-admin-token':adminToken}});
-    const d = await r.json();
-    allLinks = d.links || {};
-    renderLinks(allLinks);
-    updateStats(allLinks);
-    updateActivity(allLinks);
-    updateChart(allLinks);
-    const active = Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;
-    const sbb = document.getElementById('sb-active-count');
-    if(sbb) sbb.textContent = active;
-  } catch(e){}
-}
-
-function updateStats(links) {
-  const now = Date.now();
-  const oneDay = 24*60*60*1000;
-  const threeDays = 3*oneDay;
-  const arr = Object.values(links);
-  const safe = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
-
-  // Expiry calendar
-  const today = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=oneDay).length;
-  const week = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=7*oneDay).length;
-  const month = arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*oneDay).length;
-  safe('exp-today',today); safe('exp-week',week); safe('exp-month',month);
-
-  // Stat cards
-  safe('s-active', arr.filter(l=>l.active&&l.expiresAt>now).length);
-  safe('s-expiring', arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length);
-  safe('s-expired', arr.filter(l=>l.expiresAt<=now).length);
-  safe('s-uses', arr.reduce((s,l)=>s+l.uses,0));
-
-  // Revenue estimate
-  const active1m = arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)<=28).length;
-  const active3m = arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)>28).length;
-  const revenue = (active1m * 400) + (active3m * 1200);
-  const rev = document.getElementById('s-revenue');
-  const revDetail = document.getElementById('s-revenue-detail');
-  if(rev) rev.textContent = '৳' + revenue.toLocaleString();
-  if(revDetail) revDetail.textContent = active1m + ' × ৳400 + ' + active3m + ' × ৳1200';
-  const neverUsed = arr.filter(l=>l.uses===0&&l.active&&l.expiresAt>now).length;
-  const nu = document.getElementById('s-never-used');
-  if(nu) nu.textContent = neverUsed;
-
-  const active = arr.filter(l=>l.active&&l.expiresAt>now).length;
-  const ab = document.getElementById('active-badge');
-  if(ab){ab.textContent=`${active} Active`;ab.className='card-badge ok';}
-}
-
-function updateActivity(links) {
-  const arr = Object.values(links).filter(l=>l.lastUsed).sort((a,b)=>b.lastUsed-a.lastUsed).slice(0,5);
-  const feed = document.getElementById('activity-feed');
-  if(!feed)return;
-  if(!arr.length){feed.innerHTML='<p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">No activity yet</p>';return;}
-  const icons = {
-    active: `<div class="act-icon green"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`,
-    expired: `<div class="act-icon red"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>`,
-    default: `<div class="act-icon blue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`
-  };
-  feed.innerHTML = arr.map(l => {
-    const ico = l.active && l.expiresAt > Date.now() ? icons.active : l.expiresAt <= Date.now() ? icons.expired : icons.default;
-    const shortEmail = (l.email||'').length > 20 ? l.email.substring(0,20)+'...' : (l.email||'');
-    return `<div class="act-item">${ico}<div style="min-width:0"><div class="act-title">Link used</div><div class="act-sub">${esc(shortEmail)}</div><div style="font-family:var(--m);font-size:.6rem;color:var(--blue)">/c/${l.token}</div></div><div class="act-time">${timeAgo(l.lastUsed)}</div></div>`;
+function renderSlots(){
+  const sl=slotsAll,cont=$('slots-list'),badge=$('slots-badge'),moreW=$('slots-more-wrap');
+  if(!Object.keys(sl).length){cont.innerHTML='<p style="font-family:var(--m);font-size:.72rem;color:var(--muted)">No accounts yet</p>';if(badge){badge.textContent='Empty';badge.className='card-badge ok';}if(moreW)moreW.style.display='none';return;}
+  const tot=Object.values(sl).reduce((s,v)=>s+v.active,0),totS=Object.keys(sl).length*8;
+  if(badge){badge.textContent=tot>=totS?'Full':`${tot}/${totS} Used`;badge.className='card-badge '+(tot>=totS?'full':'ok');}
+  const sorted=Object.entries(sl).sort((a,b)=>b[1].active-a[1].active);
+  const PREV=5;
+  const show=slotsExpanded?sorted:sorted.slice(0,PREV);
+  const pc=['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
+  cont.innerHTML=show.map(([em,info])=>{
+    const av=Array.from({length:8},(_,i)=>{const u=i<info.active,l=String.fromCharCode(65+i),c=pc[i]||'#888';return u?`<div class="slot-avatar active" style="background:${c}" title="Profile ${l}">${l}</div>`:`<div class="slot-avatar empty"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`;}).join('');
+    const circ=2*Math.PI*18,off=circ-(info.active/8)*circ,rc=info.active>=8?'#E50914':info.active>=6?'#f5a623':'#46d369';
+    const hc=info.active>=8?'#E50914':'#46d369';
+    return `<div class="slot-row"><div style="display:flex;align-items:center;gap:.5rem;flex:1;min-width:0"><div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0"></div><div class="slot-email" onclick="filterByEmail('${esc(em)}')" style="cursor:pointer" title="${esc(em)}">${esc(em)}</div><button onclick="copyAllLinks('${esc(em)}')" style="background:var(--s4);border:1px solid var(--border2);color:var(--muted);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer;white-space:nowrap;flex-shrink:0">Copy All</button></div><div class="slot-avatars">${av}</div><div class="slot-ring" style="width:46px;height:46px"><svg width="46" height="46" viewBox="0 0 46 46"><circle cx="23" cy="23" r="18" fill="none" stroke="#1a1d22" stroke-width="4"/><circle cx="23" cy="23" r="18" fill="none" stroke="${rc}" stroke-width="4" stroke-dasharray="${circ}" stroke-dashoffset="${off}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .5s"/></svg><div class="slot-ring-label">${info.active}/8</div></div></div>`;
   }).join('');
+  if(sorted.length>PREV){if(moreW)moreW.style.display='block';const b=$('slots-more-btn');if(b)b.textContent=slotsExpanded?'Show Less ▲':`Show All ${sorted.length} Accounts ▼`;}else{if(moreW)moreW.style.display='none';}
+}
+function toggleSlotsExpand(){slotsExpanded=!slotsExpanded;renderSlots();}
+
+// ── FIX 2: loadLinks — re-apply current filter on reload ──
+async function loadLinks(){
+  try{const r=await fetch('/api/admin/links',{headers:{'x-admin-token':tok}});const d=await r.json();allLinks=d.links||{};updateStats(allLinks);updateActivity(allLinks);updateChart(allLinks);const act=Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;const sb=$('sb-active-count');if(sb)sb.textContent=act;applyFilter();}catch(e){}
 }
 
-function updateChart(links) {
-  const arr = Object.values(links);
-  const total = arr.reduce((s,l)=>s+l.uses,0);
-  const ct = document.getElementById('chart-total');
-  if(ct) ct.textContent = total;
-  // Simple sparkline
-  const days = Array.from({length:7},(_,i)=>{
-    const d = new Date(); d.setDate(d.getDate()-6+i);
-    const key = d.toISOString().split('T')[0];
-    return arr.reduce((s,l)=>s+(l.analytics?.daily?.[key]||0),0);
-  });
-  const max = Math.max(...days,1);
-  const pts = days.map((v,i)=>`${(i/6)*300},${70-(v/max)*60}`).join(' L');
-  const path = document.getElementById('chart-path');
-  if(path) path.setAttribute('d',`M${pts} L300,70 L0,70 Z`);
+// ── FIX 3: Central filter engine — never resets view after reload ──
+function applyFilter(){
+  const now=Date.now(),d1=864e5,d3=3*d1,d7=7*d1,d30=30*d1;
+  let f={};
+  if(curMode==='all'){f={...allLinks};}
+  else if(curMode==='active'){for(const[k,v]of Object.entries(allLinks))if(v.active&&v.expiresAt>now)f[k]=v;}
+  else if(curMode==='expiring'){for(const[k,v]of Object.entries(allLinks))if(v.active&&v.expiresAt>now&&(v.expiresAt-now)<=d3)f[k]=v;}
+  else if(curMode==='expired'){for(const[k,v]of Object.entries(allLinks))if(v.expiresAt<=now)f[k]=v;}
+  else if(curMode==='today'){for(const[k,v]of Object.entries(allLinks))if(v.active&&v.expiresAt>now&&(v.expiresAt-now)<=d1)f[k]=v;}
+  else if(curMode==='week'){for(const[k,v]of Object.entries(allLinks))if(v.active&&v.expiresAt>now&&(v.expiresAt-now)<=d7)f[k]=v;}
+  else if(curMode==='month'){for(const[k,v]of Object.entries(allLinks))if(v.active&&v.expiresAt>now&&(v.expiresAt-now)<=d30)f[k]=v;}
+  else if(curMode==='neverused'){for(const[k,v]of Object.entries(allLinks))if(v.uses===0&&v.active&&v.expiresAt>now)f[k]=v;}
+  else if(curMode==='revoked'){for(const[k,v]of Object.entries(allLinks))if(!v.active)f[k]=v;}
+  else if(curMode.startsWith('email:')){const em=curMode.slice(6);for(const[k,v]of Object.entries(allLinks))if(v.email===em)f[k]=v;}
+  else if(curMode==='search'){const q=($('search-inp')?.value||'').toLowerCase().replace('/c/','').trim();if(q){for(const[k,v]of Object.entries(allLinks)){const dl=Math.ceil((v.expiresAt-now)/864e5),st=!v.active?'revoked':v.expiresAt<=now?'expired':'active';if(v.email.toLowerCase().includes(q)||(v.profile||'').toLowerCase().includes(q)||k.includes(q)||(v.pin||'').includes(q)||st.includes(q)||String(dl).includes(q))f[k]=v;}}else f={...allLinks};}
+  else{f={...allLinks};}
+  renderLinks(f,0);
+  // Update filter chip
+  const cw=$('filter-chip-wrap'),ct=$('filter-chip-text');
+  const labels={all:'',active:'Active Links',expiring:'Expiring Soon',expired:'Expired Links',today:'Expiring Today',week:'Expiring This Week',month:'Expiring This Month',neverused:'Never Used',revoked:'Revoked Links'};
+  if(curMode==='all'||curMode==='search'){if(cw)cw.style.display='none';}
+  else if(curMode.startsWith('email:')){if(ct)ct.textContent='Email: '+curMode.slice(6);if(cw)cw.style.display='block';}
+  else{if(ct)ct.textContent=labels[curMode]||curMode;if(cw)cw.style.display='block';}
+}
+function clearFilter(){curMode='all';const si=$('search-inp');if(si)si.value='';showSection('links');}
+
+// ── FIX 4: filterLinks — sets mode, switches to links section, applies ──
+function filterLinks(mode){
+  curMode=mode;
+  showSection('links');
+  applyFilter();
+}
+function filterByEmail(em){curMode='email:'+em;showSection('links');applyFilter();}
+function onSearch(){const q=($('search-inp')?.value||'').trim();curMode=q?'search':'all';applyFilter();}
+
+// ── FIX 5: setNav — clean sidebar highlighting ──
+function setNav(id){document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));const el=$(id);if(el)el.classList.add('active');}
+
+// ── FIX 6: showSection — proper section switching ──
+function showSection(s){
+  try{closeMobNav();}catch(e){}
+  ['dashboard','links','accounts','settings'].forEach(n=>$('sec-'+n).style.display='none');
+  const titleMap={dashboard:'Dashboard',links:'Customer Links',accounts:'Netflix Accounts',settings:'Settings',create:'Create Link'};
+  const t=$('topbar-title');if(t)t.textContent=titleMap[s]||'Dashboard';
+  if(s==='dashboard'){$('sec-dashboard').style.display='block';setNav('nav-dashboard');}
+  else if(s==='links'){$('sec-links').style.display='block';setNav('nav-links');applyFilter();}
+  else if(s==='create'){$('sec-dashboard').style.display='block';setNav('nav-create');setTimeout(()=>$('create-section')?.scrollIntoView({behavior:'smooth'}),100);}
+  else if(s==='accounts'){$('sec-accounts').style.display='block';setNav('nav-accounts');loadAccounts();}
+  else if(s==='settings'){$('sec-settings').style.display='block';setNav('nav-settings');loadSettingsData();}
 }
 
-function sortLinks() {
-  const val = document.getElementById('sort-select').value;
-  const now = Date.now();
-  const arr = Object.values(allLinks);
-  let sorted;
-  if(val==='created') sorted = arr.sort((a,b)=>b.createdAt-a.createdAt);
-  else if(val==='days-asc') sorted = arr.sort((a,b)=>(a.expiresAt-now)-(b.expiresAt-now));
-  else if(val==='days-desc') sorted = arr.sort((a,b)=>(b.expiresAt-now)-(a.expiresAt-now));
-  else if(val==='uses-desc') sorted = arr.sort((a,b)=>b.uses-a.uses);
-  else if(val==='last-used') sorted = arr.sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
-  const obj = {};
-  sorted.forEach(l=>obj[l.token]=l);
-  renderLinks(obj);
+function updateStats(links){
+  const now=Date.now(),d1=864e5,d3=3*d1,arr=Object.values(links);
+  const safe=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+  safe('exp-today',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=d1).length);
+  safe('exp-week',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=7*d1).length);
+  safe('exp-month',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*d1).length);
+  safe('s-active',arr.filter(l=>l.active&&l.expiresAt>now).length);
+  safe('s-expiring',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=d3).length);
+  safe('s-expired',arr.filter(l=>l.expiresAt<=now).length);
+  safe('s-uses',arr.reduce((s,l)=>s+l.uses,0));
+  const a1=arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)<=28).length,a3=arr.filter(l=>l.active&&l.expiresAt>now&&(l.days||28)>28).length;
+  const rev=$(('s-revenue'));if(rev)rev.textContent='৳'+(a1*400+a3*1200).toLocaleString();
+  const rd=$('s-revenue-detail');if(rd)rd.textContent=a1+' × ৳400 + '+a3+' × ৳1200';
+  const nu=$('s-never-used');if(nu)nu.textContent=arr.filter(l=>l.uses===0&&l.active&&l.expiresAt>now).length;
+}
+function updateActivity(links){
+  const arr=Object.values(links).filter(l=>l.lastUsed).sort((a,b)=>b.lastUsed-a.lastUsed).slice(0,5);
+  const feed=$('activity-feed');if(!feed)return;
+  if(!arr.length){feed.innerHTML='<p style="font-family:var(--m);font-size:.7rem;color:var(--muted)">No activity yet</p>';return;}
+  const ico=(l)=>l.active&&l.expiresAt>Date.now()?`<div class="act-icon green"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`:l.expiresAt<=Date.now()?`<div class="act-icon red"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>`:`<div class="act-icon blue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>`;
+  feed.innerHTML=arr.map(l=>`<div class="act-item">${ico(l)}<div style="min-width:0"><div class="act-title">Link used</div><div class="act-sub">${esc((l.email||'').substring(0,22))}</div><div style="font-family:var(--m);font-size:.6rem;color:var(--blue)">/c/${l.token}</div></div><div class="act-time">${timeAgo(l.lastUsed)}</div></div>`).join('');
+}
+function updateChart(links){
+  const arr=Object.values(links);$('chart-total').textContent=arr.reduce((s,l)=>s+l.uses,0);
+  const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);const k=d.toISOString().split('T')[0];return arr.reduce((s,l)=>s+(l.analytics?.daily?.[k]||0),0);});
+  const max=Math.max(...days,1);const pts=days.map((v,i)=>`${(i/6)*300},${70-(v/max)*60}`).join(' L');
+  const p=$('chart-path');if(p)p.setAttribute('d',`M${pts} L300,70 L0,70 Z`);
 }
 
-async function deleteAccountEmail(email) {
-  if(!confirm('Delete ALL links for: '+email+'?\n\nThis removes the account from slots display.')) return;
-  // Remove from accounts if stored there
-  const r = await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
-  // Also option to revoke all links for this email
-  const revokeAll = confirm('Also REVOKE all customer links for this email?');
-  if(revokeAll) {
-    const links = Object.values(allLinks).filter(l=>l.email===email);
-    for(const l of links){
-      await fetch('/api/admin/revoke/'+l.token,{method:'POST',headers:{'x-admin-token':adminToken}});
-    }
-  }
-  showToast('Account removed!');
-  loadAll();
+function sortLinks(){
+  const v=$('sort-select').value,now=Date.now(),arr=Object.values(curFiltered);
+  let s;if(v==='created')s=arr.sort((a,b)=>b.createdAt-a.createdAt);else if(v==='days-asc')s=arr.sort((a,b)=>(a.expiresAt-now)-(b.expiresAt-now));else if(v==='days-desc')s=arr.sort((a,b)=>(b.expiresAt-now)-(a.expiresAt-now));else if(v==='uses-desc')s=arr.sort((a,b)=>b.uses-a.uses);else if(v==='last-used')s=arr.sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  const o={};s.forEach(l=>o[l.token]=l);renderLinks(o,0);
 }
 
-async function copyAllLinks(email) {
-  const now = Date.now();
-  const links = Object.values(allLinks).filter(l=>l.email===email&&l.active&&l.expiresAt>now).sort((a,b)=>a.profile.localeCompare(b.profile));
-  if(!links.length) return showToast('No active links for this email',true);
-  const daysLeft = Math.ceil((links[0].expiresAt-now)/(24*60*60*1000));
-  const msg = 'FanFlix BD\n\nNetflix: '+email+'\n\n'+links.map(l=>l.profile+' | PIN: '+l.pin+'\n'+SITE+'/c/'+l.token).join('\n\n')+'\n\nValid: '+daysLeft+' days remaining';
-  await navigator.clipboard.writeText(msg);
-  showToast('All '+links.length+' links copied!');
-}
-
-function filterByEmail(email) {
-  document.getElementById('search-inp').value = email;
-  filterLinks();
-  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-}
-
-async function bulkCreate() {
-  const email = document.getElementById('c-email').value.trim();
-  const days = document.getElementById('c-days').value;
-  if(!email||!email.includes('@')) return showToast('Enter Netflix email first!',true);
-
-  // Check for duplicates
-  const now = Date.now();
-  const existing = Object.values(allLinks).filter(l=>l.email===email&&l.active&&l.expiresAt>now);
-  if(existing.length > 0) {
-    if(!confirm(`⚠️ ${existing.length} active link(s) already exist for this email. Create remaining slots?`)) return;
-  }
-
-  const profiles = [
-    {profile:'Profile A',pin:'5651'},{profile:'Profile A',pin:'5651'},
-    {profile:'Profile B',pin:'5652'},{profile:'Profile B',pin:'5652'},
-    {profile:'Profile C',pin:'5653'},{profile:'Profile C',pin:'5653'},
-    {profile:'Profile D',pin:'5654'},
-    {profile:'Profile E',pin:'5655'},
-  ];
-
-  let created = 0, skipped = 0;
-  const links = [];
-  for(const p of profiles) {
-    // Check duplicate
-    const dup = Object.values(allLinks).find(l=>l.email===email&&l.profile===p.profile&&l.active&&l.expiresAt>now&&links.filter(x=>x.profile===p.profile).length < (p.profile==='Profile A'||p.profile==='Profile B'||p.profile==='Profile C'?2:1));
-    const r = await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile:p.profile,pin:p.pin,days,phone:document.getElementById('c-phone')?.value.trim()||''})});
-    const d = await r.json();
-    if(d.success){
-      links.push({...p,token:d.token,link:`${SITE}/c/${d.token}`});
-      if(d.existing) skipped++; else created++;
-    }
-  }
-
-  await loadAll();
-  setTimeout(loadSettingsData, 500);
-  showToast(`✅ ${created} created, ${skipped} existing`);
-
-  // Copy all links as formatted message
-  const msg = links.map(l=>`${l.profile} | PIN: ${l.pin}\n${l.link}`).join('\n\n');
-  // clipboard handled above
-  showToast('All links copied!');
-}
-
-async function replaceAllLinks() {
-  const oldEmail = prompt('Enter current Netflix email to replace:');
-  if(!oldEmail||!oldEmail.includes('@')) return;
-  const newEmail = prompt('Replace ALL links from: '+oldEmail+'\n\nEnter NEW Netflix email:');
-  if(!newEmail||!newEmail.includes('@')) return;
-  const r = await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({oldEmail,newEmail})});
-  const d = await r.json();
-  if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}
-  else showToast('Error: '+(d.error||'Unknown'),true);
-}
-
-function showNeverUsed() {
-  const filtered = {};
-  for(const[k,v] of Object.entries(allLinks)){
-    if(v.uses === 0 && v.active && v.expiresAt > Date.now()) filtered[k]=v;
-  }
-  renderLinks(filtered, 0);
-  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-  showToast(`${Object.keys(filtered).length} never-used links`);
-}
-
-function showRevoked() {
-  const filtered = {};
-  for(const[k,v] of Object.entries(allLinks)){
-    if(!v.active) filtered[k]=v;
-  }
-  renderLinks(filtered, 0);
-  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
-  showToast(`${Object.keys(filtered).length} revoked links`);
-}
-
-function filterLinks() {
-  const q = document.getElementById('search-inp').value.toLowerCase().replace('/c/','').trim();
-  if(!q){
-    // Show only most recent email's links by default
-    const recentEmail = Object.values(allLinks).sort((a,b)=>b.createdAt-a.createdAt)[0]?.email;
-    if(recentEmail){
-      const filtered = {};
-      for(const[k,v] of Object.entries(allLinks)){if(v.email===recentEmail)filtered[k]=v;}
-      renderLinks(filtered,0);
-    } else renderLinks(allLinks,0);
-    return;
-  }
-  const now = Date.now();
-  const filtered = {};
-  for(const[k,v] of Object.entries(allLinks)){
-    const daysLeft = Math.max(0,Math.ceil((v.expiresAt-now)/(24*60*60*1000)));
-    const status = !v.active?'revoked':v.expiresAt<=now?'expired':'active';
-    if(
-      v.email.toLowerCase().includes(q) ||
-      (v.profile||'').toLowerCase().includes(q) ||
-      k.includes(q) ||
-      (v.pin||'').includes(q) ||
-      status.includes(q) ||
-      String(daysLeft).includes(q)
-    ) filtered[k]=v;
-  }
-  renderLinks(filtered, 0);
-}
-
-function filterByStatus(status) {
-  const now = Date.now();
-  const oneDay=24*60*60*1000, threeDays=3*oneDay, sevenDays=7*oneDay, thirtyDays=30*oneDay;
-  const filtered = {};
-  for(const[k,v] of Object.entries(allLinks)){
-    if(status==='active'&&v.active&&v.expiresAt>now) filtered[k]=v;
-    else if(status==='expired'&&v.expiresAt<=now) filtered[k]=v;
-    else if(status==='expiring'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=threeDays) filtered[k]=v;
-    else if(status==='today'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=oneDay) filtered[k]=v;
-    else if(status==='week'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=sevenDays) filtered[k]=v;
-    else if(status==='month'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=thirtyDays) filtered[k]=v;
-  }
-  renderLinks(filtered, 0);
-  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
-}
-
-function showSection(s) {
-  try { closeMobNav(); } catch(e) {}
-  document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
-  try { if(event && event.currentTarget) event.currentTarget.classList.add('active'); } catch(e) {}
-  // Hide special sections
-  const accEl = document.getElementById('section-accounts');
-  const setEl = document.getElementById('section-settings');
-  if(accEl) accEl.style.display='none';
-  if(setEl) setEl.style.display='none';
-  if(s==='accounts'){
-    if(accEl){ accEl.style.display='block'; accEl.scrollIntoView({behavior:'smooth'}); }
-    loadAccounts();
-    return;
-  }
-  if(s==='settings'){
-    if(setEl){ setEl.style.display='block'; setEl.scrollIntoView({behavior:'smooth'}); }
-    loadSettingsData();
-    return;
-  }
-  if(s==='create'){ document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'}); return; }
-  if(s==='links'){ document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'}); return; }
-}
-
-function renderLinks(links, page) {
-  currentFiltered = links;
-  if(page !== undefined) currentPage = page;
-  const tbody = document.getElementById('links-tbody');
-  const arr = Object.values(links).sort((a,b)=>b.createdAt-a.createdAt);
-  const totalPages = Math.ceil(arr.length / PAGE_SIZE);
-  const pageArr = arr.slice(currentPage * PAGE_SIZE, (currentPage+1) * PAGE_SIZE);
-
-  // Update pagination
-  updatePagination(arr.length, totalPages);
-
+function renderLinks(links,page){
+  curFiltered=links;if(page!==undefined)curPage=page;
+  const tbody=$('links-tbody');if(!tbody)return;
+  const arr=Object.values(links).sort((a,b)=>b.createdAt-a.createdAt);
+  const tp=Math.ceil(arr.length/PS),pa=arr.slice(curPage*PS,(curPage+1)*PS);
+  updatePg(arr.length,tp);
+  // Update badge
+  const ab=$('active-badge');if(ab){ab.textContent=arr.length+' Links';ab.className='card-badge ok';}
   if(!arr.length){tbody.innerHTML='<tr class="empty-row"><td colspan="11">No links found</td></tr>';return;}
-  const now = Date.now(), threeDays=3*24*60*60*1000;
-  tbody.innerHTML = pageArr.map(l => {
-    const expired = l.expiresAt<=now;
-    const expiresInHours = !expired && (l.expiresAt-now) < 24*60*60*1000;
-    const expiring = !expired&&(l.expiresAt-now)<=threeDays;
-    const status = !l.active?'revoked':expired?'expired':expiring?'expiring':'active';
-    const daysLeft = Math.max(0,Math.ceil((l.expiresAt-now)/(24*60*60*1000)));
-    const daysCls = daysLeft<=3?'days-exp':daysLeft<=14?'days-warn':'days-ok';
-    const lastUsed = l.lastUsed?timeAgo(l.lastUsed):'Never';
-    const fullLink = SITE+'/c/'+l.token;
-    const todayUses = l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
-    const pLetter = (l.profile||'?').replace('Profile ','').trim().charAt(0);
-    const pColor = PROFILE_COLORS[pLetter] || '#888';
-    const ipCount = l.ipCount || 0;
-    const hasOutsideBD = geoFlags[l.token] && geoFlags[l.token].length > 0;
-    const outsideBDInfo = hasOutsideBD ? geoFlags[l.token].map(g=>g.country).join(', ') : '';
-    const isSelected = selectedLinks.has(l.token);
-    const rowCls = (daysLeft<=3&&!expired&&l.active?'row-danger':'') + (isSelected?' row-selected':'');
-    const expiryBadge = expiresInHours ? `<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;letter-spacing:1px;margin-left:4px">TODAY</span>` : '';
-
-    return `<tr class="${rowCls}" id="row-${l.token}">
-      <td><input type="checkbox" class="link-checkbox" onchange="toggleSelect('${l.token}')" ${isSelected?'checked':''}></td>
-      <td class="email-cell" title="${esc(l.email)}">${esc(l.email)}</td>
-      <td>
-        <div class="profile-cell">
-          <div class="profile-avatar" style="background:${pColor};cursor:pointer" onclick="copyText('${esc(fullLink)}',this)" title="Click to copy link">${pLetter}</div>
-          <span style="font-size:.78rem">${esc(l.profile||'-')}</span>
-        </div>
-      </td>
+  const now=Date.now(),d3=3*864e5;
+  tbody.innerHTML=pa.map(l=>{
+    const exp=l.expiresAt<=now,xh=!exp&&(l.expiresAt-now)<864e5,xp=!exp&&(l.expiresAt-now)<=d3;
+    const st=!l.active?'revoked':exp?'expired':xp?'expiring':'active';
+    const dl=Math.max(0,Math.ceil((l.expiresAt-now)/864e5));
+    const dc=dl<=3?'days-exp':dl<=14?'days-warn':'days-ok';
+    const lu=l.lastUsed?timeAgo(l.lastUsed):'Never';
+    const fl=SITE+'/c/'+l.token;
+    const tu=l.analytics?.daily?.[new Date().toISOString().split('T')[0]]||0;
+    const pl=(l.profile||'?').replace('Profile ','').trim().charAt(0);
+    const pc2=PC[pl]||'#888';
+    const ip=l.ipCount||0;
+    const eb=xh?`<span style="background:var(--red);color:#fff;font-family:var(--m);font-size:.48rem;padding:2px 5px;border-radius:3px;margin-left:4px">TODAY</span>`:'';
+    const custMsg='FanFlix BD\\n\\nEmail: '+l.email+'\\nProfile: '+l.profile+'\\nPIN: '+l.pin+'\\n\\nCode Link: '+fl+'\\n\\nValid: '+dl+' days';
+    return `<tr id="row-${l.token}">
+      <td><input type="checkbox" onchange="toggleSel('${l.token}')" ${selLinks.has(l.token)?'checked':''}></td>
+      <td><div class="email-cell" style="font-family:var(--m);font-size:.7rem;color:var(--text2)" title="${esc(l.email)}">${esc(l.email)}</div></td>
+      <td><div class="profile-cell"><div class="profile-avatar" style="background:${pc2};cursor:pointer" onclick="copyTxt('${esc(fl)}',this)">${pl}</div><span>${esc(l.profile||'-')}</span></div></td>
       <td class="mono-cell">${esc(l.pin||'-')}</td>
-      <td>
-        <div class="link-cell">
-          <span class="link-text">/c/${l.token}</span>
-          ${hasOutsideBD ? `<span title="Outside BD: ${esc(outsideBDInfo)}" style="cursor:help">🚩</span>` : ''}
-          <button class="icon-btn" onclick="copyText('${esc(fullLink)}',this)" title="Copy link">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
-        </div>
-      </td>
-      <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}${expiryBadge}</td>
-      <td class="uses-cell">${l.uses}<div class="uses-today">today: ${todayUses}</div></td>
-      <td style="font-family:var(--m);font-size:.68rem;color:${ipCount>=4?'var(--red)':ipCount>=2?'var(--amber)':'var(--muted)'}">${ipCount} IP${ipCount!==1?'s':''}</td>
-      <td style="font-family:var(--m);font-size:.68rem;color:var(--muted)">${l.phone||'—'}</td>
-      <td class="time-cell">${lastUsed}</td>
-      <td><span class="status-badge ${status}">${status}</span></td>
-      <td>
-        <div class="action-btns">
-          ${l.active&&!expired
-            ?`<button class="icon-btn danger" onclick="revokeLink('${l.token}')" title="Revoke"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>`
-            :`<button class="icon-btn success" onclick="activateLink('${l.token}')" title="Activate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>`
-          }
-          <button class="icon-btn" onclick="editEmail('${l.token}',this)" data-email="${esc(l.email)}" title="Edit email" style="color:var(--amber)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="icon-btn success" onclick="renewLink('${l.token}')" title="Renew 28 days">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-          </button>
-          <button class="icon-btn danger" onclick="deleteLink('${l.token}')" title="Delete">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>
-        </div>
-      </td>
+      <td><div class="link-cell"><span class="link-text" style="cursor:pointer" onclick="copyTxt('${esc(fl)}',this)">/c/${l.token}</span>${geoFlags[l.token]?.length?`<span title="Outside BD" style="cursor:help">🚩</span>`:''}<button class="icon-btn" onclick="copyTxt('${esc(fl)}',this)" title="Copy"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button></div></td>
+      <td><button onclick="copyTxt(${JSON.stringify(custMsg.replace(/\\n/g,'\n'))},this)" style="background:var(--s3);border:1px solid var(--border);color:var(--muted2);font-family:var(--m);font-size:.55rem;padding:3px 8px;border-radius:5px;cursor:pointer">📋 Copy Msg</button></td>
+      <td class="days-cell ${dc}">${exp?'Expired':`${dl}d left`}${eb}</td>
+      <td class="uses-cell">${l.uses}<div class="uses-today">today: ${tu}</div></td>
+      <td class="time-cell">${lu}</td>
+      <td><span class="status-badge ${st}">${st}</span></td>
+      <td><div class="action-btns">
+        ${l.active&&!exp?`<button class="icon-btn danger" onclick="revokeLink('${l.token}')" title="Revoke"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>`:`<button class="icon-btn success" onclick="activateLink('${l.token}')" title="Activate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>`}
+        <button class="icon-btn" onclick="editEmail('${l.token}','${esc(l.email)}')" title="Edit email" style="color:var(--amber)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn success" onclick="renewLink('${l.token}')" title="Renew"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></button>
+        <button class="icon-btn danger" onclick="delLink('${l.token}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+      </div></td>
     </tr>`;
   }).join('');
 }
 
-function updatePagination(total, totalPages) {
-  let pg = document.getElementById('pagination-wrap');
-  if(!pg){
-    const tc = document.querySelector('.table-card');
-    if(tc){
-      const div = document.createElement('div');
-      div.id = 'pagination-wrap';
-      div.style = 'display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;border-top:1px solid var(--border)';
-      tc.appendChild(div);
-    }
-    pg = document.getElementById('pagination-wrap');
-  }
-  if(!pg) return;
-  if(totalPages <= 1){pg.style.display='none';return;}
+function updatePg(total,tp){
+  const pg=$('pg-wrap');if(!pg)return;
+  if(tp<=1){pg.style.display='none';return;}
   pg.style.display='flex';
-  pg.innerHTML = `
-    <div style="font-family:var(--m);font-size:.68rem;color:var(--muted)">${total} links · Page ${currentPage+1} of ${totalPages}</div>
-    <div style="display:flex;gap:.5rem">
-      <button onclick="renderLinks(currentFiltered, ${currentPage-1})" ${currentPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">← Prev</button>
-      <button onclick="renderLinks(currentFiltered, ${currentPage+1})" ${currentPage>=totalPages-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">Next →</button>
-    </div>`;
+  pg.innerHTML=`<div style="font-family:var(--m);font-size:.68rem;color:var(--muted)">${total} links · Page ${curPage+1} of ${tp}</div><div style="display:flex;gap:.5rem"><button onclick="renderLinks(curFiltered,${curPage-1})" ${curPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">← Prev</button><button onclick="renderLinks(curFiltered,${curPage+1})" ${curPage>=tp-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.68rem">Next →</button></div>`;
 }
 
-function toggleSelect(token) {
-  if(selectedLinks.has(token)) selectedLinks.delete(token);
-  else selectedLinks.add(token);
-  updateBulkBar();
+function toggleSel(t){if(selLinks.has(t))selLinks.delete(t);else selLinks.add(t);updateBulkBar();}
+function toggleSelectAll(){const arr=Object.values(curFiltered);if(selLinks.size===arr.length)selLinks.clear();else arr.forEach(l=>selLinks.add(l.token));renderLinks(curFiltered,curPage);updateBulkBar();}
+function updateBulkBar(){let b=$('bulk-bar');if(!b){b=document.createElement('div');b.id='bulk-bar';b.style='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4)';document.body.appendChild(b);}if(selLinks.size===0){b.style.display='none';return;}b.style.display='flex';b.innerHTML=`<span style="font-family:var(--m);font-size:.72rem;color:var(--text)">${selLinks.size} selected</span><button onclick="bulkRenew()" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Renew All</button><button onclick="bulkDelete()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Delete All</button><button onclick="selLinks.clear();renderLinks(curFiltered,curPage);updateBulkBar();" style="background:var(--s4);color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem">Cancel</button>`;}
+async function bulkRenew(){if(!confirm('Renew '+selLinks.size+' links 28d?'))return;for(const t of selLinks)await fetch('/api/admin/renew/'+t,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({days:28})});selLinks.clear();toast('Renewed!');loadAll();}
+async function bulkDelete(){if(!confirm('Delete '+selLinks.size+' links permanently?'))return;for(const t of selLinks)await fetch('/api/admin/delete/'+t,{method:'DELETE',headers:{'x-admin-token':tok}});selLinks.clear();toast('Deleted!');loadAll();}
+
+async function doCreate(){
+  const em=$('c-email').value.trim(),pr=$('c-profile').value.trim(),pi=$('c-pin').value.trim(),dy=$('c-days').value;
+  if(!em||!pr||!pi)return toast('Fill all fields!',1);
+  const now=Date.now(),dup=Object.values(allLinks).find(l=>l.email===em&&l.profile===pr&&l.active&&l.expiresAt>now);
+  if(dup&&!confirm('Duplicate! /c/'+dup.token+' already exists. Create anyway?'))return;
+  const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,profile:pr,pin:pi,days:dy})});
+  const d=await r.json();
+  if(d.success){navigator.clipboard.writeText(SITE+'/c/'+d.token);toast(d.existing?'Existing link copied!':'Created & copied!');$('c-email').value='';$('c-profile').value='';$('c-pin').value='';loadAll();}else toast('Error: '+(d.error||'?'),1);
+}
+async function bulkCreate(){
+  const em=$('c-email').value.trim(),dy=$('c-days').value;
+  if(!em||!em.includes('@'))return toast('Enter email first!',1);
+  const now=Date.now(),ex=Object.values(allLinks).filter(l=>l.email===em&&l.active&&l.expiresAt>now);
+  if(ex.length>0&&!confirm(`${ex.length} active links exist. Create remaining?`))return;
+  const ps=[{profile:'Profile A',pin:'5651'},{profile:'Profile A',pin:'5651'},{profile:'Profile B',pin:'5652'},{profile:'Profile B',pin:'5652'},{profile:'Profile C',pin:'5653'},{profile:'Profile C',pin:'5653'},{profile:'Profile D',pin:'5654'},{profile:'Profile E',pin:'5655'}];
+  let cr=0,sk=0;
+  for(const p of ps){const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,profile:p.profile,pin:p.pin,days:dy})});const d=await r.json();if(d.success){if(d.existing)sk++;else cr++;}}
+  await loadAll();toast(`✅ ${cr} created, ${sk} existing`);
 }
 
-function toggleSelectAll() {
-  const arr = Object.values(currentFiltered);
-  if(selectedLinks.size === arr.length) selectedLinks.clear();
-  else arr.forEach(l=>selectedLinks.add(l.token));
-  renderLinks(currentFiltered, currentPage);
-  updateBulkBar();
-}
-
-function updateBulkBar() {
-  let bar = document.getElementById('bulk-bar');
-  if(!bar){
-    bar = document.createElement('div');
-    bar.id = 'bulk-bar';
-    bar.style = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4)';
-    document.body.appendChild(bar);
-  }
-  if(selectedLinks.size === 0){bar.style.display='none';return;}
-  bar.style.display='flex';
-  bar.innerHTML = `
-    <span style="font-family:var(--m);font-size:.72rem;color:var(--text)">${selectedLinks.size} selected</span>
-    <button onclick="bulkRenew()" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Renew All</button>
-    <button onclick="bulkDelete()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Delete All</button>
-    <button onclick="selectedLinks.clear();renderLinks(currentFiltered,currentPage);updateBulkBar();" style="background:var(--s4);color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem">Cancel</button>`;
-}
-
-async function bulkRenew() {
-  if(!confirm('Renew '+selectedLinks.size+' links for 28 days?')) return;
-  for(const token of selectedLinks) {
-    await fetch('/api/admin/renew/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
-  }
-  selectedLinks.clear();
-  showToast('Renewed!');
-  loadAll();
-}
-
-async function bulkDelete() {
-  if(!confirm('Permanently delete '+selectedLinks.size+' links?')) return;
-  for(const token of selectedLinks) {
-    await fetch('/api/admin/delete/'+token,{method:'DELETE',headers:{'x-admin-token':adminToken}});
-  }
-  selectedLinks.clear();
-  showToast('Deleted!');
-  loadAll();
-}
-
-async function doCreate() {
-  const email=document.getElementById('c-email').value.trim();
-  const profile=document.getElementById('c-profile').value.trim();
-  const pin=document.getElementById('c-pin').value.trim();
-  const days=document.getElementById('c-days').value;
-  const phone=document.getElementById('c-phone')?.value.trim()||'';
-  if(!email||!profile||!pin)return showToast('Fill all fields!',true);
-  // Duplicate detector
-  const now=Date.now();
-  const dup=Object.values(allLinks).find(l=>l.email===email&&l.profile===profile&&l.active&&l.expiresAt>now);
-  if(dup){
-    if(!confirm('Duplicate! '+email+' - '+profile+' already has active link /c/'+dup.token+'. Create anyway?')) return;
-  }
-  const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days})});
+// ── FIX: replaceAllLinks — updates state correctly ──
+async function replaceAllLinks(){
+  const oe=prompt('Current Netflix email to replace:');if(!oe||!oe.includes('@')){setNav('nav-dashboard');return;}
+  const ne=prompt('New Netflix email for: '+oe);if(!ne||!ne.includes('@')){setNav('nav-dashboard');return;}
+  const r=await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({oldEmail:oe,newEmail:ne})});
   const d=await r.json();
   if(d.success){
-    const fullLink=`${SITE}/c/${d.token}`;
-    navigator.clipboard.writeText(fullLink);
-    showToast(d.existing?'Existing link copied!':'Link created & copied!');
-    document.getElementById('c-email').value='';
-    document.getElementById('c-profile').value='';
-    document.getElementById('c-pin').value='';
-    loadAll();
-  }else showToast('Error: '+(d.error||'Unknown'),true);
+    toast(`✅ ${d.count} links updated!`);
+    // FIX: if currently filtered by old email, switch to new email
+    if(curMode==='email:'+oe.toLowerCase())curMode='email:'+ne.toLowerCase();
+    await loadAll();
+  }else toast('Error: '+(d.error||'?'),1);
 }
 
-async function revokeLink(token){
-  if(!confirm('Revoke this link?'))return;
-  await fetch(`/api/admin/revoke/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});
-  showToast('Link revoked');loadAll();
-}
-async function activateLink(token){
-  await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});
-  showToast('Link activated');loadAll();
-}
-async function extendLink(token){
-  await fetch(`/api/admin/extend/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});
-  showToast('+28 days added');loadAll();
-}
-async function editPhone(token, currentPhone) {
-  const newPhone = prompt('Edit phone number:\n\nCurrent: ' + (currentPhone||'None') + '\n\nNew phone:');
-  if(newPhone === null) return;
-  const r = await fetch('/api/admin/update-phone/'+token, {method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({phone:newPhone})});
-  const d = await r.json();
-  if(d.success){ showToast('Phone updated!'); loadAll(); }
-  else showToast('Error: '+(d.error||'Unknown'), true);
+async function copyAllLinks(em){
+  const now=Date.now(),ls=Object.values(allLinks).filter(l=>l.email===em&&l.active&&l.expiresAt>now).sort((a,b)=>a.profile.localeCompare(b.profile));
+  if(!ls.length)return toast('No active links',1);
+  const dl=Math.ceil((ls[0].expiresAt-now)/864e5);
+  const msg='FanFlix BD\n\nNetflix: '+em+'\n\n'+ls.map(l=>l.profile+' | PIN: '+l.pin+'\n'+SITE+'/c/'+l.token).join('\n\n')+'\n\nValid: '+dl+' days remaining';
+  await navigator.clipboard.writeText(msg);toast('All '+ls.length+' links copied!');
 }
 
-async function editEmail(token, btn) {
-  const currentEmail = btn ? btn.dataset.email : '';
-  const newEmail = prompt('Edit Netflix email:\n\nCurrent: ' + currentEmail + '\n\nNew email:');
-  if(!newEmail || !newEmail.includes('@')) return;
-  const r = await fetch('/api/admin/replace/'+token, {method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({newEmail})});
-  const d = await r.json();
-  if(d.success){ showToast('Email updated!'); loadAll(); }
-  else showToast('Error: '+(d.error||'Unknown'), true);
-}
+async function revokeLink(t){if(!confirm('Revoke?'))return;await fetch('/api/admin/revoke/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Revoked');loadAll();}
+async function activateLink(t){await fetch('/api/admin/activate/'+t,{method:'POST',headers:{'x-admin-token':tok}});toast('Activated');loadAll();}
 
-async function replaceLink(token, currentEmail){
-  const newEmail = prompt(`Replace account email for this link.
-
-Current: ${currentEmail}
-
-Enter new Netflix email:`);
-  if(!newEmail||!newEmail.includes('@')) return;
-  const r = await fetch(`/api/admin/replace/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({newEmail})});
-  const d = await r.json();
-  if(d.success){showToast('Account replaced!');loadAll();}
-  else showToast('Error: '+(d.error||'Unknown'),true);
-}
-
-async function renewLink(token){
-  // Show renewal options
-  const days = confirm('Renew for 28 days? Click OK for 28 days, Cancel to choose 85 days.') ? 28 : 85;
-  const r=await fetch(`/api/admin/renew/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days})});
+// ── FIX: editEmail — clean prompt, proper update ──
+async function editEmail(t,cur){
+  const ne=prompt('Edit Netflix email for /c/'+t+'\n\nCurrent: '+cur+'\n\nNew email:');
+  if(!ne||!ne.includes('@'))return;
+  if(ne.toLowerCase().trim()===cur.toLowerCase().trim())return toast('Same email — no change');
+  const r=await fetch('/api/admin/replace/'+t,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({newEmail:ne.toLowerCase().trim()})});
   const d=await r.json();
-  if(d.success){showToast(`Renewed for ${days} days!`);loadAll();}
-  else showToast('Error renewing',true);
+  if(d.success){toast('✅ Email updated → '+ne);loadAll();}else toast('Error: '+(d.error||'?'),1);
 }
 
-async function deleteLink(token){
-  if(!confirm('Delete permanently?'))return;
-  await fetch(`/api/admin/delete/${token}`,{method:'DELETE',headers:{'x-admin-token':adminToken}});
-  showToast('Deleted');loadAll();
-}
+async function renewLink(t){const dy=confirm('Renew 28d? Cancel=85d')?28:85;const r=await fetch('/api/admin/renew/'+t,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({days:dy})});const d=await r.json();if(d.success){toast('Renewed '+dy+'d!');loadAll();}else toast('Error',1);}
+async function delLink(t){if(!confirm('Delete permanently?'))return;await fetch('/api/admin/delete/'+t,{method:'DELETE',headers:{'x-admin-token':tok}});toast('Deleted');loadAll();}
 
-function copyText(text,btn){
-  navigator.clipboard.writeText(text).then(()=>{
-    if(btn){const orig=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=orig,2000);}
-    showToast('Copied!');
-  });
-}
+function copyTxt(txt,btn){navigator.clipboard.writeText(txt).then(()=>{if(btn){const o=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=o,2e3);}toast('Copied!');});}
 
-function buildMsg(email,profile,pin,link,days){
-  return `FanFlix BD\n\nEmail: ${email}\nProfile: ${profile}\nPIN: ${pin}\n\nHousehold Code Link:\n${link}\n\nLogin Tutorial (Must Watch):\nhttps://youtu.be/PLACEHOLDER1\n\nHousehold Fix Tutorial:\nhttps://youtu.be/PLACEHOLDER2\n\nImportant:\n- Any changes to the account are not allowed\n- Streaming is allowed on 1 device at a time\n- Do not use it from outside BD\n- You can sign in anytime if it shows signed out\n\nValid for ${days} days`;
+// ── FIX: Netflix Accounts — full list, pagination, edit + replace buttons ──
+async function loadAccounts(){
+  const l=$('acc-list');if(l)l.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{const r=await fetch('/api/admin/accounts',{headers:{'x-admin-token':tok}});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();allAccounts=d.accounts||[];accPage=0;renderAccounts();}
+  catch(e){const l2=$('acc-list');if(l2)l2.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error: '+e.message+'</div>';}
 }
-
-async function loadAccounts() {
-  const list=document.getElementById('accounts-list');
-  if(list) list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
-  try {
-    const r=await fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d=await r.json();
-    renderAccounts(d.accounts||[]);
-  } catch(e) {
-    console.error('loadAccounts error:', e);
-    if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';
-  }
-}
-function renderAccounts(accounts) {
-  const list=document.getElementById('accounts-list'); if(!list) return;
-  if(!accounts.length){ list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts yet. Click + Add Account.</div>'; return; }
-  list.innerHTML=accounts.map(a=>`
-    <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
+function renderAccounts(){
+  const list=$('acc-list');if(!list)return;
+  const total=allAccounts.length;
+  if(!total){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts yet. Click + Add Account.</div>';$('acc-pg').style.display='none';return;}
+  const tp=Math.ceil(total/ACC_PS);
+  const page=allAccounts.slice(accPage*ACC_PS,(accPage+1)*ACC_PS);
+  list.innerHTML=page.map(a=>`
+    <div class="acc-row">
       <div style="width:8px;height:8px;border-radius:50%;background:${a.active?'var(--green)':'var(--muted2)'};flex-shrink:0"></div>
       <div style="flex:1;min-width:0">
-        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.email)}</div>
-        <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${a.notes||'No notes'}</div>
+        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          <span style="color:var(--muted2);margin-right:6px">✉</span>${esc(a.email)}
+        </div>
+        <div style="font-size:.68rem;color:var(--muted);margin-top:3px">${a.notes||'No notes'} · ${a.addedAt?timeAgo(a.addedAt):'—'}</div>
       </div>
-      <div style="font-family:var(--h);font-size:1rem;color:${(a.slotsUsed||0)>=8?'var(--red)':(a.slotsUsed||0)>=6?'var(--amber)':'var(--green)'}">${a.slotsUsed||0}/8</div>
-      <div style="display:flex;gap:.4rem">
-        <button class="icon-btn" onclick="toggleAccount('${esc(a.email)}')" style="color:${a.active?'var(--green)':'var(--muted)'}">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/>${a.active?'<polyline points="9 12 11 14 15 10"/>':'<line x1="8" y1="12" x2="16" y2="12"/>'}</svg>
-        </button>
-        <button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-        </button>
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+        ${Array.from({length:8},(_,i)=>`<div style="width:8px;height:8px;border-radius:50%;background:${i<(a.slotsUsed||0)?'var(--green)':'var(--s4)'}"></div>`).join('')}
+      </div>
+      <div style="font-family:var(--m);font-size:1rem;font-weight:700;color:${(a.slotsUsed||0)>=8?'var(--red)':(a.slotsUsed||0)>=6?'var(--amber)':'var(--green)'};flex-shrink:0;min-width:36px;text-align:right">${a.slotsUsed||0}/8</div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0">
+        <button class="icon-btn" onclick="replaceAccEmail('${esc(a.email)}')" title="Replace email (updates all links)" style="color:var(--blue)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
+        <button class="icon-btn" onclick="toggleAccount('${esc(a.email)}')" title="${a.active?'Deactivate':'Activate'}" style="color:${a.active?'var(--green)':'var(--muted)'}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/>${a.active?'<polyline points="9 12 11 14 15 10"/>':'<line x1="8" y1="12" x2="16" y2="12"/>'}</svg></button>
+        <button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
       </div>
     </div>`).join('');
+  const pg=$('acc-pg');
+  if(tp<=1){pg.style.display='none';}else{pg.style.display='flex';pg.innerHTML=`<button onclick="accPage=${accPage-1};renderAccounts()" ${accPage===0?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">← Prev</button><span style="font-family:var(--m);font-size:.68rem;color:var(--muted);padding:0 .8rem;align-self:center">${total} accounts · Page ${accPage+1}/${tp}</span><button onclick="accPage=${accPage+1};renderAccounts()" ${accPage>=tp-1?'disabled':''} style="background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.7rem">Next →</button>`;}
 }
-function showAddAccountForm(){ const f=document.getElementById('add-account-form'); if(f) f.style.display=f.style.display==='none'?'block':'none'; }
+function showAddAccForm(){const f=$('add-acc-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
 async function addAccount(){
-  const email=document.getElementById('acc-email').value.trim();
-  const notes=document.getElementById('acc-notes').value.trim();
-  if(!email||!email.includes('@')) return showToast('Enter valid email',true);
-  const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes})});
-  const d=await r.json();
-  if(d.success){ showToast('Account added!'); document.getElementById('acc-email').value=''; document.getElementById('acc-notes').value=''; loadAccounts(); }
-  else showToast('Error: '+(d.error||'Unknown'),true);
-}
-async function toggleAccount(email){
-  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/toggle',{method:'POST',headers:{'x-admin-token':adminToken}});
-  const d=await r.json(); if(d.success) loadAccounts(); else showToast('Error',true);
-}
-async function deleteAccount(email){
-  if(!confirm('Delete: '+email+'?')) return;
-  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
-  const d=await r.json(); if(d.success){showToast('Deleted!');loadAccounts();} else showToast('Error',true);
-}
-let settingsData={};
-async function loadSettingsData(){
-  try{
-    const r=await fetch('/api/admin/settings',{headers:{'x-admin-token':adminToken}});
-    const d=await r.json(); settingsData=d.settings||{}; renderSettings();
-  }catch(e){}
-}
-function renderSettings(){
-  const bg=document.getElementById('auto-link-bg');
-  const knob=document.getElementById('auto-link-knob');
-  const url=document.getElementById('auto-link-url');
-  const on=settingsData.autoLink||false;
-  if(bg) bg.style.background=on?'var(--green)':'var(--s4)';
-  if(knob) knob.style.transform=on?'translateX(24px)':'translateX(0)';
-  if(url) url.textContent=window.location.origin+'/api/auto-create';
-}
-async function toggleAutoLink(){
-  const on=!(settingsData.autoLink||false);
-  const r=await fetch('/api/admin/settings',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({autoLink:on})});
-  const d=await r.json();
-  if(d.success){ settingsData.autoLink=on; renderSettings(); showToast('Auto link '+(on?'ENABLED':'DISABLED')+'!'); }
-}
-function toggleMobNav(){
-  const sb=document.querySelector('.sidebar');
-  const ov=document.getElementById('mob-overlay');
-  if(sb.classList.contains('open')){
-    sb.classList.remove('open');
-    ov.classList.remove('show');
-  } else {
-    sb.classList.add('open');
-    ov.classList.add('show');
-  }
-}
-function closeMobNav(){
-  document.querySelector('.sidebar').classList.remove('open');
-  document.getElementById('mob-overlay').classList.remove('show');
+  const em=$('acc-email').value.trim(),no=$('acc-notes').value.trim();
+  if(!em||!em.includes('@'))return toast('Enter valid email',1);
+  const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,notes:no})});
+  const d=await r.json();if(d.success){toast('Account added!');$('acc-email').value='';$('acc-notes').value='';$('add-acc-form').style.display='none';loadAccounts();}else toast('Error: '+(d.error||'?'),1);
 }
 
-function showToast(msg,err=false){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className=err?'err show':'show';
-  setTimeout(()=>t.className='',2500);
+// ── FIX: replaceAccEmail — replace email in accounts list AND all links ──
+async function replaceAccEmail(oe){
+  const ne=prompt('Replace email for this account\n\nCurrent: '+oe+'\n\nNew email (all customer links will update):');
+  if(!ne||!ne.includes('@'))return;
+  if(ne.toLowerCase().trim()===oe.toLowerCase().trim())return toast('Same email',0);
+  const nel=ne.toLowerCase().trim();
+  // 1. Replace all customer links
+  const r1=await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({oldEmail:oe,newEmail:nel})});
+  const d1=await r1.json();
+  // 2. Remove old account entry + add new one
+  const acc=allAccounts.find(a=>a.email===oe);
+  await fetch('/api/admin/accounts/'+encodeURIComponent(oe),{method:'DELETE',headers:{'x-admin-token':tok}});
+  await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:nel,notes:acc?.notes||''})});
+  toast(`✅ ${d1.count||0} links + account updated!`);
+  if(curMode==='email:'+oe)curMode='email:'+nel;
+  await loadAll();loadAccounts();
 }
+
+async function toggleAccount(em){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em)+'/toggle',{method:'POST',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success)loadAccounts();else toast('Error',1);}
+async function deleteAccount(em){if(!confirm('Delete account: '+em+'?'))return;const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success){toast('Deleted!');loadAccounts();}else toast('Error',1);}
+
+let settingsData={};
+async function loadSettingsData(){try{const r=await fetch('/api/admin/settings',{headers:{'x-admin-token':tok}});const d=await r.json();settingsData=d.settings||{};renderSettings();}catch(e){}}
+function renderSettings(){const on=settingsData.autoLink||false;const b=$('al-bg'),k=$('al-knob'),u=$('al-url');if(b)b.style.background=on?'var(--green)':'var(--s4)';if(k)k.style.transform=on?'translateX(24px)':'translateX(0)';if(u)u.textContent=window.location.origin+'/api/auto-create';}
+async function toggleAutoLink(){const on=!(settingsData.autoLink||false);const r=await fetch('/api/admin/settings',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({autoLink:on})});const d=await r.json();if(d.success){settingsData.autoLink=on;renderSettings();toast('Auto link '+(on?'ENABLED':'DISABLED')+'!');}}
+
+function toggleMobNav(){const sb=document.querySelector('.sidebar'),ov=$('mob-overlay');sb.classList.toggle('open');ov.classList.toggle('show');}
+function closeMobNav(){document.querySelector('.sidebar').classList.remove('open');$('mob-overlay').classList.remove('show');}
+function toast(msg,err=0){const t=$('toast');t.textContent=msg;t.className=err?'err show':'show';setTimeout(()=>t.className='',2500);}
 function timeAgo(ts){const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);if(m<1)return'Just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
