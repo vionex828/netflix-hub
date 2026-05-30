@@ -898,9 +898,10 @@ app.post('/api/admin/accounts', adminAuth, (req, res) => {
 
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   const accounts = loadAccounts();
-  const filtered = accounts.filter(a => a.email !== decodeURIComponent(req.params.email));
+  const target = decodeURIComponent(req.params.email).trim().toLowerCase();
+  const filtered = accounts.filter(a => a.email.trim().toLowerCase() !== target);
   saveAccounts(filtered);
-  res.json({ success:true });
+  res.json({ success:true, removed: accounts.length - filtered.length });
 });
 
 app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
