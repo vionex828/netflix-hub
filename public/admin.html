@@ -701,12 +701,24 @@ async function addAccount(){
 // ── Edit account notes ──
 async function editAccount(em){
   const acc=allAccounts.find(a=>a.email===em);
-  const newNotes=prompt('Edit notes for:\n'+em+'\n\nCurrent notes: '+(acc?.notes||'None')+'\n\nNew notes (leave blank to clear):');
+  const newEmail=prompt('Edit email:\n\nCurrent: '+em+'\n\nNew email (or press OK to keep same):',em);
+  if(newEmail===null)return; // cancelled
+  const cleanEmail=newEmail.trim().toLowerCase();
+  if(!cleanEmail.includes('@'))return toast('Invalid email',1);
+  const newNotes=prompt('Edit notes:\n\nCurrent: '+(acc?.notes||'None')+'\n\nNew notes (leave blank to clear):', acc?.notes||'');
   if(newNotes===null)return; // cancelled
-  // Delete old + re-add with new notes
+  // Delete old entry
   await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
-  await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:em,notes:newNotes.trim()})});
-  toast('Notes updated!');
+  // Re-add with corrected email + notes
+  await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({email:cleanEmail,notes:newNotes.trim()})});
+  // If email changed, also update all customer links
+  if(cleanEmail!==em.toLowerCase()){
+    await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':tok},body:JSON.stringify({oldEmail:em,newEmail:cleanEmail})});
+    toast('✅ Email + notes updated, links reassigned!');
+  } else {
+    toast('✅ Notes updated!');
+  }
+  await loadAll();
   loadAccounts();
 }
 
@@ -730,18 +742,16 @@ async function replaceAccEmail(oe){
 
 async function toggleAccount(em){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(em)+'/toggle',{method:'POST',headers:{'x-admin-token':tok}});const d=await r.json();if(d.success)loadAccounts();else toast('Error',1);}
 async function deleteAccount(em){
-  if(!confirm(`Delete account + ALL customer links for:\n\n${em}\n\nThis cannot be undone!`))return;
+  const cleanEm=em.trim();
+  if(!confirm(`Delete account + ALL customer links for:\n\n${cleanEm}\n\nThis cannot be undone!`))return;
   try{
-    // Fetch fresh links from server to make sure we get all
     const r0=await fetch('/api/admin/links',{headers:{'x-admin-token':tok}});
     const d0=await r0.json();
-    const freshLinks=Object.values(d0.links||{}).filter(l=>l.email===em.toLowerCase());
-    // Delete all customer links
+    const freshLinks=Object.values(d0.links||{}).filter(l=>l.email===cleanEm.toLowerCase()||l.email===cleanEm);
     for(const l of freshLinks){
       await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':tok}});
     }
-    // Delete account record
-    await fetch('/api/admin/accounts/'+encodeURIComponent(em),{method:'DELETE',headers:{'x-admin-token':tok}});
+    await fetch('/api/admin/accounts/'+encodeURIComponent(cleanEm),{method:'DELETE',headers:{'x-admin-token':tok}});
     toast(`✅ Deleted account + ${freshLinks.length} links`);
     await loadAll();
     loadAccounts();
