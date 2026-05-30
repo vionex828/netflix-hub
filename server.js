@@ -22,7 +22,6 @@ const DATA_DIR = (() => {
   const fallback = '/tmp/fanflix-data';
   try {
     require('fs').mkdirSync(preferred, { recursive: true });
-    // test write
     require('fs').writeFileSync(preferred + '/.test', '1');
     require('fs').unlinkSync(preferred + '/.test');
     return preferred;
@@ -39,8 +38,6 @@ const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
 const WA_NUMBER = '8801928382918';
-
-// EPS Bot Bridge URL
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
@@ -62,7 +59,6 @@ const FIXED_PROFILES = [
   { profile: 'Profile E', pin: '5655', slots: 1 },
 ];
 
-// ── DATA ─────────────────────────────────────────────────────
 function ensureDataDir() { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {} }
 function loadLinks() { try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveLinks(links) { ensureDataDir(); fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2)); }
@@ -73,17 +69,10 @@ function saveIPs(data) { ensureDataDir(); fs.writeFileSync(IP_FILE, JSON.stringi
 const GEO_FILE      = DATA_DIR + '/geo.json';
 const ACCOUNTS_FILE = DATA_DIR + '/accounts.json';
 const SETTINGS_FILE = DATA_DIR + '/settings.json';
-// Netflix accounts
 function loadAccounts() { try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,'utf8')); } catch(e) { return []; } }
 function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
-
-// Settings (auto-link toggle etc)
-function loadSettings() { 
-  try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } 
-  catch(e) { return { autoLink: false }; } 
-}
+function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } catch(e) { return { autoLink: false }; } }
 function saveSettings(data) { ensureDataDir(); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data,null,2)); }
-
 function loadGeo() { try { return JSON.parse(fs.readFileSync(GEO_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveGeo(data) { ensureDataDir(); fs.writeFileSync(GEO_FILE, JSON.stringify(data, null, 2)); }
 
@@ -119,21 +108,15 @@ function trackIP(token, ip) {
   return data[token].length;
 }
 
-// Auto assign next available profile for an email
 function getNextAvailableSlot() {
   const accounts = loadAccounts();
   const links = loadLinks();
   const now = Date.now();
-  
-  // Sort accounts by priority
   const sorted = [...accounts].filter(a => a.active).sort((a,b) => (a.priority||99) - (b.priority||99));
-  
   for (const account of sorted) {
     const email = account.email;
     const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
     const usedProfiles = activeLinks.map(l => l.profile);
-    
-    // Check each profile slot
     for (const prof of FIXED_PROFILES) {
       const used = usedProfiles.filter(p => p === prof.profile).length;
       if (used < prof.slots) {
@@ -141,52 +124,44 @@ function getNextAvailableSlot() {
       }
     }
   }
-  return null; // No slots available
+  return null;
 }
 
-// Check for unused links (not opened in 24h) and recycle them
 function recycleUnusedLinks() {
   const links = loadLinks();
   const now = Date.now();
-  const oneDayMs = 30 * 60 * 60 * 1000; // 30 hours
+  const oneDayMs = 30 * 60 * 60 * 1000;
   let recycled = 0;
-  
   for (const token of Object.keys(links)) {
     const link = links[token];
     if (!link.active || link.expiresAt <= now) continue;
-    if ((link.uses || 0) > 0) continue; // Already opened - never recycle used links
+    if ((link.uses || 0) > 0) continue;
     if (!link.createdAt) continue;
-    
     const age = now - link.createdAt;
     if (age > oneDayMs) {
-      // Recycle — clear phone, mark as available
       const oldPhone = link.phone || 'unknown';
       links[token].phone = '';
       links[token].recycled = true;
       links[token].recycledAt = now;
+      links[token].active = false;
       recycled++;
-      
-      sendTelegram('<b>Link Recycled</b>\n\nToken: /c/' + token + '\nProfile: ' + link.profile + '\nWas: ' + oldPhone + '\nNot opened 24h - slot available.');
+      sendTelegram('<b>♻️ Link Recycled & Available</b>\n\nToken: /c/' + token + '\nProfile: ' + link.profile + '\nWas assigned to: ' + oldPhone + '\nNever opened in 30h — slot is now available for new customer.');
     }
   }
-  
   if (recycled > 0) saveLinks(links);
   return recycled;
 }
 
-// Run recycle check every hour
 setInterval(recycleUnusedLinks, 60 * 60 * 1000);
 
 function generateToken() { return crypto.randomBytes(4).toString('hex'); }
 
-// ── STATS ─────────────────────────────────────────────────────
 let totalToday = 0, lastReset = new Date().toDateString();
 const visitors = new Map();
 function resetDailyIfNeeded() { const t = new Date().toDateString(); if (t !== lastReset) { totalToday = 0; lastReset = t; } }
 function trackVisitor(ip) { visitors.set(ip, Date.now()); const c = Date.now()-5*60*1000; for(const[k,v] of visitors) if(v<c) visitors.delete(k); }
 function getLiveVisitors() { const c = Date.now()-5*60*1000; return [...visitors.values()].filter(v=>v>c).length; }
 
-// ── RATE LIMIT ────────────────────────────────────────────────
 const rateLimitMap = new Map();
 function isRateLimited(ip) {
   const now = Date.now();
@@ -196,12 +171,10 @@ function isRateLimited(ip) {
   e.count++; rateLimitMap.set(ip,e); return false;
 }
 
-// ── CACHE ─────────────────────────────────────────────────────
 const cache = new Map();
 function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<30000) return e.data; return null; }
 function setCache(key, data) { cache.set(key, {data, time:Date.now()}); }
 
-// ── TELEGRAM ──────────────────────────────────────────────────
 async function sendTelegram(msg, chatId=TG_CHAT) {
   try {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -211,12 +184,11 @@ async function sendTelegram(msg, chatId=TG_CHAT) {
   } catch(e) { console.error('TG error:', e.message); }
 }
 
-// ── MORNING REPORT ────────────────────────────────────────────
 function scheduleMorningReport() {
   const now = new Date();
   const bd = new Date(now.getTime() + 6*60*60*1000);
   const next11am = new Date(bd);
-  next11am.setUTCHours(5,0,0,0); // 11AM BD = 5AM UTC
+  next11am.setUTCHours(5,0,0,0);
   if (bd.getUTCHours() >= 5) next11am.setUTCDate(next11am.getUTCDate()+1);
   const msUntil = next11am.getTime() - now.getTime();
   setTimeout(() => { sendMorningReport(); setInterval(sendMorningReport, 24*60*60*1000); }, msUntil);
@@ -252,7 +224,6 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
-// ── EXPIRY CHECKER ────────────────────────────────────────────
 function checkExpiringLinks() {
   const links = loadLinks();
   const now = Date.now(), threeDays = 3*24*60*60*1000;
@@ -270,7 +241,6 @@ function checkExpiringLinks() {
 setInterval(checkExpiringLinks, 60*60*1000);
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
-// ── OTP SCRAPER ───────────────────────────────────────────────
 async function scrapeOTP(link) {
   try {
     const res = await fetch(link, {
@@ -290,15 +260,13 @@ async function scrapeOTP(link) {
   } catch(e) { return null; }
 }
 
-// ── IMAP ──────────────────────────────────────────────────────
 function fetchNetflixEmails(filterEmail, includeSignin=false) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 10000,
-      authTimeout: 8000
+      connTimeout: 10000, authTimeout: 8000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
@@ -321,13 +289,11 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
                   const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
                   const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
                   const toEmail = toValues[0] || toText.toLowerCase().trim();
-
                   if (filterEmail) {
                     const filterLower = filterEmail.toLowerCase().trim();
                     const matched = toValues.some(a => a === filterLower) || toText.toLowerCase().includes(filterLower);
                     if (!matched) return res(null);
                   }
-
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
                   res(parsed);
                 });
@@ -362,49 +328,32 @@ function extractLink(body) {
 
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
-
-  // 6-DIGIT VERIFICATION CODE (new Netflix flow - "Verify with this code")
-  // BLOCK account change codes - dangerous, customer could hijack account
   if (sl.includes('verification code') || sl.includes('your verification code')) {
     const isAccountChange = bodyPlain.toLowerCase().includes('account change') ||
                             bodyPlain.toLowerCase().includes('account info') ||
                             bodyPlain.toLowerCase().includes('change to your account');
-    if (isAccountChange) return null; // Block completely
+    if (isAccountChange) return null;
   }
-
   if (includeSignin && (sl.includes('verification code') || sl.includes('verify with') || sl.includes('verify this'))) {
-    // Extract 6-digit code — Netflix shows it spaced like "5 0 9 6 1 9"
-    // Strategy: spaced format is most reliable, then look for code appearing only once
-
-    // Pattern 1: Spaced digits "5 0 9 6 1 9" in plain text
     const spacedMatch = bodyPlain.match(/(?<![0-9\d])(\d)\s(\d)\s(\d)\s(\d)\s(\d)\s(\d)(?![0-9\d])/);
     if (spacedMatch) {
       const code = spacedMatch[1]+spacedMatch[2]+spacedMatch[3]+spacedMatch[4]+spacedMatch[5]+spacedMatch[6];
       if (!BLOCKED_CODES.includes(code)) return { type:'verify', label:'Verification Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
-
-    // Pattern 2: Look for 6-digit number after "code:" or "Verify with this code" in plain text
     const afterCode = bodyPlain.match(/(?:verify with this code|this code)[^0-9]{0,30}([0-9]{6})(?![0-9])/i);
     if (afterCode && !BLOCKED_CODES.includes(afterCode[1])) {
       return { type:'verify', label:'Verification Code', code:afterCode[1], to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
-
-    // Pattern 3: 6-digit number that appears only 1-2 times (not a template number)
     const allNums6 = [...bodyHtml.matchAll(/(?<![0-9])(\d{6})(?![0-9])/g)].map(m => m[1]);
     const filtered6 = allNums6.filter(n => !BLOCKED_CODES.includes(n));
     if (filtered6.length > 0) {
       const unique6 = [...new Set(filtered6)];
-      // Pick number that appears only once — that's the real code
       const onlyOnce = unique6.filter(n => allNums6.filter(x => x === n).length === 1);
       const verifyCode = onlyOnce[onlyOnce.length - 1] || unique6[unique6.length - 1];
       if (verifyCode) return { type:'verify', label:'Verification Code', code:verifyCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
   }
-
-  // 4-DIGIT SIGN-IN CODE (existing flow)
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
-    // Netflix template contains 8199 hundreds of times in CSS
-    // Real code appears rarely at the end — find numbers appearing <= 5 times
     const TEMPLATE_NUMS = [...BLOCKED_CODES, '8199'];
     const allNums = [...bodyHtml.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
     const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
@@ -415,7 +364,6 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
       if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
   }
-
   const isRelevant = sl.includes('temporary')||sl.includes('access code')||sl.includes('travel')||sl.includes('household')||sl.includes('update')||sl.includes('verify');
   if (!isRelevant) return null;
   const result = extractLink(bodyHtml) || extractLink(bodyText);
@@ -428,23 +376,19 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   return { ...result, to:toEmail, ts };
 }
 
-// ── EPS HELPERS ──────────────────────────────────────────────
 function epsHash(data) {
   const key = Buffer.from(EPS_HASH_KEY, 'utf8');
   return crypto.createHmac('sha512', key).update(data).digest('base64');
 }
 
 async function epsGetToken() {
-  console.log('EPS GetToken - username:', EPS_USERNAME);
   const xhash = epsHash(EPS_USERNAME);
-  console.log('EPS xhash:', xhash.substring(0,20)+'...');
   const res = await fetch(EPS_API + '/v1/Auth/GetToken', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'x-hash': xhash },
     body: JSON.stringify({ userName: EPS_USERNAME, password: EPS_PASSWORD })
   });
   const d = await res.json();
-  console.log('EPS GetToken response:', JSON.stringify(d).substring(0,100));
   if (!d.token) throw new Error('EPS auth failed: ' + (d.errorMessage || JSON.stringify(d)));
   return d.token;
 }
@@ -453,32 +397,20 @@ async function epsInitPayment({ token, amount, productName, customerName, custom
   const bearerToken = await epsGetToken();
   const xhash = epsHash(txnId);
   const body = {
-    merchantId: EPS_MERCHANT_ID,
-    storeId: EPS_STORE_ID,
-    CustomerOrderId: orderId,
-    merchantTransactionId: txnId,
-    transactionTypeId: 1,
-    financialEntityId: 0,
-    transitionStatusId: 0,
-    totalAmount: amount,
-    ipAddress: '127.0.0.1',
-    version: '1',
+    merchantId: EPS_MERCHANT_ID, storeId: EPS_STORE_ID,
+    CustomerOrderId: orderId, merchantTransactionId: txnId,
+    transactionTypeId: 1, financialEntityId: 0, transitionStatusId: 0,
+    totalAmount: amount, ipAddress: '127.0.0.1', version: '1',
     successUrl, failUrl, cancelUrl,
     customerName: customerName || 'Customer',
     customerEmail: customerEmail || 'customer@fanflixbd.com',
-    CustomerAddress: 'Dhaka, Bangladesh',
-    CustomerAddress2: '',
-    CustomerCity: 'Dhaka',
-    CustomerState: 'Dhaka',
-    CustomerPostcode: '1000',
-    CustomerCountry: 'BD',
+    CustomerAddress: 'Dhaka, Bangladesh', CustomerAddress2: '',
+    CustomerCity: 'Dhaka', CustomerState: 'Dhaka',
+    CustomerPostcode: '1000', CustomerCountry: 'BD',
     CustomerPhone: customerPhone || '01700000000',
-    ShippingMethod: 'NO',
-    NoOfItem: '1',
-    ProductName: productName,
-    ProductProfile: 'digital-goods',
-    ProductCategory: 'Subscription',
-    ValueA: token, // store fanflix token for callback
+    ShippingMethod: 'NO', NoOfItem: '1',
+    ProductName: productName, ProductProfile: 'digital-goods',
+    ProductCategory: 'Subscription', ValueA: token,
   };
   const res = await fetch(EPS_API + '/v1/EPSEngine/InitializeEPS', {
     method: 'POST',
@@ -499,13 +431,11 @@ async function epsVerifyPayment(txnId) {
   return await res.json();
 }
 
-// ── ADMIN AUTH ────────────────────────────────────────────────
 function adminAuth(req, res, next) {
   if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
   next();
 }
 
-// ── TELEGRAM WEBHOOK ──────────────────────────────────────────
 app.post('/tg-webhook', async (req, res) => {
   res.sendStatus(200);
   const msg = req.body?.message;
@@ -677,7 +607,6 @@ function buildCustomerMessage(email, profile, pin, link, days) {
   return `🎬 <b>FanFlix BD</b>\n\n📧 Email: <code>${email}</code>\n👤 Profile: ${profile}\n🔑 PIN: ${pin}\n\n🔗 Your Code Link:\n${link}\n\n📺 Login Tutorial:\n${LOGIN_VIDEO}\n\n🏠 Household Fix:\n${HOUSEHOLD_VIDEO}\n\n⚠️ Important:\n• No account changes allowed\n• 1 device at a time\n• BD use only\n• Sign in anytime if logged out\n\n✅ Valid for ${days} days`;
 }
 
-// ── ADMIN ROUTES ──────────────────────────────────────────────
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
   if (password === ADMIN_PASS) res.json({ success:true, token:ADMIN_PASS });
@@ -701,14 +630,51 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   if (!email||!profile||!pin||!days) return res.status(400).json({ error:'Missing fields' });
   const links = loadLinks();
   const now = Date.now();
+  // Check if active link already exists for this email+profile
   const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
   if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
-  const token = generateToken();
-  links[token] = { token, email:email.toLowerCase(), profile, pin, phone:phone||'', days:parseInt(days), createdAt:now, expiresAt:now+parseInt(days)*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+
+  // ── RECYCLE: reuse a never-used recycled link for same profile ──
+  const recyclable = Object.values(links).find(l =>
+    l.profile === profile &&
+    l.uses === 0 &&
+    l.recycled === true &&
+    !l.active
+  );
+
+  let token;
+  if (recyclable) {
+    token = recyclable.token;
+    links[token] = {
+      ...links[token],
+      email: email.toLowerCase(),
+      pin,
+      phone: phone || '',
+      days: parseInt(days),
+      createdAt: now,
+      expiresAt: now + parseInt(days) * 24 * 60 * 60 * 1000,
+      uses: 0,
+      lastUsed: null,
+      active: true,
+      warningSent: false,
+      recycled: false,
+      recycledAt: null,
+      recycledFrom: recyclable.email
+    };
+    sendTelegram(`♻️ <b>Link Recycled!</b>\n\n🔗 /c/${token}\n👤 ${profile}\n📧 Old: ${recyclable.email}\n📧 New: ${email.toLowerCase()}\n⏳ ${days} days`);
+  } else {
+    token = generateToken();
+    links[token] = {
+      token, email: email.toLowerCase(), profile, pin,
+      phone: phone || '', days: parseInt(days),
+      createdAt: now, expiresAt: now + parseInt(days) * 24 * 60 * 60 * 1000,
+      uses: 0, lastUsed: null, active: true, warningSent: false
+    };
+  }
   saveLinks(links);
-  res.json({ success:true, token, link:`/c/${token}` });
+  res.json({ success: true, token, link: `/c/${token}`, recycled: !!recyclable });
 });
 
 app.post('/api/admin/revoke/:token', adminAuth, (req, res) => {
@@ -742,7 +708,6 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   saveLinks(links); res.json({ success:true });
 });
 
-// Replace account email for single link
 app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
@@ -751,11 +716,10 @@ app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
   const oldEmail = links[req.params.token].email;
   links[req.params.token].email = newEmail.toLowerCase().trim();
   saveLinks(links);
-  cache.clear(); // Clear all cache to ensure fresh data
+  cache.clear();
   res.json({ success:true, oldEmail, newEmail });
 });
 
-// Replace all links for an email
 app.post('/api/admin/replaceall', adminAuth, (req, res) => {
   const { oldEmail, newEmail } = req.body;
   if (!oldEmail||!newEmail) return res.status(400).json({ error:'Missing fields' });
@@ -765,11 +729,10 @@ app.post('/api/admin/replaceall', adminAuth, (req, res) => {
     if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
   }
   saveLinks(links);
-  cache.clear(); // Clear all cache
+  cache.clear();
   res.json({ success:true, count });
 });
 
-// Update phone for a link
 app.post('/api/admin/update-phone/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
@@ -796,9 +759,6 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
   res.json({ success:true, slots:byEmail, maxSlots:MAX_SLOTS });
 });
 
-// ── CUSTOMER LINK ─────────────────────────────────────────────
-
-// Fast endpoint - returns link info instantly without IMAP
 app.get('/api/link/:token/info', (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
@@ -812,7 +772,6 @@ app.get('/api/link/:token/info', (req, res) => {
 });
 
 app.get('/api/link/:token', async (req, res) => {
-  // Overall timeout - respond within 15 seconds
   const timeout = setTimeout(() => {
     if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
   }, 15000);
@@ -840,7 +799,6 @@ app.get('/api/link/:token', async (req, res) => {
   }
 });
 
-// ── DEBUG ─────────────────────────────────────────────────────
 app.get('/api/debug-email', async (req, res) => {
   const filterEmail = (req.query.email || '').trim().toLowerCase();
   try {
@@ -878,22 +836,18 @@ app.get('/api/debug-email', async (req, res) => {
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
-// ── PUBLIC ROUTES ─────────────────────────────────────────────
 app.get('/api/stats', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
   res.json({ live:getLiveVisitors(), today:totalToday });
 });
 
-// Geo flags endpoint for admin
 app.get('/api/admin/geo', (req, res) => {
   try {
     if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
     const geoData = loadGeo();
     res.json({ success: true, geo: geoData });
-  } catch(e) {
-    res.json({ success: true, geo: {} });
-  }
+  } catch(e) { res.json({ success: true, geo: {} }); }
 });
 
 app.get('/api/health', (req, res) => {
@@ -919,7 +873,6 @@ app.get('/api/codes', async (req, res) => {
 
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
 
-// ── NETFLIX ACCOUNTS API ─────────────────────────────────────────────
 app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const links = loadLinks();
@@ -959,7 +912,6 @@ app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
   res.json({ success:true, active: accounts[idx].active });
 });
 
-// ── SETTINGS API ─────────────────────────────────────────────────────
 app.get('/api/admin/settings', adminAuth, (req, res) => {
   res.json({ success:true, settings: loadSettings() });
 });
@@ -971,12 +923,13 @@ app.post('/api/admin/settings', adminAuth, (req, res) => {
   res.json({ success:true, settings: updated });
 });
 
-// ── AUTO CREATE LINK (called by EPS bot) ─────────────────────────────
+// ── AUTO CREATE LINK — accepts secret in header OR body ──────────────
 app.post('/api/auto-create', (req, res) => {
   try {
     const settings = loadSettings();
     if (!settings.autoLink) return res.status(403).json({ success:false, error:'Auto link is disabled' });
-    const authToken = req.headers['x-admin-token'];
+    // FIX: accept secret from body too (EPS bot can't easily send custom headers)
+    const authToken = req.headers['x-admin-token'] || req.body.secret;
     if (authToken !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
@@ -986,13 +939,51 @@ app.post('/api/auto-create', (req, res) => {
       return res.status(503).json({ success:false, error:'No slots available' });
     }
     const links = loadLinks();
-    const token = generateToken();
     const now = Date.now();
     const d = parseInt(days) || 28;
-    links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:phone, customerName:customerName||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+
+    // ── RECYCLE: check for never-used recycled link for same profile ──
+    const recyclable = Object.values(links).find(l =>
+      l.profile === slot.profile &&
+      l.uses === 0 &&
+      l.recycled === true &&
+      !l.active
+    );
+
+    let token;
+    if (recyclable) {
+      token = recyclable.token;
+      links[token] = {
+        ...links[token],
+        email: slot.email,
+        pin: slot.pin,
+        phone: phone,
+        customerName: customerName || '',
+        days: d,
+        createdAt: now,
+        expiresAt: now + d * 24 * 60 * 60 * 1000,
+        uses: 0,
+        lastUsed: null,
+        active: true,
+        warningSent: false,
+        recycled: false,
+        recycledAt: null,
+        recycledFrom: recyclable.email
+      };
+      sendTelegram(`♻️ <b>Auto Link Recycled!</b>\n📞 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
+    } else {
+      token = generateToken();
+      links[token] = {
+        token, email: slot.email, profile: slot.profile, pin: slot.pin,
+        phone: phone, customerName: customerName || '', days: d,
+        createdAt: now, expiresAt: now + d * 24 * 60 * 60 * 1000,
+        uses: 0, lastUsed: null, active: true, warningSent: false
+      };
+      sendTelegram(`<b>Auto Link Created!</b>\n📞 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
+    }
+
     saveLinks(links);
-    sendTelegram('<b>Auto Link Created!</b>\nCustomer: ' + (customerName||'Customer') + '\nPhone: ' + phone + '\nProfile: ' + slot.profile + ' | PIN: ' + slot.pin + '\nLink: /c/' + token + '\nDays: ' + d);
-    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin });
+    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin, recycled: !!recyclable });
   } catch(e) {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
@@ -1003,7 +994,6 @@ app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
-// Prevent crashes from uncaught errors
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
   console.error(err.stack);
