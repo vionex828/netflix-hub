@@ -236,6 +236,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
 
     <div class="content" id="content">
+      <div id="sec-dashboard">
       <div class="grid-4">
         <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-active">-</div><div class="stat-lbl">Active Links</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div></div><div class="stat-link" onclick="filterByStatus('active')">View all active links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
         <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-link" onclick="filterByStatus('expiring')">View expiring links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
@@ -300,6 +301,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
           </table>
         </div>
       </div>
+
+      </div><!-- /sec-dashboard -->
 
       <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem"><div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div><button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button></div>
@@ -451,8 +454,8 @@ async function replaceAllLinks(){
   const d=await r.json();if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-function showNeverUsed(){const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
-function showRevoked(){const filtered={};for(const[k,v]of Object.entries(allLinks)){if(!v.active)filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} revoked links`);}
+function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
+function showRevoked(){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(!v.active)filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} revoked links`);}
 
 function filterLinks(){
   const q=document.getElementById('search-inp').value.toLowerCase().replace('/c/','').trim();
@@ -466,7 +469,7 @@ function filterLinks(){
   renderLinks(filtered,0);
 }
 
-function filterByStatus(status){
+function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
   const now=Date.now();const oneDay=24*60*60*1000;const threeDays=3*oneDay;const sevenDays=7*oneDay;const thirtyDays=30*oneDay;const filtered={};
   for(const[k,v]of Object.entries(allLinks)){
     if(status==='active'&&v.active&&v.expiresAt>now)filtered[k]=v;
@@ -483,13 +486,36 @@ function showSection(s){
   try{closeMobNav();}catch(e){}
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
-  const accEl=document.getElementById('section-accounts');const setEl=document.getElementById('section-settings');
-  if(accEl)accEl.style.display='none';if(setEl)setEl.style.display='none';
+  // Hide ALL sections first
+  const secs=['sec-dashboard','section-accounts','section-settings'];
+  secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
-  if(s==='accounts'){if(accEl){accEl.style.display='block';accEl.scrollIntoView({behavior:'smooth'});}if(t)t.textContent='Netflix Accounts';loadAccounts();return;}
-  if(s==='settings'){if(setEl){setEl.style.display='block';setEl.scrollIntoView({behavior:'smooth'});}if(t)t.textContent='Settings';loadSettingsData();return;}
-  if(s==='create'){if(t)t.textContent='Create Link';document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'});return;}
-  if(s==='links'){if(t)t.textContent='Customer Links';document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'});return;}
+  // Scroll content back to top
+  const content=document.getElementById('content');if(content)content.scrollTop=0;
+  if(s==='accounts'){
+    document.getElementById('section-accounts').style.display='block';
+    if(t)t.textContent='Netflix Accounts';
+    loadAccounts();return;
+  }
+  if(s==='settings'){
+    document.getElementById('section-settings').style.display='block';
+    if(t)t.textContent='Settings';
+    loadSettingsData();return;
+  }
+  if(s==='create'){
+    document.getElementById('sec-dashboard').style.display='block';
+    if(t)t.textContent='Create Link';
+    setTimeout(()=>document.getElementById('create-section')?.scrollIntoView({behavior:'smooth'}),100);
+    return;
+  }
+  if(s==='links'){
+    document.getElementById('sec-dashboard').style.display='block';
+    if(t)t.textContent='Customer Links';
+    setTimeout(()=>document.querySelector('.table-card')?.scrollIntoView({behavior:'smooth'}),100);
+    return;
+  }
+  // Default: dashboard
+  document.getElementById('sec-dashboard').style.display='block';
   if(t)t.textContent='Dashboard';
 }
 
