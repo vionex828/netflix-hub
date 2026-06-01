@@ -586,13 +586,74 @@ function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{if(btn
 
 async function loadAccounts(){
   const list=document.getElementById('accounts-list');if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
-  try{const r=await fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}});if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();renderAccounts(d.accounts||[]);}
-  catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';}
+  try{
+    const [rA,rL]=await Promise.all([fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}}),fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}})]);
+    const dA=await rA.json(); const dL=await rL.json();
+    // Build meta from accounts.json
+    const meta={};(dA.accounts||[]).forEach(a=>meta[a.email]={notes:a.notes||'',active:a.active!==false,addedAt:a.addedAt});
+    // Group links by email
+    const now=Date.now(); const byEmail={};
+    Object.values(dL.links||{}).forEach(l=>{
+      const em=l.email;if(!byEmail[em])byEmail[em]={email:em,slotsUsed:0,notes:'',active:true};
+      if(l.active&&l.expiresAt>now)byEmail[em].slotsUsed++;
+      if(meta[em]){byEmail[em].notes=meta[em].notes;byEmail[em].active=meta[em].active;}
+    });
+    // Also include accounts with no links
+    (dA.accounts||[]).forEach(a=>{if(!byEmail[a.email])byEmail[a.email]={email:a.email,slotsUsed:0,notes:a.notes||'',active:a.active!==false};});
+    const accounts=Object.values(byEmail).sort((a,b)=>b.slotsUsed-a.slotsUsed);
+    renderAccounts(accounts);
+  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';}
 }
 function renderAccounts(accounts){
   const list=document.getElementById('accounts-list');if(!list)return;
-  if(!accounts.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts yet. Click + Add Account.</div>';return;}
-  list.innerHTML=accounts.map(a=>`<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem"><div style="width:8px;height:8px;border-radius:50%;background:${a.active?'var(--green)':'var(--muted2)'};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.email)}</div><div style="font-size:.68rem;color:var(--muted);margin-top:3px">${a.notes||'No notes'}</div></div><div style="font-family:var(--m);font-size:1rem;color:${(a.slotsUsed||0)>=8?'var(--red)':(a.slotsUsed||0)>=6?'var(--amber)':'var(--green)'}">${a.slotsUsed||0}/8</div><div style="display:flex;gap:.4rem"><button class="icon-btn" onclick="toggleAccount('${esc(a.email)}')" style="color:${a.active?'var(--green)':'var(--muted)'}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/>${a.active?'<polyline points="9 12 11 14 15 10"/>':'<line x1="8" y1="12" x2="16" y2="12"/>'}</svg></button><button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div></div>`).join('');
+  if(!accounts.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts yet.</div>';return;}
+  const pc=['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
+  list.innerHTML=accounts.map(a=>{
+    const used=a.slotsUsed||0;
+    const circ=2*Math.PI*18,off=circ-(used/8)*circ;
+    const rc=used>=8?'#E50914':used>=6?'#f5a623':'#46d369';
+    const hc=used>=8?'#E50914':'#46d369';
+    const avatars=Array.from({length:8},(_,i)=>{
+      const col=pc[i]||'#888';const letter=String.fromCharCode(65+i);
+      return i<used
+        ?`<div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;border:2px solid var(--bg);flex-shrink:0;position:relative">${letter}<div style="position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg)"></div></div>`
+        :`<div style="width:26px;height:26px;border-radius:50%;background:var(--s4);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:var(--muted2);border:2px solid var(--s5);flex-shrink:0">${letter}</div>`;
+    }).join('');
+    return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0"></div>
+      <div style="flex:1;min-width:150px">
+        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.email)}</div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">${a.notes||'No notes'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${avatars}</div>
+      <div style="position:relative;width:44px;height:44px;flex-shrink:0">
+        <svg width="44" height="44" viewBox="0 0 44 44" style="position:absolute;top:0;left:0"><circle cx="22" cy="22" r="18" fill="none" stroke="var(--s4)" stroke-width="4"/><circle cx="22" cy="22" r="18" fill="none" stroke="${rc}" stroke-width="4" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" stroke-linecap="round" style="transform:rotate(-90deg);transform-origin:50% 50%"/></svg>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.62rem;font-weight:700;color:var(--text)">${used}/8</div>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-shrink:0">
+        <button class="icon-btn" onclick="editAccountNotes('${esc(a.email)}')" title="Edit notes" style="color:var(--amber)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn" onclick="replaceAccEmail('${esc(a.email)}')" title="Replace email" style="color:var(--blue)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg></button>
+        <button class="icon-btn danger" onclick="deleteAccount('${esc(a.email)}')" title="Delete all links for this account" style="color:var(--red)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function editAccountNotes(email){
+  const newNotes=prompt('Edit notes for:\n'+email+'\n\nNew notes:');
+  if(newNotes===null)return;
+  await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes:newNotes.trim()})});
+  showToast('Notes updated!');loadAccounts();
+}
+async function replaceAccEmail(oldEmail){
+  const newEmail=prompt('Replace email for all links\n\nCurrent: '+oldEmail+'\n\nNew email:');
+  if(!newEmail||!newEmail.includes('@'))return;
+  const nel=newEmail.toLowerCase().trim();
+  if(nel===oldEmail.toLowerCase())return showToast('Same email',false);
+  const r=await fetch('/api/admin/replaceall',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({oldEmail,newEmail:nel})});
+  const d=await r.json();
+  if(d.success){showToast(`✅ ${d.count} links updated!`);await loadAll();loadAccounts();}
+  else showToast('Error: '+(d.error||'?'),true);
 }
 function showAddAccountForm(){const f=document.getElementById('add-account-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
 async function addAccount(){const email=document.getElementById('acc-email').value.trim();const notes=document.getElementById('acc-notes').value.trim();if(!email||!email.includes('@'))return showToast('Enter valid email',true);const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes})});const d=await r.json();if(d.success){showToast('Account added!');document.getElementById('acc-email').value='';document.getElementById('acc-notes').value='';loadAccounts();}else showToast('Error: '+(d.error||'Unknown'),true);}
