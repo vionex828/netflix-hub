@@ -85,6 +85,42 @@ function trackAnalytics(token) {
   saveAnalytics(data);
 }
 
+async function trackIPGeo(token, ip) {
+  if (!ip || ip === '::1' || ip === '127.0.0.1') return false;
+  const data = loadIPs();
+  if (!data[token]) data[token] = [];
+  const isNew = !data[token].includes(ip);
+  if (isNew) {
+    data[token].push(ip);
+    saveIPs(data);
+    // Geo lookup
+    try {
+      const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode`);
+      const geo = await geoRes.json();
+      if (geo.countryCode && geo.countryCode !== 'BD') {
+        const geoData = loadGeo();
+        if (!geoData[token]) geoData[token] = [];
+        const already = geoData[token].find(g => g.ip === ip);
+        if (!already) {
+          geoData[token].push({ ip, country: geo.country, code: geo.countryCode });
+          saveGeo(geoData);
+        }
+        const links = loadLinks();
+        const link = links[token];
+        sendTelegram(`🌍 <b>Outside BD Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
+      }
+    } catch(e) { console.error('Geo lookup error:', e.message); }
+    if (data[token].length >= 4) {
+      try {
+        const links = loadLinks();
+        const link = links[token];
+        sendTelegram(`⚠️ <b>Suspicious Activity!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i=>`• ${i}`).join('\n')}`);
+      } catch(e) { console.error('IP alert error:', e.message); }
+    }
+  }
+  return data[token].length;
+}
+
 function trackIP(token, ip) {
   if (!ip || ip === '::1' || ip === '127.0.0.1') return false;
   const data = loadIPs();
@@ -790,6 +826,7 @@ app.get('/api/link/:token', async (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   trackVisitor(ip);
   const ipCount = trackIP(req.params.token, ip);
+  trackIPGeo(req.params.token, ip).catch(()=>{});
   try {
     const codes = await fetchNetflixEmails(link.email, true);
     if (codes.length > 0) totalToday += 1;
@@ -1003,6 +1040,25 @@ app.post('/api/auto-create', (req, res) => {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
   }
+});
+
+// Phone lookup API for /track page
+app.get('/api/track/:phone', (req, res) => {
+  const phone = req.params.phone.replace(/\D/g,'');
+  if (!phone || phone.length < 7) return res.status(400).json({ success:false, error:'Invalid phone' });
+  const links = loadLinks();
+  const now = Date.now();
+  const found = Object.values(links).filter(l =>
+    l.phone && l.phone.replace(/\D/g,'').includes(phone) && l.active && l.expiresAt > now
+  );
+  if (!found.length) return res.status(404).json({ success:false, error:'No active links found for this number' });
+  res.json({ success:true, links: found.map(l => ({
+    token: l.token,
+    profile: l.profile,
+    pin: l.pin,
+    daysLeft: Math.ceil((l.expiresAt-now)/(24*60*60*1000)),
+    link: SITE_URL+'/c/'+l.token
+  }))});
 });
 
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
