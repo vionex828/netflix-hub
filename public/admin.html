@@ -256,10 +256,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
       <div class="grid-2">
         <div>
-          <div class="slots-card">
-            <div class="card-header"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>Netflix Account Slots</div><span class="card-badge ok" id="slots-badge">Loading...</span></div>
-            <div id="slots-list"><p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">Loading slots...</p></div>
-          </div>
           <div class="create-card" id="create-section">
             <div class="card-header" style="margin-bottom:.8rem"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Customer Link</div></div>
             <div class="form-row">
@@ -375,7 +371,7 @@ async function loadLinks(){
   try{
     const r=await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
     const d=await r.json();allLinks=d.links||{};
-    renderLinks(allLinks);updateStats(allLinks);updateActivity(allLinks);updateChart(allLinks);
+    renderLinks(allLinks,0);updateStats(allLinks);updateActivity(allLinks);updateChart(allLinks);
     const active=Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;
     const sbb=document.getElementById('sb-active-count');if(sbb)sbb.textContent=active;
   }catch(e){}
