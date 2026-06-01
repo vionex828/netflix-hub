@@ -73,6 +73,13 @@ const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
 function loadWaitlist() { try { return JSON.parse(fs.readFileSync(WAITLIST_FILE,'utf8')); } catch(e) { return []; } }
 function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data,null,2)); }
 
+function normalizeProfile(p) {
+  if (!p) return '';
+  p = String(p).trim();
+  if (p.length === 1) return 'Profile ' + p.toUpperCase();
+  return p;
+}
+
 function getFreeSlots() {
   const accounts = loadAccounts();
   const links = loadLinks();
@@ -80,7 +87,7 @@ function getFreeSlots() {
   let free = 0;
   for (const account of accounts.filter(a=>a.active)) {
     const activeLinks = Object.values(links).filter(l=>l.email===account.email&&l.active&&l.expiresAt>now);
-    const usedProfiles = activeLinks.map(l=>l.profile);
+    const usedProfiles = activeLinks.map(l=>normalizeProfile(l.profile));
     for (const prof of FIXED_PROFILES) {
       const used = usedProfiles.filter(p=>p===prof.profile).length;
       free += Math.max(0, prof.slots - used);
@@ -183,7 +190,7 @@ function getNextAvailableSlot() {
   for (const account of sorted) {
     const email = account.email;
     const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
-    const usedProfiles = activeLinks.map(l => l.profile);
+    const usedProfiles = activeLinks.map(l => normalizeProfile(l.profile));
     for (const prof of FIXED_PROFILES) {
       const used = usedProfiles.filter(p => p === prof.profile).length;
       if (used < prof.slots) {
