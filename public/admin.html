@@ -82,7 +82,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;-w
 .slot-ring svg{transform:rotate(-90deg)}
 .slot-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--m);font-size:.65rem;font-weight:600;color:var(--text)}
 .create-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem;margin-bottom:1.2rem}
-.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:.7rem;align-items:end}
+.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr auto;gap:.7rem;align-items:end}
 .field-label{font-family:var(--m);font-size:.57rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.4rem}
 .field-inp{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:9px 12px;border-radius:7px;font-family:var(--m);font-size:.78rem;outline:none;transition:border-color .18s;}
 .field-inp:focus{border-color:rgba(255,255,255,.2)}
@@ -263,6 +263,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
               <div><label class="field-label">Netflix Email</label><input class="field-inp" id="c-email" placeholder="email@gmail.com" type="email"/></div>
               <div><label class="field-label">Profile</label><input class="field-inp" id="c-profile" placeholder="Profile A"/></div>
               <div><label class="field-label">PIN</label><input class="field-inp" id="c-pin" placeholder="5651"/></div>
+              <div><label class="field-label">Phone</label><input class="field-inp" id="c-phone" placeholder="01XXXXXXXXX" type="tel"/></div>
               <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
               <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
                 <button class="create-btn" onclick="doCreate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create</button>
@@ -597,15 +598,35 @@ async function doCreate(){
   if(!email||!profile||!pin)return showToast('Fill all fields!',true);
   const now=Date.now();const dup=Object.values(allLinks).find(l=>l.email===email&&l.profile===profile&&l.active&&l.expiresAt>now);
   if(dup){if(!confirm('Duplicate! '+email+' - '+profile+' already has active link /c/'+dup.token+'. Create anyway?'))return;}
-  const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days})});
+  const phone=document.getElementById('c-phone')?.value.trim()||'';
+  const r=await fetch('/api/admin/create',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,profile,pin,days,phone})});
   const d=await r.json();
-  if(d.success){navigator.clipboard.writeText(SITE+'/c/'+d.token);showToast(d.existing?'Existing link copied!':'Link created & copied!');document.getElementById('c-email').value='';document.getElementById('c-profile').value='';document.getElementById('c-pin').value='';loadAll();}
+  if(d.success){navigator.clipboard.writeText(SITE+'/c/'+d.token);showToast(d.existing?'Existing link copied!':'Link created & copied!');document.getElementById('c-email').value='';document.getElementById('c-profile').value='';document.getElementById('c-pin').value='';if(document.getElementById('c-phone'))document.getElementById('c-phone').value='';loadAll();}
   else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
 async function revokeLink(token){if(!confirm('Revoke this link?'))return;await fetch(`/api/admin/revoke/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link revoked');loadAll();}
 async function activateLink(token){await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link activated');loadAll();}
-async function editEmail(token,btn){const currentEmail=btn?btn.dataset.email:'';const newEmail=prompt('Edit Netflix email:\n\nCurrent: '+currentEmail+'\n\nNew email:');if(!newEmail||!newEmail.includes('@'))return;const r=await fetch('/api/admin/replace/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({newEmail})});const d=await r.json();if(d.success){showToast('Email updated!');loadAll();}else showToast('Error: '+(d.error||'Unknown'),true);}
+async function editEmail(token,btn){
+  const currentEmail=btn?btn.dataset.email:'';
+  const link=allLinks[token];
+  // Show edit dialog
+  const newEmail=prompt('Edit Netflix email:\n\nCurrent: '+currentEmail+'\n\nNew email (leave blank to keep):');
+  if(newEmail===null)return;
+  if(newEmail&&newEmail.includes('@')&&newEmail!==currentEmail){
+    const r=await fetch('/api/admin/replace/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({newEmail:newEmail.trim()})});
+    const d=await r.json();if(!d.success){showToast('Email error',true);return;}
+    if(allLinks[token])allLinks[token].email=newEmail.trim().toLowerCase();
+  }
+  // Edit phone
+  const currentPhone=link?.phone||'';
+  const newPhone=prompt('Edit phone number:\n\nCurrent: '+(currentPhone||'None')+'\n\nNew phone (leave blank to keep):');
+  if(newPhone!==null&&newPhone!==currentPhone){
+    await fetch('/api/admin/update-phone/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({phone:newPhone.trim()})});
+    if(allLinks[token])allLinks[token].phone=newPhone.trim();
+  }
+  showToast('Updated!');applyFilter();updateStats(allLinks);
+}
 async function renewLink(token){const days=confirm('Renew for 28 days? Click OK for 28 days, Cancel for 85 days.')?28:85;const r=await fetch(`/api/admin/renew/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days})});const d=await r.json();if(d.success){showToast(`Renewed for ${days} days!`);loadAll();}else showToast('Error renewing',true);}
 async function deleteLink(token){if(!confirm('Delete permanently?'))return;await fetch(`/api/admin/delete/${token}`,{method:'DELETE',headers:{'x-admin-token':adminToken}});showToast('Deleted');loadAll();}
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{if(btn){const orig=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=orig,2000);}showToast('Copied!');});}
