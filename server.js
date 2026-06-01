@@ -68,7 +68,38 @@ function loadIPs() { try { return JSON.parse(fs.readFileSync(IP_FILE, 'utf8')); 
 function saveIPs(data) { ensureDataDir(); fs.writeFileSync(IP_FILE, JSON.stringify(data, null, 2)); }
 const GEO_FILE      = DATA_DIR + '/geo.json';
 const ACCOUNTS_FILE = DATA_DIR + '/accounts.json';
-const SETTINGS_FILE = DATA_DIR + '/settings.json';
+const SETTINGS_FILE  = DATA_DIR + '/settings.json';
+const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
+function loadWaitlist() { try { return JSON.parse(fs.readFileSync(WAITLIST_FILE,'utf8')); } catch(e) { return []; } }
+function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data,null,2)); }
+
+function getFreeSlots() {
+  const accounts = loadAccounts();
+  const links = loadLinks();
+  const now = Date.now();
+  let free = 0;
+  for (const account of accounts.filter(a=>a.active)) {
+    const activeLinks = Object.values(links).filter(l=>l.email===account.email&&l.active&&l.expiresAt>now);
+    const usedProfiles = activeLinks.map(l=>l.profile);
+    for (const prof of FIXED_PROFILES) {
+      const used = usedProfiles.filter(p=>p===prof.profile).length;
+      free += Math.max(0, prof.slots - used);
+    }
+  }
+  return free;
+}
+
+const LOW_STOCK_THRESHOLD = 10;
+let lastLowStockAlert = 0;
+function checkLowStock() {
+  const free = getFreeSlots();
+  const now = Date.now();
+  if (free <= LOW_STOCK_THRESHOLD && now - lastLowStockAlert > 3600000) {
+    lastLowStockAlert = now;
+    sendTelegram(`⚠️ <b>Low Stock Alert!</b>\n\nOnly <b>${free} slots</b> remaining!\nAdd more Netflix accounts soon.`);
+  }
+  return free;
+}
 function loadAccounts() { try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,'utf8')); } catch(e) { return []; } }
 function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
 function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } catch(e) { return { autoLink: false }; } }
@@ -179,7 +210,7 @@ function recycleUnusedLinks() {
       links[token].phone = '';
       links[token].recycled = true;
       links[token].recycledAt = now;
-      links[token].active = false;
+      // NOTE: keep active=true so link stays visible in admin
       recycled++;
       sendTelegram('<b>♻️ Link Recycled & Available</b>\n\nToken: /c/' + token + '\nProfile: ' + link.profile + '\nWas assigned to: ' + oldPhone + '\nNever opened in 30h — slot is now available for new customer.');
     }
@@ -667,7 +698,7 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const links = loadLinks();
   const now = Date.now();
   // Check if active link already exists for this email+profile
-  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now);
+  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now&&!l.recycled);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
   if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
@@ -676,8 +707,7 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const recyclable = Object.values(links).find(l =>
     l.profile === profile &&
     l.uses === 0 &&
-    l.recycled === true &&
-    !l.active
+    l.recycled === true
   );
 
   let token;
@@ -792,7 +822,8 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
     byEmail[l.email].total++;
     if (l.active && l.expiresAt>now) byEmail[l.email].active++;
   }
-  res.json({ success:true, slots:byEmail, maxSlots:MAX_SLOTS });
+  const freeSlots = getFreeSlots();
+  res.json({ success:true, slots:byEmail, maxSlots:MAX_SLOTS, freeSlots });
 });
 
 app.get('/api/link/:token/info', (req, res) => {
@@ -885,6 +916,41 @@ app.get('/api/admin/geo', (req, res) => {
     const geoData = loadGeo();
     res.json({ success: true, geo: geoData });
   } catch(e) { res.json({ success: true, geo: {} }); }
+});
+
+// Waitlist API
+app.get('/api/admin/waitlist', adminAuth, (req, res) => {
+  const waitlist = loadWaitlist();
+  res.json({ success:true, waitlist, count: waitlist.length });
+});
+
+app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
+  const waitlist = loadWaitlist();
+  if (!waitlist.length) return res.json({ success:true, processed:0, message:'Waitlist empty' });
+  const links = loadLinks();
+  const now = Date.now();
+  let processed = 0;
+  const remaining = [];
+  for (const w of waitlist) {
+    const slot = getNextAvailableSlot();
+    if (!slot) { remaining.push(w); continue; }
+    const token = generateToken();
+    const d = parseInt(w.days)||28;
+    links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:w.phone, customerName:w.customerName||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    saveLinks(links);
+    sendTelegram(`✅ <b>Waitlist Link Created!</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${w.phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
+    processed++;
+  }
+  saveWaitlist(remaining);
+  checkLowStock();
+  res.json({ success:true, processed, remaining: remaining.length });
+});
+
+app.delete('/api/admin/waitlist/:phone', adminAuth, (req, res) => {
+  const waitlist = loadWaitlist();
+  const filtered = waitlist.filter(w=>w.phone!==decodeURIComponent(req.params.phone));
+  saveWaitlist(filtered);
+  res.json({ success:true });
 });
 
 app.get('/api/health', (req, res) => {
@@ -987,8 +1053,22 @@ app.post('/api/auto-create', (req, res) => {
     if (!phone) return res.status(400).json({ error:'Phone required' });
     const slot = getNextAvailableSlot();
     if (!slot) {
-      sendTelegram('<b>No Slots Available!</b>\n\nCould not auto-create link for ' + phone + '\nPlease add more Netflix accounts!');
-      return res.status(503).json({ success:false, error:'No slots available' });
+      // Save to waitlist
+      const waitlist = loadWaitlist();
+      const alreadyWaiting = waitlist.find(w=>w.phone===phone);
+      if (!alreadyWaiting) {
+        waitlist.push({ phone, customerName: customerName||'', days: d, product: req.body.product||'Netflix', orderName: req.body.orderName||'', amount: req.body.amount||0, addedAt: Date.now() });
+        saveWaitlist(waitlist);
+      }
+      sendTelegram(
+        `🚨 <b>STOCK OUT! No Slots Available!</b>\n\n` +
+        `👤 ${customerName||'Customer'} | 📱 ${phone}\n` +
+        `📦 ${req.body.product||'Netflix'} | ${d} days\n` +
+        `💰 ৳${req.body.amount||0}\n` +
+        `🛒 ${req.body.orderName||''}\n\n` +
+        `<b>Added to waitlist. Add Netflix accounts to auto-process!</b>`
+      );
+      return res.status(503).json({ success:false, error:'No slots available', waitlisted:true });
     }
     const links = loadLinks();
     const now = Date.now();
@@ -1035,6 +1115,8 @@ app.post('/api/auto-create', (req, res) => {
     }
 
     saveLinks(links);
+    // Check low stock after creating
+    checkLowStock();
     res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin, recycled: !!recyclable });
   } catch(e) {
     console.error('Auto create error:', e.message);
