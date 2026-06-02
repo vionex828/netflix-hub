@@ -1,793 +1,1129 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>FANFLIX – Household Code</title>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-:root{
-  --red:#E50914;--red-h:#F40612;--red-dim:rgba(229,9,20,.12);
-  --black:#000;--bg:#0a0a0a;--bg2:#111;--bg3:#141414;--bg4:#1a1a1a;--bg5:#222;--bg6:#2a2a2a;
-  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
-  --text:#fff;--text2:#e5e5e5;--muted:#a0a0a0;--muted2:#6d6d6d;--muted3:#3a3a3a;
-  --green:#46d369;--green-dim:rgba(70,211,105,.12);
-  --amber:#f5a623;--amber-dim:rgba(245,166,35,.12);
-  --blue:#4da6ff;
-  --f-head:'Anton',sans-serif;
-  --f-body:'Inter',sans-serif;
-  --f-mono:'IBM Plex Mono',monospace;
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--f-body);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+process.env.TZ = 'Asia/Dhaka';
 
-/* ══ TICKER ══ */
-.ticker{background:var(--red);padding:7px 0;overflow:hidden;position:relative;z-index:10}
-.ticker-inner{display:flex;animation:ticker 25s linear infinite;white-space:nowrap}
-.ticker-inner span{font-family:var(--f-mono);font-size:.58rem;font-weight:400;letter-spacing:3px;color:rgba(255,255,255,.75);padding:0 2.2rem;text-transform:uppercase}
-.ticker-inner .sep{color:rgba(255,255,255,.3);padding:0 .3rem;font-size:.45rem}
-@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+// =============================================
+//   FANFLIX BOT v6.2 - FINAL CLEAN
+// =============================================
 
-/* ══ NAV ══ */
-nav{
-  position:sticky;top:0;z-index:200;
-  background:rgba(0,0,0,.95);backdrop-filter:blur(20px);
-  border-bottom:1px solid var(--border);
-  padding:0 5%;height:64px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.logo{display:flex;align-items:center;gap:10px;text-decoration:none;user-select:none}
+const express     = require('express');
+const TelegramBot = require('node-telegram-bot-api');
+const Database    = require('better-sqlite3');
+const cron        = require('node-cron');
+const axios       = require('axios');
+const crypto      = require('crypto');
+const fs          = require('fs');
+const config      = require('./config');
 
-.logo-text{font-family:var(--f-head);font-size:1.8rem;letter-spacing:3px;line-height:1}
-.logo-text .f{color:var(--red)}.logo-text .l{color:var(--text)}
-.nav-status{display:flex;align-items:center;gap:8px}
-.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:statusPulse 2s ease infinite}
-@keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 rgba(70,211,105,.4)}70%{box-shadow:0 0 0 6px rgba(70,211,105,0)}}
-.nav-label{font-family:var(--f-mono);font-size:.6rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase}
-.nav-stats{display:flex;align-items:center;gap:.5rem;margin-left:.8rem}
-.nav-stat{font-family:var(--f-mono);font-size:.58rem;color:var(--muted2);letter-spacing:1px;display:flex;align-items:center;gap:4px}
-.nav-stat-divider{width:1px;height:10px;background:var(--bg6)}
-.ns-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
-.live-dot{background:var(--green);animation:statusPulse 2s ease infinite}
+// =============================================================
+//  DATABASE
+// =============================================================
 
-/* ══ HERO ══ */
-.hero{
-  display:flex;justify-content:center;
-  gap:5rem;align-items:flex-start;
-  max-width:1180px;margin:0 auto;
-  padding:5rem 5% 4rem;
-  position:relative;
-}
-.hero::before{
-  content:'';position:absolute;inset:0;
-  background:radial-gradient(ellipse 55% 80% at -5% 40%,rgba(229,9,20,.14) 0%,transparent 60%);
-  pointer-events:none;
-}
-.hero-left{position:relative;z-index:1;padding-top:.5rem}
+const DB_DIR        = '/app/data';
+const DB_PATH       = '/app/data/fanflix.db';
+const CONTACTS_FILE = '/app/data/contacts.txt';
 
-/* Signal badge */
-.signal-badge{
-  display:inline-flex;align-items:center;gap:10px;
-  border:1px solid rgba(229,9,20,.25);border-radius:4px;
-  padding:6px 14px;margin-bottom:1.6rem;
-  background:rgba(229,9,20,.07);
-}
-.signal-bars{display:flex;align-items:flex-end;gap:2px;height:14px}
-.signal-bars span{
-  width:3px;background:var(--red);border-radius:1px;
-  animation:signalBar 1.2s ease infinite;
-}
-.signal-bars span:nth-child(1){height:5px;animation-delay:0s}
-.signal-bars span:nth-child(2){height:8px;animation-delay:.15s}
-.signal-bars span:nth-child(3){height:11px;animation-delay:.3s}
-.signal-bars span:nth-child(4){height:14px;animation-delay:.45s}
-@keyframes signalBar{0%,100%{opacity:.3}50%{opacity:1}}
-.signal-text{font-family:var(--f-mono);font-size:.6rem;letter-spacing:2px;color:var(--red);text-transform:uppercase}
+if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
-.hero h1{
-  font-family:var(--f-head);
-  font-size:clamp(2.2rem,4.5vw,4.8rem);
-  line-height:.92;letter-spacing:2px;
-  text-transform:uppercase;margin-bottom:1.4rem;
-}
-.hero h1 .line-red{color:var(--red);display:block;font-style:normal}
-.hero h1 .line-white{color:var(--text);display:block}
+const db = new Database(DB_PATH);
 
-.hero-desc{
-  font-size:.95rem;font-weight:300;color:var(--muted);
-  line-height:1.8;max-width:400px;margin-bottom:2rem;
-}
-.hero-links{display:flex;gap:.6rem;flex-wrap:wrap}
-.hero-link{
-  font-family:var(--f-body);font-size:.82rem;font-weight:500;
-  padding:10px 20px;border-radius:4px;cursor:pointer;
-  text-decoration:none;transition:all .2s;
-  border:1px solid var(--border2);color:var(--muted);
-}
-.hero-link:hover{border-color:rgba(255,255,255,.3);color:var(--text);background:rgba(255,255,255,.04)}
+// Migrations
+try { db.exec(`ALTER TABLE pending_orders ADD COLUMN cancelled INTEGER DEFAULT 0`); } catch(e) {}
+try { db.exec(`ALTER TABLE pending_orders ADD COLUMN products TEXT DEFAULT '[]'`); } catch(e) {}
+try { db.exec(`ALTER TABLE pending_orders ADD COLUMN discount_sent INTEGER DEFAULT 0`); } catch(e) {}
+try { db.exec(`ALTER TABLE pending_orders ADD COLUMN cancelled_at TEXT`); } catch(e) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN store_amount REAL DEFAULT 0`); } catch(e) {}
+try { db.exec(`ALTER TABLE customers ADD COLUMN fanflix_token TEXT DEFAULT ''`); } catch(e) {}
+try { db.exec(`ALTER TABLE payments ADD COLUMN store_amount REAL DEFAULT 0`); } catch(e) {}
+try { db.exec(`UPDATE customers SET store_amount = amount * 0.977 WHERE store_amount = 0 AND amount > 0`); } catch(e) {}
+try { db.exec(`UPDATE pending_orders SET products = '[]' WHERE products IS NULL`); } catch(e) {}
 
-/* ══ FORM + RESULTS PANEL ══ */
-.right-panel{position:relative;z-index:1}
-.form-card{
-  background:var(--bg3);
-  border:1px solid var(--border);
-  border-radius:8px;
-}
-.form-top{padding:1.8rem 1.8rem 1.4rem}
-.fc-title{font-family:var(--f-head);font-size:1.5rem;letter-spacing:1px;text-transform:uppercase;margin-bottom:.3rem}
-.fc-sub{font-size:.82rem;font-weight:300;color:var(--muted);margin-bottom:1.4rem;line-height:1.5}
-.f-label{display:block;font-family:var(--f-mono);font-size:.57rem;letter-spacing:2px;color:var(--muted2);text-transform:uppercase;margin-bottom:.45rem}
-.email-inp{
-  width:100%;background:var(--bg5);
-  border:1px solid var(--bg6);color:var(--text);
-  padding:13px 15px;border-radius:5px;
-  font-family:var(--f-body);font-size:.92rem;font-weight:400;
-  outline:none;transition:border-color .2s;margin-bottom:.8rem;
-}
-.email-inp:focus{border-color:rgba(255,255,255,.25)}
-.email-inp::placeholder{color:var(--muted3);font-weight:300}
-/* Shimmer + bounce arrow button */
-.get-btn .btn-arrow{display:inline-block;transition:transform .3s ease}
-.get-btn:hover .btn-arrow{animation:arrowBounce .6s ease infinite}
-@keyframes arrowBounce{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
-.get-btn::before{
-  content:'';position:absolute;
-  top:0;left:-100%;width:60%;height:100%;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);
-  animation:shimmer 2.5s ease infinite;
-}
-@keyframes shimmer{0%{left:-100%}100%{left:150%}}
-.get-btn{
-  width:100%;background:var(--red);border:none;color:#fff;
-  padding:14px;border-radius:5px;
-  font-family:var(--f-head);font-size:1.1rem;letter-spacing:3px;
-  text-transform:uppercase;cursor:pointer;transition:background .15s;
-  position:relative;overflow:hidden;
-}
-.get-btn::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,rgba(255,255,255,.1),transparent);
-}
-.get-btn:hover{background:var(--red-h)}
-.get-btn:active{transform:scale(.99)}
+db.exec(`
+  CREATE TABLE IF NOT EXISTS customers (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    name              TEXT,
+    phone             TEXT,
+    email             TEXT,
+    product           TEXT,
+    product_type      TEXT,
+    variant           TEXT,
+    order_id          TEXT,
+    order_name        TEXT,
+    amount            REAL,
+    store_amount      REAL DEFAULT 0,
+    duration_days     INTEGER,
+    start_date        TEXT,
+    expiry_date       TEXT,
+    renewal_count     INTEGER DEFAULT 1,
+    is_vip            INTEGER DEFAULT 0,
+    reminder_1_sent   INTEGER DEFAULT 0,
+    lost_alert_sent   INTEGER DEFAULT 0,
+    created_at        TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS payments (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    eps_txn_id   TEXT UNIQUE,
+    phone        TEXT,
+    amount       REAL,
+    store_amount REAL DEFAULT 0,
+    status       TEXT,
+    created_at   TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE IF NOT EXISTS pending_orders (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    shopify_order_id TEXT UNIQUE,
+    order_name       TEXT,
+    name             TEXT,
+    phone            TEXT,
+    email            TEXT,
+    products         TEXT DEFAULT '[]',
+    amount           REAL,
+    followup_sent    INTEGER DEFAULT 0,
+    paid             INTEGER DEFAULT 0,
+    cancelled        INTEGER DEFAULT 0,
+    cancelled_at     TEXT,
+    discount_sent    INTEGER DEFAULT 0,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+  );
+`);
 
-.chips{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.75rem}
-.chip{
-  background:var(--bg5);border:1px solid var(--bg6);
-  border-radius:100px;padding:4px 11px;
-  font-family:var(--f-mono);font-size:.62rem;color:var(--muted2);
-  cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:5px;
-}
-.chip:hover{border-color:rgba(255,255,255,.18);color:var(--text2)}
-.chip.active{border-color:var(--red);color:var(--red);background:rgba(229,9,20,.07)}
-.chip-x{opacity:.25;font-size:.55rem;transition:opacity .18s;line-height:1}
-.chip-x:hover{opacity:1;color:var(--red)}
-.form-note{
-  margin-top:.8rem;padding:.75rem;
-  background:rgba(70,211,105,.05);
-  border:1px solid rgba(70,211,105,.12);
-  border-radius:5px;
-  font-size:.75rem;font-weight:300;color:var(--muted);line-height:1.6;
-}
-.form-note b{color:var(--green);font-weight:500}
-.fc-foot{padding:.75rem 1.8rem;font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);text-align:center;letter-spacing:1.5px;text-transform:uppercase;border-top:1px solid var(--border)}
+// =============================================================
+//  SMS MESSAGES
+// =============================================================
 
-/* progress bar */
-.progress-bar{height:2px;background:var(--bg5);position:relative;overflow:hidden;display:none}
-.progress-bar.active{display:block}
-.progress-fill{position:absolute;left:-40%;width:40%;height:100%;background:var(--red);animation:progress 1.2s ease infinite}
-@keyframes progress{0%{left:-40%}100%{left:100%}}
+const SMS_MSG1 = (product) =>
+  `প্রিয় গ্রাহক,\n\nআপনার ${product} সাবস্ক্রিপশনটি আগামীকাল মেয়াদ শেষ হয়ে যাবে।\n\nসার্ভিস বন্ধ হওয়ার আগেই রিনিউ করুন এবং বিরতিহীন বিনোদন উপভোগ করতে থাকুন।\n\nরিনিউ করতে যোগাযোগ করুন:\n📲 WhatsApp: wa.me/+8801928382918\n\nঅথবা সরাসরি অর্ডার করুন:\n🌐 fanflixbd.com\n\n— FanFlix BD`;
 
-/* results inside panel */
-.results-panel{border-top:1px solid var(--border);background:var(--bg2)}
-.res-bar{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:.9rem 1.8rem .6rem;flex-wrap:wrap;gap:.5rem;
-}
-.res-info{font-family:var(--f-mono);font-size:.6rem;color:var(--muted2);letter-spacing:.5px}
-.res-info b{color:var(--text)}.res-info em{color:var(--red);font-style:normal}
-.fetch-time{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-spacing:1px;margin-bottom:.3rem}
-.ref-btn{
-  display:flex;align-items:center;gap:5px;
-  background:transparent;border:1px solid var(--bg6);
-  color:var(--muted);padding:5px 12px;border-radius:4px;
-  cursor:pointer;font-family:var(--f-mono);font-size:.58rem;
-  letter-spacing:1.5px;text-transform:uppercase;transition:all .18s;
-}
-.ref-btn:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
-.ref-btn.loading svg{animation:spin 1s linear infinite}
+const SMS_FOLLOWUP =
+  `প্রিয় গ্রাহক,\n\nআপনি সম্প্রতি FanFlix-এ একটি অর্ডার করেছেন, কিন্তু পেমেন্টটি এখনো সম্পন্ন হয়নি। আপনার অর্ডারটি পেন্ডিং অবস্থায় রয়েছে।\n\nএখনই পেমেন্ট সম্পন্ন করুন:\n💳 https://pg.eps.com.bd/DefaultPaymentLink?id=805A9AEE\n\nযেকোনো সহায়তার জন্য WhatsApp করুন:\n📲 wa.me/+8801928382918\n\n— FanFlix BD`;
 
-.tabs{
-  display:flex;border-bottom:1px solid var(--border);
-  padding:0 1.8rem;overflow-x:auto;scrollbar-width:none;
-}
-.tabs::-webkit-scrollbar{display:none}
-.tab{
-  padding:8px 14px;background:transparent;border:none;
-  color:var(--muted2);font-family:var(--f-body);font-size:.78rem;font-weight:500;
-  cursor:pointer;border-bottom:2px solid transparent;
-  margin-bottom:-1px;transition:all .18s;white-space:nowrap;
-  display:flex;align-items:center;gap:6px;
-}
-.tab:hover{color:var(--muted)}
-.tab.active{color:var(--text);border-bottom-color:var(--red)}
-.tc{background:var(--bg5);border-radius:3px;padding:1px 5px;font-size:.58rem;color:var(--muted2);font-family:var(--f-mono);min-width:16px;text-align:center}
-.tab.active .tc{background:rgba(229,9,20,.15);color:var(--red)}
+const SMS_DISCOUNT =
+  `প্রিয় গ্রাহক,\n\nআপনি আগে FanFlix থেকে একটি অর্ডার করেছিলেন কিন্তু সম্পন্ন করেননি। আমরা আপনাকে আবার স্বাগত জানাতে চাই!\n\n🎁 শুধুমাত্র আপনার জন্য বিশেষ ১০% ছাড়!\n\nঅর্ডার করার সময় এই কোডটি ব্যবহার করুন:\n✅ কোড: WELCOMEBACK10\n\nএখনই অর্ডার করুন:\n🌐 fanflixbd.com\n\nযেকোনো সহায়তায়:\n📲 wa.me/+8801928382918\n\n— FanFlix BD`;
 
-.cards-wrap{padding:.8rem 1.2rem 1.2rem;display:flex;flex-direction:column;gap:.6rem;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--bg6) transparent}
-.cards-wrap::-webkit-scrollbar{width:4px}
-.cards-wrap::-webkit-scrollbar-track{background:transparent}
-.cards-wrap::-webkit-scrollbar-thumb{background:var(--bg6);border-radius:2px}
-
-/* ══ CARDS ══ */
-.card{isolation:isolate;
-  background:var(--bg4);
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:1rem 1.1rem;
-  display:grid;grid-template-columns:auto 1fr auto;
-  align-items:center;gap:.9rem;
-  transition:all .22s;
-  animation:cardIn .3s ease both;
-  position:relative;overflow:hidden;
-}
-@keyframes cardIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0}
-.card.household::before{background:var(--green)}
-.card.update::before{background:var(--amber)}
-.card:hover{border-color:var(--border2);transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,0,0,.4)}
-.card.fresh{
-  border-color:rgba(70,211,105,.2);
-  background:linear-gradient(135deg,rgba(70,211,105,.05),var(--bg4));
-}
-.card.fresh.update{
-  border-color:rgba(245,166,35,.2);
-  background:linear-gradient(135deg,rgba(245,166,35,.05),var(--bg4));
+// SMS time restriction: only send between 11 AM - 12:10 AM BD time
+function canSendSMS() {
+  const now  = new Date();
+  const hour = now.getHours();
+  const min  = now.getMinutes();
+  if (hour >= 11 && hour <= 23) return true;
+  if (hour === 0 && min <= 10) return true;
+  return false;
 }
 
-/* FRESH badge */
-.fresh-badge{pointer-events:none;
-  position:absolute;top:8px;right:9px;
-  font-family:var(--f-mono);font-size:.5rem;letter-spacing:2px;
-  padding:2px 7px;border-radius:3px;font-weight:500;text-transform:uppercase;
-  animation:freshGlow 2s ease infinite;
-}
-.household .fresh-badge{pointer-events:none;background:var(--green);color:#000}
-.update .fresh-badge{pointer-events:none;background:var(--amber);color:#000}
-@keyframes freshGlow{
-  0%,100%{box-shadow:none}
-  50%{box-shadow:0 0 8px rgba(70,211,105,.5)}
-}
-.update .fresh-badge{pointer-events:none;animation-name:freshGlowAmber}
-@keyframes freshGlowAmber{
-  0%,100%{box-shadow:none}
-  50%{box-shadow:0 0 8px rgba(245,166,35,.5)}
-}
+// =============================================================
+//  TELEGRAM
+// =============================================================
 
-/* ══ ANIMATED ICONS ══ */
-.c-ico{width:46px;height:46px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.household .c-ico{background:var(--green-dim)}
-.update .c-ico{background:var(--amber-dim)}
+const bot = new TelegramBot(config.TELEGRAM_BOT_TOKEN, { polling: true });
 
-/* Phone icon — vibrate on hover */
-.phone-icon{animation:none;transition:transform .1s}
-.card.household:hover .phone-icon{animation:phoneVibrate .3s ease}
-@keyframes phoneVibrate{
-  0%,100%{transform:rotate(0deg)}
-  20%{transform:rotate(-8deg)}
-  40%{transform:rotate(8deg)}
-  60%{transform:rotate(-6deg)}
-  80%{transform:rotate(6deg)}
-}
-/* Notification dot on phone */
-.phone-dot{
-  position:absolute;top:6px;right:6px;
-  width:8px;height:8px;border-radius:50%;
-  background:var(--red);border:1.5px solid var(--bg4);
-  animation:dotBlink 1.5s ease infinite;
-}
-@keyframes dotBlink{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:.7}}
-
-/* TV icon — scan line */
-.tv-wrap{position:relative;width:28px;height:22px}
-.tv-screen{position:absolute;inset:3px 3px 5px 3px;background:rgba(245,166,35,.15);border-radius:1px;overflow:hidden}
-.tv-scan{
-  position:absolute;left:0;right:0;height:2px;
-  background:linear-gradient(90deg,transparent,rgba(245,166,35,.8),transparent);
-  animation:tvScan 2s ease infinite;
-}
-@keyframes tvScan{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
-.card.update:hover .tv-scan{animation-duration:.8s}
-
-/* Fresh ring for fresh cards */
-.fresh-ring{pointer-events:none;
-  position:absolute;inset:-2px;border-radius:10px;
-  border:2px solid transparent;
-  animation:none;
-}
-.card.fresh .fresh-ring{pointer-events:none;
-  border-color:rgba(70,211,105,.3);
-  animation:ringPulse 2s ease infinite;
-}
-.card.fresh.update .fresh-ring{pointer-events:none;
-  border-color:rgba(245,166,35,.3);
-  animation:ringPulseAmber 2s ease infinite;
-}
-@keyframes ringPulse{0%,100%{border-color:rgba(70,211,105,.15)}50%{border-color:rgba(70,211,105,.4)}}
-@keyframes ringPulseAmber{0%,100%{border-color:rgba(245,166,35,.15)}50%{border-color:rgba(245,166,35,.4)}}
-
-/* ══ CARD CONTENT ══ */
-.c-body{min-width:0}
-.c-type{font-family:var(--f-mono);font-size:.55rem;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px}
-.household .c-type{color:var(--green)}.update .c-type{color:var(--amber)}
-.c-to{font-family:var(--f-mono);font-size:.6rem;color:var(--muted3);margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.c-code{font-family:var(--f-head);font-size:2.2rem;letter-spacing:10px;color:var(--text);line-height:1}
-.c-link{pointer-events:all;cursor:pointer;z-index:10;position:relative;
-  display:inline-flex;align-items:center;gap:6px;text-decoration:none;
-  font-family:var(--f-body);font-size:.75rem;font-weight:500;
-  border:1px solid;border-radius:4px;padding:7px 12px;margin-top:4px;transition:all .18s;
-}
-.c-link.g{color:var(--green);border-color:rgba(70,211,105,.22)}.c-link.g:hover{background:rgba(70,211,105,.08);border-color:var(--green)}
-.c-link.a{color:var(--amber);border-color:rgba(245,166,35,.22)}.c-link.a:hover{background:rgba(245,166,35,.08);border-color:var(--amber)}
-.c-age{font-family:var(--f-mono);font-size:.62rem;color:var(--muted);margin-top:6px;display:block}
-
-.cp-btn{
-  background:transparent;border:1px solid var(--bg6);
-  color:var(--muted2);padding:8px 13px;border-radius:4px;
-  cursor:pointer;font-family:var(--f-mono);font-size:.62rem;
-  letter-spacing:1px;text-transform:uppercase;
-  transition:all .18s;white-space:nowrap;flex-shrink:0;
-}
-.cp-btn:hover{border-color:rgba(255,255,255,.2);color:var(--text)}
-.cp-btn.ok{border-color:var(--green)!important;color:var(--green)!important}
-
-/* states */
-.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted2)}
-.empty-ico{font-size:2rem;margin-bottom:.6rem;opacity:.2}
-.empty h3{font-family:var(--f-head);font-size:1.1rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
-.empty p{font-size:.78rem;font-weight:300;line-height:1.8}
-.loading-p{text-align:center;padding:2rem 1rem}
-.loading-p p{font-family:var(--f-mono);font-size:.6rem;color:var(--muted2);letter-spacing:2px;text-transform:uppercase;margin-top:.5rem}
-.start-hint{text-align:center;padding:2rem 1rem}
-.start-hint .s-ico{font-size:1.8rem;margin-bottom:.5rem;opacity:.18}
-.start-hint p{font-family:var(--f-mono);font-size:.6rem;line-height:1.8;color:var(--muted3);letter-spacing:.5px}
-
-/* ══ SHOW TICKER ══ */
-.show-ticker{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:7px 0;overflow:hidden;background:var(--bg2)}
-.st-inner{display:flex;animation:ticker 22s linear infinite;white-space:nowrap}
-.st-inner span{font-family:var(--f-mono);font-size:.55rem;letter-spacing:3px;color:var(--bg6);padding:0 2rem;text-transform:uppercase}
-
-/* ══ HOW IT WORKS ══ */
-.section{max-width:1080px;margin:0 auto;padding:5rem 5%}
-.sec-eye{font-family:var(--f-mono);font-size:.58rem;letter-spacing:4px;color:var(--red);text-transform:uppercase;margin-bottom:.5rem}
-.sec-h{font-family:var(--f-head);font-size:clamp(2rem,4vw,3rem);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem;line-height:1}
-.sec-sub{font-size:.9rem;font-weight:300;color:var(--muted);line-height:1.75;margin-bottom:2.5rem;max-width:500px}
-
-.hw-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1.2rem}
-.hw-card{background:var(--bg)}
-.hw-head{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)}
-.hw-head.r{background:linear-gradient(135deg,rgba(229,9,20,.1),rgba(229,9,20,.02))}
-.hw-head.d{background:rgba(255,255,255,.02)}
-.hw-ico-wrap{width:38px;height:38px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative}
-.hw-head.r .hw-ico-wrap{background:rgba(229,9,20,.15)}
-.hw-head.d .hw-ico-wrap{background:var(--bg4)}
-
-/* hw phone vibrate */
-.hw-phone{transition:transform .1s}
-.hw-card:hover .hw-phone{animation:phoneVibrate .4s ease}
-/* hw phone dot */
-.hw-phone-dot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid var(--bg);animation:dotBlink 1.8s ease infinite}
-
-/* hw tv scan */
-.hw-tv-wrap{position:relative;width:26px;height:20px}
-.hw-tv-screen{position:absolute;inset:3px 3px 4px;background:rgba(255,255,255,.06);border-radius:1px;overflow:hidden}
-.hw-tv-scan{position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(150,150,150,.6),transparent);animation:tvScan 2.5s ease infinite}
-
-.hw-title{font-family:var(--f-body);font-size:.85rem;font-weight:600;color:var(--text);letter-spacing:.3px}
-.hw-sub{font-family:var(--f-mono);font-size:.57rem;color:var(--muted3);margin-top:2px;letter-spacing:.5px}
-
-.hw-steps{padding:18px 20px;display:flex;flex-direction:column;gap:13px}
-.hw-step{display:flex;gap:11px;align-items:flex-start}
-.hw-n{
-  min-width:22px;height:22px;border-radius:4px;
-  display:flex;align-items:center;justify-content:center;
-  font-family:var(--f-head);font-size:.85rem;
-  flex-shrink:0;margin-top:1px;
-}
-.red-c .hw-n{background:var(--red);color:#fff}
-.dark-c .hw-n{background:var(--green);color:#000;border:none}
-.hw-st{font-size:.82rem;font-weight:600;color:var(--text2);line-height:1.3}
-.hw-sd{font-size:.74rem;font-weight:300;color:var(--muted2);margin-top:2px;line-height:1.55}
-.hw-sd b{color:var(--muted);font-weight:500}
-
-.hw-note{background:rgba(70,211,105,.04);border:1px solid rgba(70,211,105,.12);border-radius:6px;padding:12px 16px;display:flex;gap:10px;align-items:flex-start}
-.hw-note p{font-size:.82rem;font-weight:300;color:var(--muted2);line-height:1.7}
-.hw-note b{color:var(--green);font-weight:500}
-
-/* ══ FOOTER ══ */
-footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.6rem 5%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem}
-.ft-logo{font-family:var(--f-head);font-size:1.2rem;letter-spacing:3px}
-.ft-logo .f{color:var(--red)}.ft-logo .l{color:var(--muted3)}
-footer p{font-family:var(--f-mono);font-size:.55rem;color:var(--muted3);letter-spacing:1px}
-
-/* ══ TOAST ══ */
-/* WhatsApp button */
-.wa-btn{
-  position:fixed;bottom:1.5rem;right:1.5rem;z-index:500;
-  width:52px;height:52px;border-radius:50%;
-  background:#25D366;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 20px rgba(37,211,102,.4);
-  text-decoration:none;transition:all .2s;
-  animation:waPulse 2s ease infinite;
-}
-.wa-btn:hover{transform:scale(1.1);box-shadow:0 6px 28px rgba(37,211,102,.6)}
-@keyframes waPulse{0%,100%{box-shadow:0 4px 20px rgba(37,211,102,.3)}50%{box-shadow:0 4px 32px rgba(37,211,102,.6)}}
-
-/* Countdown timer */
-.c-countdown{
-  font-family:var(--f-mono);font-size:.65rem;
-  margin-top:5px;display:flex;align-items:center;gap:5px;
-}
-.countdown-time{font-weight:500;letter-spacing:1px}
-.countdown-ok{color:var(--green)}
-.countdown-warn{color:var(--amber)}
-.countdown-exp{color:var(--red)}
-
-#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(14px);background:var(--green);color:#000;font-family:var(--f-head);font-size:.9rem;padding:10px 26px;border-radius:4px;letter-spacing:3px;opacity:0;transition:all .28s;pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase}
-#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-@keyframes spin{to{transform:rotate(360deg)}}
-
-@media(max-width:800px){
-  .hero{grid-template-columns:1fr;padding:2.5rem 5% 2rem;gap:2.5rem}
-  .hero::before{display:none}
-  .hw-grid{grid-template-columns:1fr}
-  .card{isolation:isolate;grid-template-columns:auto 1fr}
-  .cp-btn{display:none}
-  .c-code{font-size:1.8rem;letter-spacing:7px}
-  .card{isolation:isolate;cursor:pointer}
-  nav{padding:0 5%}
-}
-</style>
-</head>
-<body>
-
-<!-- TICKER -->
-<div class="ticker">
-  <div class="ticker-inner">
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-    <span>GET YOUR NETFLIX HOUSEHOLD CODE</span><span class="sep">·</span>
-  </div>
-</div>
-
-<!-- NAV -->
-<nav>
-  <a class="logo" href="/">
-    <div class="logo-text"><span class="f">FAN</span><span class="l">FLIX</span></div>
-  </a>
-  <div class="nav-status">
-    <div class="signal-badge" style="margin:0">
-      <div class="signal-bars">
-        <span></span><span></span><span></span><span></span>
-      </div>
-      <span class="signal-text">Netflix Household Tool</span>
-    </div>
-    <div class="nav-stats">
-      <div class="nav-stat"><span class="ns-dot live-dot"></span><span id="live-count">-</span> online</div>
-      <div class="nav-stat-divider"></div>
-      <div class="nav-stat"><span id="today-count">-</span> today</div>
-    </div>
-  </div>
-</nav>
-
-<!-- HERO -->
-<div class="hero">
-
-  <!-- FORM + RESULTS -->
-  <div class="right-panel" id="fetch">
-    <div class="form-card">
-
-      <!-- FORM TOP -->
-      <div class="form-top" id="form-top">
-        <div class="fc-title">Enter Netflix Email</div>
-        <div class="fc-sub">Get your household code or update link in one click.</div>
-        <label class="f-label" for="email-inp">Netflix Account Email</label>
-        <input class="email-inp" id="email-inp" placeholder="name@example.com" type="email"
-          onkeydown="if(event.key==='Enter') doSearch()" />
-        <button class="get-btn" onclick="doSearch()">Continue <span class="btn-arrow">→</span></button>
-        <div class="form-note">After Netflix sends the email, enter your email above and click Continue. Your <b>code or link</b> appears instantly.</div>
-        <div class="chips" id="chips"></div>
-      </div>
-
-      <!-- PROGRESS BAR -->
-      <div class="progress-bar" id="progress-bar">
-        <div class="progress-fill"></div>
-      </div>
-
-      <!-- RESULTS PANEL (inside card) -->
-      <div class="results-panel" id="results-panel" style="display:none">
-        <div class="res-bar">
-          <div class="res-info" id="res-info"></div><div class="fetch-time" id="fetch-time"></div>
-          <button class="ref-btn" id="ref-btn" onclick="doSearch()">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            Refresh
-          </button>
-        </div>
-        <div class="tabs">
-          <button class="tab active" id="tab-all" onclick="switchTab('all')">All <span class="tc" id="cnt-all">0</span></button>
-          <button class="tab" id="tab-household" onclick="switchTab('household')">Household <span class="tc" id="cnt-household">0</span></button>
-          <button class="tab" id="tab-update" onclick="switchTab('update')">TV Update <span class="tc" id="cnt-update">0</span></button>
-        </div>
-        <div class="cards-wrap" id="cards"></div>
-      </div>
-
-      <!-- START HINT -->
-      <div class="results-panel" id="start-hint" style="display:none;border-top:1px solid var(--border)">
-        <div class="start-hint">
-          <div class="s-ico">🔑</div>
-          <p>Enter your Netflix email above<br>and click Continue →</p>
-        </div>
-      </div>
-
-      <div class="fc-foot">Last 20 min · No login · Instant results</div>
-    </div>
-  </div>
-
-</div>
-
-</div>
-
-<!-- HOW IT WORKS -->
-<div class="section" id="how">
-  <div class="sec-eye">How it works</div>
-  <div class="sec-h">Follow the right flow by device</div>
-  <div class="sec-sub">After Netflix sends the email, enter your account email above and fetch your code or link instantly.</div>
-
-  <div class="hw-grid">
-    <!-- Mobile -->
-    <div class="hw-card red-c">
-      <div class="hw-head r">
-        <div class="hw-ico-wrap">
-          <svg class="hw-phone" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"/></svg>
-          <div class="hw-phone-dot"></div>
-        </div>
-        <div>
-          <div class="hw-title">Mobile / Tablet / Laptop</div>
-          <div class="hw-sub">Temporary travel access</div>
-        </div>
-      </div>
-      <div class="hw-steps">
-        <div class="hw-step"><div class="hw-n">1</div><div><div class="hw-st">See the Netflix warning?</div><div class="hw-sd">Tap <b>"Watch Temporarily"</b> or <b>"I'm Traveling"</b></div></div></div>
-        <div class="hw-step"><div class="hw-n">2</div><div><div class="hw-st">Choose verification</div><div class="hw-sd">Select <b>"Send Email"</b> or <b>"Send Code to Email"</b></div></div></div>
-        <div class="hw-step"><div class="hw-n">3</div><div><div class="hw-st">Come to this website</div><div class="hw-sd">Enter your Netflix account email above</div></div></div>
-        <div class="hw-step"><div class="hw-n">4</div><div><div class="hw-st">Get your code instantly</div><div class="hw-sd">Copy and enter it in your Netflix app</div></div></div>
-      </div>
-    </div>
-
-    <!-- TV -->
-    <div class="hw-card dark-c">
-      <div class="hw-head d">
-        <div class="hw-ico-wrap">
-          <div class="hw-tv-wrap">
-            <svg width="26" height="20" viewBox="0 0 24 20" fill="none" stroke="#555" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18" stroke="#555" stroke-width="2"/><line x1="12" y1="15" x2="12" y2="18" stroke="#555" stroke-width="2"/></svg>
-            <div class="hw-tv-screen"><div class="hw-tv-scan"></div></div>
-          </div>
-        </div>
-        <div>
-          <div class="hw-title">TV / PS5 / Xbox / Others</div>
-          <div class="hw-sub">Smart TV · PlayStation · Consoles</div>
-        </div>
-      </div>
-      <div class="hw-steps">
-        <div class="hw-step"><div class="hw-n">1</div><div><div class="hw-st">See the Netflix warning?</div><div class="hw-sd">Click <b>"This Is My TV"</b> or <b>"Update Netflix Household"</b></div></div></div>
-        <div class="hw-step"><div class="hw-n">2</div><div><div class="hw-st">Choose verification</div><div class="hw-sd">Select <b>"Send Email"</b> option</div></div></div>
-        <div class="hw-step"><div class="hw-n">3</div><div><div class="hw-st">Come to this website</div><div class="hw-sd">Enter your Netflix account email above</div></div></div>
-        <div class="hw-step"><div class="hw-n">4</div><div><div class="hw-st">Click the update link</div><div class="hw-sd">A link appears — open it and your TV updates instantly</div></div></div>
-      </div>
-    </div>
-  </div>
-
-
-</div>
-
-<!-- FOOTER -->
-<footer>
-  <div class="ft-logo"><span class="f">FAN</span><span class="l">FLIX</span></div>
-  <p>© FANFLIX BD · Household Code Tool · All rights reserved</p>
-</footer>
-
-<div id="toast">✓ Copied!</div>
-
-<!-- WhatsApp Support Button -->
-<a class="wa-btn" href="https://wa.me/8801928382918" target="_blank" title="Chat on WhatsApp">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="white">
-    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-  </svg>
-</a>
-
-<script>
-let allCodes=[],curTab='all';
-let savedEmails=JSON.parse(localStorage.getItem('nfx_emails')||'[]');
-let currentEmail='';
-window.onload=()=>{
-  renderChips();
-  fetchStats();
-  setInterval(fetchStats, 30000);
-
-  // Check if customer link
-  const path = window.location.pathname;
-  const tokenMatch = path.match(/^\/c\/([a-f0-9]{8,})/i);
-  if (tokenMatch) {
-    loadCustomerLink(tokenMatch[1]);
-  } else {
-    document.getElementById('start-hint').style.display='block';
-  document.getElementById('results-panel').style.display='none';
-  }
-};
-
-
-
-async function fetchStats(){
-  try{
-    const r = await fetch('/api/stats');
-    const d = await r.json();
-    const lc=document.getElementById('live-count');
-    const tc=document.getElementById('today-count');
-    if(lc) lc.textContent = d.live;
-    if(tc) tc.textContent = d.today;
-  }catch(e){}
-}
-
-async function doSearch(){
-  const email=document.getElementById('email-inp').value.trim().toLowerCase();
-  if(!email){document.getElementById('email-inp').focus();return;}
-  currentEmail=email;saveEmail(email);
-
-  // Show progress bar, hide hints
-  document.getElementById('progress-bar').classList.add('active');
-  document.getElementById('results-panel').style.display='none';
-  document.getElementById('start-hint').style.display='none';
-
-  const btn=document.getElementById('ref-btn');
-  btn && btn.classList.add('loading');
-
-  try{
-    const res=await fetch(`/api/codes?email=${encodeURIComponent(email)}`);
-    const data=await res.json();
-    if(!data.success)throw new Error(data.error);
-    allCodes=data.codes;
-    document.getElementById('progress-bar').classList.remove('active');
-    document.getElementById('results-panel').style.display='block';
-    updateInfo(email,data.codes.length,data.fetchTime,data.cached);
-    updateCounts();renderCards();
-
-  }catch(e){
-    document.getElementById('progress-bar').classList.remove('active');
-    document.getElementById('results-panel').style.display='block';
-    setCards(`<div class="empty"><div class="empty-ico">⚠️</div><h3>Error</h3><p>${e.message||'Could not connect to server.'}</p></div>`);
-  }
-  btn && btn.classList.remove('loading');
-}
-
-function saveEmail(e){
-  if(!savedEmails.includes(e)){savedEmails.unshift(e);if(savedEmails.length>6)savedEmails=savedEmails.slice(0,6);localStorage.setItem('nfx_emails',JSON.stringify(savedEmails));}
-  renderChips();
-}
-function selectChip(e){document.getElementById('email-inp').value=e;doSearch();}
-function removeChip(e,ev){
-  ev.stopPropagation();savedEmails=savedEmails.filter(x=>x!==e);
-  localStorage.setItem('nfx_emails',JSON.stringify(savedEmails));
-  if(currentEmail===e){currentEmail='';document.getElementById('email-inp').value='';}
-  renderChips();
-}
-function renderChips(){
-  const c=document.getElementById('chips');
-  if(!savedEmails.length){c.innerHTML='';return;}
-  c.innerHTML=savedEmails.map(e=>`<div class="chip ${currentEmail===e?'active':''}" onclick="selectChip('${esc(e)}')">${esc(e)}<span class="chip-x" onclick="removeChip('${esc(e)}',event)">✕</span></div>`).join('');
-}
-function updateInfo(email,count,fetchTime,cached){
-  const ri = document.getElementById('res-info');
-  if(ri) ri.innerHTML=`<b>${count}</b> result${count!==1?'s':''} for <em>${esc(email)}</em>`;
-  const ft = document.getElementById('fetch-time');
-  if(ft) ft.textContent = cached ? '⚡ Cached result' : fetchTime ? `⏱ Fetched in ${fetchTime}s` : '';
-}
-function switchTab(t){curTab=t;document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById('tab-'+t) && document.getElementById('tab-'+t).classList.add('active');renderCards();}
-function updateCounts(){
-  const safe=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val;};
-  safe('cnt-all',allCodes.length);
-  safe('cnt-household',allCodes.filter(i=>i.type==='household').length);
-  safe('cnt-update',allCodes.filter(i=>i.type==='update').length);
-  safe('cnt-signin',allCodes.filter(i=>i.type==='signin').length);
-}
-function renderCards(){
-  const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
-  if(!list.length){
-    setCards(`<div class="empty"><div class="empty-ico">📭</div><h3>No Results</h3><p>No codes found for this email in the last 2 hours.<br>Make sure Netflix sent the email then refresh.</p></div>`);
-    return;
-  }
-  document.getElementById('cards').innerHTML=list.map((item,i)=>cardHtml(item,i)).join('');
-  document.querySelectorAll('.card[data-code]').forEach(c=>{c.addEventListener('click',()=>doCopy(c.dataset.code,null));});
-}
-
-function formatCountdown(expiresAt) {
-  if (!expiresAt) return '';
-  const remaining = expiresAt - Date.now();
-  if (remaining <= 0) return '<span class="c-countdown countdown-exp">⏱ Expired</span>';
-  const mins = Math.floor(remaining / 60000);
-  const secs = Math.floor((remaining % 60000) / 1000);
-  const timeStr = `${mins}:${secs.toString().padStart(2,'0')}`;
-  const cls = remaining < 2 * 60 * 1000 ? 'countdown-warn' : 'countdown-ok';
-  // Play beep if under 2 min
-  if (remaining < 2 * 60 * 1000 && remaining > 119000) playBeep();
-  return `<span class="c-countdown ${cls}">⏱ Expires in <span class="countdown-time">${timeStr}</span></span>`;
-}
-
-function playBeep() {
+async function safeSend(text) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .3);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + .3);
+    return await bot.sendMessage(config.TELEGRAM_CHAT_ID, text, { parse_mode: 'Markdown' });
+  } catch(e) {
+    return await bot.sendMessage(config.TELEGRAM_CHAT_ID, text.replace(/[*_`\[\]]/g, ''));
+  }
+}
+
+async function sendAutoDelete(chatId, text, opts = {}) {
+  try {
+    const sent = await bot.sendMessage(chatId, text, opts);
+    setTimeout(() => bot.deleteMessage(chatId, sent.message_id).catch(() => {}), 60000);
+    return sent;
+  } catch(e) { console.error('sendAutoDelete:', e.message); }
+}
+
+function isOwner(msg) {
+  return String(msg.chat.id) === String(config.TELEGRAM_CHAT_ID);
+}
+
+// =============================================================
+//  UTILS
+// =============================================================
+
+function validateDomain(url) {
+  let hostname;
+  try {
+    hostname = new URL(url).hostname;
+  } catch (e) {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+  const bare = hostname.replace(/^www\./, '');
+  const allowed = config.WHITELISTED_DOMAINS.some(d => bare === d || bare.endsWith('.' + d));
+  if (!allowed) {
+    throw new Error(`Domain not whitelisted: ${hostname}`);
+  }
+}
+
+function decryptEPS(data) {
+  const [ivBase64, cipherBase64] = data.split(':');
+  const iv  = Buffer.from(ivBase64, 'base64');
+  const ct  = Buffer.from(cipherBase64, 'base64');
+  const key = Buffer.alloc(32);
+  Buffer.from(config.EPS_SECRET_KEY, 'utf8').copy(key);
+  const dec = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  return JSON.parse(Buffer.concat([dec.update(ct), dec.final()]).toString('utf8'));
+}
+
+function normalizePhone(raw = '') {
+  let p = String(raw).replace(/\D/g, '');
+  if (p.startsWith('880')) p = p.slice(3);
+  if (p.startsWith('0'))   p = p.slice(1);
+  return p;
+}
+
+function isBDPhone(phone) {
+  const p = normalizePhone(phone);
+  return p.length === 10 && ['13','14','15','16','17','18','19'].some(pfx => p.startsWith(pfx));
+}
+
+function saveContact(phone, name = '') {
+  try {
+    const p = normalizePhone(phone);
+    if (!isBDPhone(p)) return;
+    const full     = '0' + p;
+    const existing = fs.existsSync(CONTACTS_FILE) ? fs.readFileSync(CONTACTS_FILE, 'utf8') : '';
+    if (!existing.includes(full)) {
+      fs.appendFileSync(CONTACTS_FILE, `${full}${name ? ' | ' + name : ''}\n`);
+    }
   } catch(e) {}
 }
 
-// Start countdown interval
-setInterval(() => {
-  document.querySelectorAll('.countdown-wrap').forEach(el => {
-    const expiresAt = parseInt(el.dataset.expires);
-    if (expiresAt) el.innerHTML = formatCountdown(expiresAt);
-  });
-}, 1000);
-
-function cardHtml(item,i){
-  const delay=`animation-delay:${i*0.06}s`;
-  const age=timeAgo(item.ts);
-  const fresh=(Date.now()-item.ts)<15*60*1000;
-  const freshClass=fresh?' fresh':'';
-  const freshBadge=fresh?'<span class="fresh-badge">Fresh</span>':'';
-
-  // Sign-in code card
-  if(item.type === 'signin') {
-    return `<div class="card signin${freshClass}" style="${delay}" data-code="${esc(item.code)}">${freshBadge}<div class="fresh-ring"></div><div class="c-ico" style="position:relative;background:rgba(77,166,255,.1)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="c-body"><div class="c-type" style="color:var(--blue)">Sign-in Code</div><div class="c-to">→ ${esc(item.to)}</div><div class="c-code">${item.code}</div><div class="c-age">${age}</div>${item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : ''}</div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this)">Copy</button></div>`;
-  }
-
-  const countdown = item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : '';
-  const phoneIco = `<div class="c-ico" style="position:relative"><svg class="phone-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"/></svg><div class="phone-dot"></div></div>`;
-  const tvIco = `<div class="c-ico"><div class="tv-wrap"><svg width="26" height="22" viewBox="0 0 24 20" fill="none" stroke="#f5a623" stroke-width="2"><rect x="1" y="1" width="22" height="14" rx="2"/><line x1="8" y1="18" x2="16" y2="18" stroke-width="2"/><line x1="12" y1="15" x2="12" y2="18" stroke-width="2"/></svg><div class="tv-screen"><div class="tv-scan"></div></div></div></div>`;
-
-  // TV Update — always show link
-  if(item.type === 'update') {
-    return `<div class="card update${freshClass}" style="${delay}">${freshBadge}<div class="fresh-ring"></div>${tvIco}<div class="c-body"><div class="c-type">${item.label}</div><div class="c-to">→ ${esc(item.to)}</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Update Household →</a><div class="c-age">${age}</div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this)">Copy</button></div>`;
-  }
-
-  // Household with auto-scraped OTP code
-  if(item.code) {
-    return `<div class="card household${freshClass}" style="${delay}" data-code="${esc(item.code)}">${freshBadge}<div class="fresh-ring"></div>${phoneIco}<div class="c-body"><div class="c-type">${item.label}</div><div class="c-to">→ ${esc(item.to)}</div><div class="c-code">${item.code}</div><div class="c-age">${age}</div>${countdown}</div><button class="cp-btn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this)">Copy</button></div>`;
-  }
-
-  // Household fallback — link (if OTP scraping failed)
-  return `<div class="card household${freshClass}" style="${delay}">${freshBadge}<div class="fresh-ring"></div>${phoneIco}<div class="c-body"><div class="c-type">${item.label}</div><div class="c-to">→ ${esc(item.to)}</div><a class="c-link g" href="${esc(item.link)}" target="_blank">Get Temporary Code →</a><div class="c-age">${age}</div>${countdown}</div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this)">Copy</button></div>`;
+function cleanText(text) {
+  return String(text || '').replace(/[_*[\]()~`>#+=|{}.!\-]/g, ' ').trim();
 }
 
-function setCards(html){document.getElementById('cards').innerHTML=html;}
-function doCopy(text,btn){
-  navigator.clipboard.writeText(text).then(()=>{
-    if(btn){btn.textContent='✓ Copied';btn.classList.add('ok');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('ok')},2000);}
-    const t=document.getElementById('toast');t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000);
+function detectProductType(name = '') {
+  const n = name.toLowerCase();
+  if (n.includes('gift card') || n.includes('itunes') || n.includes('psn') ||
+      n.includes('steam') || n.includes('valorant') || n.includes('razer') ||
+      n.includes('roblox') || n.includes('pubg') || n.includes('voucher') ||
+      n.includes('top up') || n.includes('uc')) return 'giftcard';
+  if (n.includes('windows') || n.includes('idm') || n.includes('adobe') ||
+      n.includes('office') || n.includes('icloud') || n.includes('google one') ||
+      n.includes('lifetime') || n.includes('key')) return 'software';
+  if (n.includes('chatgpt') || n.includes('claude') || n.includes('gemini') ||
+      n.includes('grok') || n.includes('perplexity') || n.includes('ideogram') ||
+      n.includes('quillbot') || n.includes('duolingo')) return 'ai';
+  return 'subscription';
+}
+
+function productTypeEmoji(type) {
+  if (type === 'giftcard') return '🎁';
+  if (type === 'software') return '🔑';
+  if (type === 'ai')       return '🤖';
+  return '📺';
+}
+
+function isOneTime(type) { return type === 'giftcard' || type === 'software'; }
+
+function parseDuration(text = '') {
+  const t = text.toLowerCase();
+  if (t.includes('1 year') || t.includes('12 month')) return 365;
+  if (t.includes('6 month')) return 180;
+  if (t.includes('3 month')) return 90;
+  if (t.includes('2 month')) return 60;
+  if (t.includes('1 month')) return 30;
+  if (t.includes('7 day') || t.includes('1 week')) return 7;
+  return 30;
+}
+
+function addDays(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString('en-CA');
+}
+
+function addDaysStr(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toLocaleDateString('en-CA');
+}
+
+function formatDate(s) {
+  if (!s) return 'N/A';
+  return new Date(s).toLocaleDateString('en-BD', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatEPSTime(s) {
+  try {
+    const d = new Date(s);
+    return d.toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' }) + ', ' +
+           d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  } catch { return s; }
+}
+
+function today() { return new Date().toLocaleDateString('en-CA'); }
+
+function daysUntil(s) {
+  if (!s) return null;
+  const t = new Date(); t.setHours(0,0,0,0);
+  const e = new Date(s); e.setHours(0,0,0,0);
+  return Math.ceil((e - t) / 86400000);
+}
+
+function timeAgo(dateStr) {
+  const mins = Math.floor((new Date() - new Date(dateStr)) / 60000);
+  if (mins < 60)   return `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins/60)}h ago`;
+  return `${Math.floor(mins/1440)}d ago`;
+}
+
+function nameSimilar(a = '', b = '') {
+  a = a.toLowerCase().trim();
+  b = b.toLowerCase().trim();
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  const wordsA = a.split(' ');
+  const wordsB = b.split(' ');
+  return wordsA.some(w => w.length > 2 && wordsB.includes(w));
+}
+
+function getProductNames(productsJson) {
+  try {
+    const products = JSON.parse(productsJson || '[]');
+    return products.map(p => p.name).join(', ') || 'Unknown';
+  } catch(e) { return 'Unknown'; }
+}
+
+// =============================================================
+//  SMS SENDER
+// =============================================================
+
+async function sendSMS(phone, message) {
+  if (!canSendSMS()) {
+    console.log(`SMS blocked (outside hours) to ${phone}`);
+    return;
+  }
+  const smsUrl = 'https://bulksmsbd.net/api/smsapi';
+  validateDomain(smsUrl);
+  const number = '880' + normalizePhone(phone);
+  await axios.post(smsUrl, null, {
+    params: { api_key: config.SMS_API_KEY, senderid: config.SMS_SENDER_ID, number, message }
   });
 }
-function timeAgo(ts){const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5);if(m<1)return'Just now';if(m<60)return m+'m ago';return h+'h ago';}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-</script>
-</body>
-</html>
+
+// =============================================================
+//  SMART MATCHING
+// =============================================================
+
+function findMatchingOrder(phone, email, name, amount) {
+  const normalPhone = normalizePhone(phone);
+
+  let order = db.prepare(`SELECT * FROM pending_orders WHERE phone = ? AND paid = 0 AND cancelled = 0 ORDER BY created_at DESC LIMIT 1`).get(normalPhone);
+  if (order) return { order, matchMethod: 'Phone' };
+
+  if (email) {
+    order = db.prepare(`SELECT * FROM pending_orders WHERE LOWER(email) = LOWER(?) AND paid = 0 AND cancelled = 0 ORDER BY created_at DESC LIMIT 1`).get(email);
+    if (order) return { order, matchMethod: 'Email' };
+  }
+
+  const recent = db.prepare(`SELECT * FROM pending_orders WHERE paid = 0 AND cancelled = 0 AND created_at >= datetime('now', '-6 hours') ORDER BY created_at DESC`).all();
+  const nameMatch = recent.find(o => nameSimilar(o.name, name));
+  if (nameMatch) return { order: nameMatch, matchMethod: 'Name' };
+
+  order = db.prepare(`SELECT * FROM pending_orders WHERE amount = ? AND paid = 0 AND cancelled = 0 AND created_at >= datetime('now', '-2 hours') ORDER BY created_at DESC LIMIT 1`).get(amount);
+  if (order) return { order, matchMethod: 'Amount' };
+
+  return null;
+}
+
+function findPossibleMatches(phone, email, name, amount) {
+  const recent = db.prepare(`SELECT * FROM pending_orders WHERE paid = 0 AND cancelled = 0 AND created_at >= datetime('now', '-24 hours') ORDER BY created_at DESC LIMIT 10`).all();
+  return recent.map(o => {
+    let score = 0;
+    if (nameSimilar(o.name, name)) score += 3;
+    if (email && o.email && o.email.toLowerCase() === email.toLowerCase()) score += 3;
+    if (Math.abs(o.amount - amount) < 1) score += 2;
+    return { ...o, score };
+  }).filter(o => o.score > 0).sort((a, b) => b.score - a.score).slice(0, 2);
+}
+
+// =============================================================
+//  EXPRESS
+// =============================================================
+
+const app = express();
+app.use(express.json());
+
+// =============================================================
+//  SHOPIFY WEBHOOK - New Order
+// =============================================================
+
+app.post('/shopify-order', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const o      = req.body;
+    const phone  = normalizePhone(o.phone || o.billing_address?.phone || '');
+    const name   = o.billing_address?.name || o.customer?.first_name || 'Customer';
+    const email  = o.email || '';
+    const amount = parseFloat(o.total_price || 0);
+    const products = (o.line_items || []).map(li => ({ name: li.name || 'Unknown', variant: li.variant_title || '' }));
+
+    if (!phone && !email) return;
+
+    db.prepare(`INSERT OR IGNORE INTO pending_orders (shopify_order_id, order_name, name, phone, email, products, amount) VALUES (?, ?, ?, ?, ?, ?, ?)`)
+      .run(String(o.id), o.name, name, phone || '', email, JSON.stringify(products), amount);
+
+    saveContact(phone, name);
+
+    // 1 hour follow-up SMS
+    setTimeout(async () => {
+      const pending = db.prepare('SELECT * FROM pending_orders WHERE shopify_order_id = ?').get(String(o.id));
+      if (!pending || pending.paid === 1 || pending.cancelled === 1) return;
+      try {
+        await sendSMS(phone, SMS_FOLLOWUP);
+        db.prepare('UPDATE pending_orders SET followup_sent = followup_sent + 1 WHERE shopify_order_id = ?').run(String(o.id));
+        await safeSend(
+          `⏰ *Follow-up SMS Sent!*\n` +
+          `👤 ${cleanText(name)} | 📱 0${phone}\n` +
+          `🛒 ${o.name}\n` +
+          `💰 ৳${amount}`
+        );
+      } catch(e) {
+        console.error('1hr followup:', e.message);
+        await safeSend(`❌ *Follow-up SMS Failed!*\n👤 ${cleanText(name)} | 📱 0${phone}\nError: ${e.message}`);
+      }
+    }, config.FOLLOW_UP_DELAY_MS);
+
+  } catch(e) { console.error('Shopify order webhook:', e.message); }
+});
+
+// =============================================================
+//  SHOPIFY WEBHOOK - Order Cancelled
+// =============================================================
+
+app.post('/shopify-cancel', async (req, res) => {
+  res.sendStatus(200);
+  try {
+    const o       = req.body;
+    const oid     = String(o.id);
+    const pending = db.prepare('SELECT * FROM pending_orders WHERE shopify_order_id = ?').get(oid);
+    if (!pending) return;
+
+    saveContact(pending.phone, pending.name);
+    db.prepare(`UPDATE pending_orders SET cancelled = 1, cancelled_at = datetime('now') WHERE shopify_order_id = ?`).run(oid);
+
+    const cancelCount = db.prepare(`SELECT COUNT(*) AS cnt FROM pending_orders WHERE phone = ? AND cancelled = 1`).get(pending.phone);
+    let msg =
+      `🚫 *Order Cancelled*\n` +
+      `👤 ${cleanText(pending.name)} | 📱 0${pending.phone}\n` +
+      `🛒 ${pending.order_name}\n` +
+      `📦 ${getProductNames(pending.products)}\n` +
+      `💰 ৳${pending.amount}\n` +
+      `📱 Phone saved ✅`;
+
+    if (cancelCount.cnt >= 2) {
+      const lost = db.prepare(`SELECT COALESCE(SUM(amount),0) AS t FROM pending_orders WHERE phone = ? AND cancelled = 1`).get(pending.phone);
+      msg += `\n⚠️ Repeat Canceller (${cancelCount.cnt}x) | Lost: ৳${lost.t.toFixed(0)}`;
+    }
+    await safeSend(msg);
+  } catch(e) { console.error('Shopify cancel webhook:', e.message); }
+});
+
+// =============================================================
+//  EPS IPN
+// =============================================================
+
+app.post('/eps-ipn', async (req, res) => {
+  res.json({ status: 'OK' });
+  try {
+    const { Data } = req.body;
+    if (!Data) return;
+    const p = decryptEPS(Data);
+
+    saveContact(p.customerPhone || '', p.customerName || '');
+
+    if (p.status !== 'Success') {
+      await safeSend(
+        `❌ *Failed Payment — FanFlix*\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👤 Name: ${cleanText(p.customerName)}\n` +
+        `📱 Phone: ${p.customerPhone || 'N/A'}\n` +
+        `📧 Email: ${p.customerEmail || 'N/A'}\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `💰 Amount: ৳${p.totalAmount}\n` +
+        `💳 Method: ${p.financialEntity || 'N/A'}\n` +
+        `📋 Status: ${p.status}\n` +
+        `🔖 Reference: ${p.merchantTransactionId || 'N/A'}\n` +
+        `🕐 Time: ${formatEPSTime(p.transactionDate)}\n` +
+        `━━━━━━━━━━━━━━━━━━`
+      );
+      db.prepare('INSERT OR IGNORE INTO payments (eps_txn_id, phone, amount, store_amount, status) VALUES (?, ?, ?, 0, ?)').run(p.epsTransactionId || '', normalizePhone(p.customerPhone || ''), parseFloat(p.totalAmount || 0), p.status);
+      return;
+    }
+
+    const phone      = p.customerPhone         || '';
+    const name       = p.customerName          || 'Customer';
+    const email      = p.customerEmail         || '';
+    const totalAmt   = parseFloat(p.totalAmount  || 0);
+    const storeAmt   = parseFloat(p.storeAmount  || 0);
+    const gatewayFee = (totalAmt - storeAmt).toFixed(2);
+    const epsTxnId   = p.epsTransactionId      || '';
+    const reference  = p.merchantTransactionId || 'N/A';
+    const method     = p.financialEntity       || 'N/A';
+    const time       = formatEPSTime(p.transactionDate);
+
+    const seen = db.prepare('SELECT id FROM payments WHERE eps_txn_id = ?').get(epsTxnId);
+    if (seen) return;
+
+    db.prepare('INSERT OR IGNORE INTO payments (eps_txn_id, phone, amount, store_amount, status) VALUES (?, ?, ?, ?, ?)').run(epsTxnId, normalizePhone(phone), totalAmt, storeAmt, p.status);
+
+    const matchResult = findMatchingOrder(phone, email, name, totalAmt);
+
+    if (!matchResult) {
+      const suggestions = findPossibleMatches(phone, email, name, totalAmt);
+      let msg =
+        `💰 *New Payment — FanFlix*\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `👤 Name: ${cleanText(name)}\n` +
+        `📱 Phone: ${phone}\n` +
+        `📧 Email: ${email || 'N/A'}\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `💰 Customer Paid: ৳${totalAmt}\n` +
+        `🏪 You Receive: ৳${storeAmt}\n` +
+        `📊 Gateway Fee: ৳${gatewayFee}\n` +
+        `💳 Method: ${method}\n` +
+        `🔖 Reference: ${reference}\n` +
+        `🕐 Time: ${time}\n` +
+        `━━━━━━━━━━━━━━━━━━\n` +
+        `⚠️ No Shopify Order Found!`;
+      if (suggestions.length) {
+        msg += `\n\n💡 Possible matches:\n`;
+        suggestions.forEach(s => { msg += `${s.order_name} — ${cleanText(s.name)} | ৳${s.amount}\n`; });
+      }
+      await safeSend(msg);
+      return;
+    }
+
+    const { order: pendingOrder, matchMethod } = matchResult;
+    db.prepare('UPDATE pending_orders SET paid = 1 WHERE id = ?').run(pendingOrder.id);
+
+    if (pendingOrder.followup_sent >= 1) {
+      await safeSend(
+        `✅ *Paid After Follow-up!*\n` +
+        `👤 ${cleanText(name)} | 📱 ${phone}\n` +
+        `🛒 ${pendingOrder.order_name}\n` +
+        `💰 ৳${totalAmt}\n` +
+        `✅ Removed from unpaid list`
+      );
+    }
+
+    let products = [];
+    try { products = JSON.parse(pendingOrder.products || '[]'); } catch(e) {}
+    if (!products.length) products = [{ name: 'Unknown Product', variant: '' }];
+
+    const existing     = db.prepare('SELECT * FROM customers WHERE phone = ? ORDER BY created_at DESC LIMIT 1').get(normalizePhone(phone));
+    const renewalCount = existing ? existing.renewal_count + 1 : 1;
+    const isVip        = renewalCount >= config.VIP_RENEWAL_COUNT ? 1 : 0;
+
+    const earlyRenewal = products.map(li => {
+      const ex = db.prepare(`SELECT * FROM customers WHERE phone = ? AND product = ? AND expiry_date >= ? ORDER BY expiry_date ASC LIMIT 1`).get(normalizePhone(phone), li.name, today());
+      return ex ? daysUntil(ex.expiry_date) : null;
+    }).filter(d => d !== null && d <= 5);
+
+    const productLines = [];
+    for (const li of products) {
+      const productType  = detectProductType(li.name);
+      const oneTime      = isOneTime(productType);
+      const durationDays = oneTime ? null : parseDuration(li.variant || li.name);
+      const expiryDate   = oneTime ? null : addDays(durationDays);
+
+      db.prepare(`INSERT INTO customers (name, phone, email, product, product_type, variant, order_id, order_name, amount, store_amount, duration_days, start_date, expiry_date, renewal_count, is_vip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(name, normalizePhone(phone), email, li.name, productType, li.variant || '', pendingOrder.shopify_order_id, pendingOrder.order_name, totalAmt, storeAmt, durationDays, today(), expiryDate, renewalCount, isVip);
+
+      productLines.push(oneTime
+        ? `${productTypeEmoji(productType)} ${cleanText(li.name)} | One-time`
+        : `${productTypeEmoji(productType)} ${cleanText(li.name)} | ${formatDate(expiryDate)} | ${daysUntil(expiryDate)}d`
+      );
+    }
+
+    let alert =
+      `✅ *New Payment — FanFlix*\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `👤 Name: ${cleanText(name)}\n` +
+      `📱 Phone: ${phone}\n` +
+      `📧 Email: ${email || 'N/A'}\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `💰 Customer Paid: ৳${totalAmt}\n` +
+      `🏪 You Receive: ৳${storeAmt}\n` +
+      `📊 Gateway Fee: ৳${gatewayFee}\n` +
+      `💳 Method: ${method}\n` +
+      `🔖 Reference: ${reference}\n` +
+      `🕐 Time: ${time}\n` +
+      `🔗 Matched by: ${matchMethod}\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `🛒 Order: ${pendingOrder.order_name}\n` +
+      productLines.join('\n') + '\n' +
+      (renewalCount > 1 ? `🔄 Renewal #${renewalCount}\n` : '') +
+      (isVip ? `⭐ VIP Customer\n` : '') +
+      (earlyRenewal.length ? `⚠️ Early Renewal! ${earlyRenewal[0]}d still left\n` : '') +
+      `━━━━━━━━━━━━━━━━━━`;
+
+    await safeSend(alert);
+
+    // ── AUTO-CREATE FANFLIX LINK ──────────────────────────────
+    // If payment is for a Netflix/combo subscription, auto-create the household link
+    const isNetflix = products.some(li => {
+      const n = (li.name || '').toLowerCase();
+      return n.includes('netflix') || n.includes('combo');
+    });
+
+    if (isNetflix && config.FANFLIX_HOUSEHOLD_URL && config.FANFLIX_ADMIN_SECRET) {
+      try {
+        // Detect days from product variant
+        const netflixProduct = products.find(li => {
+          const n = (li.name || '').toLowerCase();
+          return n.includes('netflix') || n.includes('combo');
+        });
+        const days = parseDuration(netflixProduct?.variant || netflixProduct?.name || '');
+
+        const res = await axios.post(
+          config.FANFLIX_HOUSEHOLD_URL + '/api/auto-create',
+          {
+            secret: config.FANFLIX_ADMIN_SECRET,
+            phone: phone,
+            customerName: name,
+            days: days,
+            orderName: pendingOrder.order_name,
+            amount: totalAmt,
+            product: netflixProduct?.name || 'Netflix'
+          },
+          {
+            timeout: 10000,
+            validateStatus: (status) => status < 600 // don't throw on 4xx/5xx
+          }
+        );
+
+        if (res.data?.success) {
+          const linkInfo = res.data;
+          await safeSend(
+            `🔗 *FanFlix Link Created!*\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `👤 ${cleanText(name)} | 📱 ${phone}\n` +
+            `👤 Profile: ${linkInfo.profile} | PIN: ${linkInfo.pin}\n` +
+            `🔗 ${linkInfo.link}\n` +
+            `⏳ ${days} days\n` +
+            `━━━━━━━━━━━━━━━━━━`
+          );
+          // Save token to customer record
+          db.prepare(`UPDATE customers SET fanflix_token = ? WHERE phone = ? AND start_date = ?`)
+            .run(linkInfo.token || '', normalizePhone(phone), today());
+        } else if (res.data?.waitlisted) {
+          await safeSend(
+            `🚨 *STOCK OUT — Customer Waitlisted!*\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `👤 ${cleanText(name)} | 📱 ${phone}\n` +
+            `📦 ${netflixProduct?.name || 'Netflix'} | ${days} days\n` +
+            `💰 ৳${totalAmt}\n` +
+            `🛒 ${pendingOrder.order_name}\n` +
+            `━━━━━━━━━━━━━━━━━━\n` +
+            `⚠️ Add Netflix accounts then click Process Waitlist in admin panel!`
+          );
+        } else {
+          await safeSend(`⚠️ *Auto-Create Failed!*\n👤 ${cleanText(name)} | 📱 ${phone}\nError: ${res.data?.error || 'Unknown'}\nCreate link manually.`);
+        }
+      } catch(e) {
+        console.error('Auto-create error:', e.message);
+        await safeSend(`⚠️ *Auto-Create Error!*\n👤 ${cleanText(name)} | 📱 ${phone}\nError: ${e.message}\nCreate link manually.`);
+      }
+    }
+    // ─────────────────────────────────────────────────────────
+
+  } catch(err) {
+    console.error('IPN Error:', err.message);
+    safeSend(`❌ Bot Error: ${err.message}`).catch(() => {});
+  }
+});
+
+app.get('/', (req, res) => res.send('FanFlix Bot v6.2'));
+
+// =============================================================
+//  PAGINATION
+// =============================================================
+
+const PAGE_SIZE = 5;
+
+function showCustomerPage(chatId, page = 0) {
+  const todayStr = today();
+  const allRows  = db.prepare(`SELECT * FROM customers WHERE expiry_date >= ? ORDER BY product, expiry_date ASC`).all(todayStr);
+  if (!allRows.length) return sendAutoDelete(chatId, 'No active customers.');
+  const total      = allRows.length;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const rows       = allRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  const grouped = {};
+  rows.forEach(c => { if (!grouped[c.product]) grouped[c.product] = []; grouped[c.product].push(c); });
+  const productCounts = {};
+  allRows.forEach(c => { productCounts[c.product] = (productCounts[c.product] || 0) + 1; });
+
+  let text = `Active Customers (${total}) — Page ${page + 1}/${totalPages}\n━━━━━━━━━━━━━━━━━━\n`;
+  Object.entries(grouped).forEach(([product, customers]) => {
+    text += `\n📦 ${product} (${productCounts[product]})\n`;
+    customers.forEach(c => {
+      const d = daysUntil(c.expiry_date);
+      text += `${c.is_vip ? '⭐' : ''}${cleanText(c.name)} | 0${c.phone} | ${formatDate(c.expiry_date)} | ${d}d\n`;
+    });
+  });
+
+  const buttons = [];
+  if (page > 0) buttons.push({ text: '◀️ Prev', callback_data: `cust_${page - 1}` });
+  if (page < totalPages - 1) buttons.push({ text: 'Next ▶️', callback_data: `cust_${page + 1}` });
+  return sendAutoDelete(chatId, text, buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {});
+}
+
+function showTodayPage(chatId, page = 0) {
+  const todayStr = today();
+  const allRows  = db.prepare(`SELECT * FROM customers WHERE start_date = ? ORDER BY product, created_at DESC`).all(todayStr);
+  if (!allRows.length) return sendAutoDelete(chatId, 'No orders today.');
+  const totalRev   = allRows.reduce((s, c) => s + (c.store_amount || 0), 0);
+  const totalPages = Math.ceil(allRows.length / PAGE_SIZE);
+  const rows       = allRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const grouped    = {};
+  rows.forEach(c => { if (!grouped[c.product]) grouped[c.product] = []; grouped[c.product].push(c); });
+
+  let text = `Today: ${allRows.length} orders | ৳${totalRev.toFixed(0)} — Page ${page + 1}/${totalPages}\n━━━━━━━━━━━━━━━━━━\n`;
+  Object.entries(grouped).forEach(([product, customers]) => {
+    text += `\n📦 ${product}\n`;
+    customers.forEach(c => { text += `${cleanText(c.name)} | ৳${c.store_amount || 0}\n`; });
+  });
+
+  const buttons = [];
+  if (page > 0) buttons.push({ text: '◀️ Prev', callback_data: `today_${page - 1}` });
+  if (page < totalPages - 1) buttons.push({ text: 'Next ▶️', callback_data: `today_${page + 1}` });
+  return sendAutoDelete(chatId, text, buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {});
+}
+
+function showExpiringPage(chatId, page = 0) {
+  const todayStr = today();
+  const in7days  = addDaysStr(todayStr, 7);
+  const allRows  = db.prepare(`SELECT * FROM customers WHERE expiry_date >= ? AND expiry_date <= ? ORDER BY expiry_date ASC`).all(todayStr, in7days);
+  if (!allRows.length) return sendAutoDelete(chatId, 'No one expiring this week!');
+  const totalPages = Math.ceil(allRows.length / PAGE_SIZE);
+  const rows       = allRows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+  let text = `Expiring This Week (${allRows.length}) — Page ${page + 1}/${totalPages}\n━━━━━━━━━━━━━━━━━━\n`;
+  rows.forEach(c => { text += `${cleanText(c.name)} | 0${c.phone}\n${c.product}\n${formatDate(c.expiry_date)} | ${daysUntil(c.expiry_date)}d left\n\n`; });
+
+  const buttons = [];
+  if (page > 0) buttons.push({ text: '◀️ Prev', callback_data: `exp_${page - 1}` });
+  if (page < totalPages - 1) buttons.push({ text: 'Next ▶️', callback_data: `exp_${page + 1}` });
+  return sendAutoDelete(chatId, text, buttons.length ? { reply_markup: { inline_keyboard: [buttons] } } : {});
+}
+
+// =============================================================
+//  CALLBACK HANDLER
+// =============================================================
+
+bot.on('callback_query', async (query) => {
+  const data   = query.data;
+  const chatId = query.message.chat.id;
+  if (String(chatId) !== String(config.TELEGRAM_CHAT_ID)) return;
+  await bot.deleteMessage(chatId, query.message.message_id).catch(() => {});
+  await bot.answerCallbackQuery(query.id);
+  if (data.startsWith('cust_'))  showCustomerPage(chatId, parseInt(data.split('_')[1]));
+  if (data.startsWith('today_')) showTodayPage(chatId, parseInt(data.split('_')[1]));
+  if (data.startsWith('exp_'))   showExpiringPage(chatId, parseInt(data.split('_')[1]));
+});
+
+// =============================================================
+//  BOT COMMANDS
+// =============================================================
+
+bot.onText(/\/start/, (msg) => {
+  if (!isOwner(msg)) return;
+  sendAutoDelete(msg.chat.id,
+    `FanFlix Bot v6.2\n\n` +
+    `Commands:\n` +
+    `/customers - Active customers\n` +
+    `/expiring - Expiring this week\n` +
+    `/today - Today orders\n` +
+    `/revenue - Revenue + lost\n` +
+    `/stats - Business overview\n` +
+    `/product - Sales by product\n` +
+    `/retention - Retention rate\n` +
+    `/top - Top customers by spend\n` +
+    `/unpaid - Today unpaid orders\n` +
+    `/cancelled - Cancelled history\n` +
+    `/search - Find customer\n` +
+    `/history 01874... - Full history\n` +
+    `/cancel fanflix35684 - Cancel order\n` +
+    `/edit - Edit expiry date\n` +
+    `/export - Download CSV\n` +
+    `/exportcontacts - Download contacts`
+  );
+});
+
+bot.onText(/\/customers/, (msg) => { if (!isOwner(msg)) return; showCustomerPage(msg.chat.id, 0); });
+bot.onText(/\/expiring/,  (msg) => { if (!isOwner(msg)) return; showExpiringPage(msg.chat.id, 0); });
+bot.onText(/\/today/,     (msg) => { if (!isOwner(msg)) return; showTodayPage(msg.chat.id, 0); });
+
+bot.onText(/\/revenue/, (msg) => {
+  if (!isOwner(msg)) return;
+  const todayStr  = today();
+  const t = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS total, COUNT(*) AS cnt FROM customers WHERE start_date = ?`).get(todayStr);
+  const w = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS total, COUNT(*) AS cnt FROM customers WHERE start_date >= date(?, '-7 days')`).get(todayStr);
+  const m = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS total, COUNT(*) AS cnt FROM customers WHERE start_date >= date(?, '-30 days')`).get(todayStr);
+  const lostToday = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM pending_orders WHERE cancelled = 1 AND date(COALESCE(cancelled_at, created_at), '+6 hours') = ?`).get(todayStr);
+  const lostMonth = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM pending_orders WHERE cancelled = 1 AND COALESCE(cancelled_at, created_at) >= datetime('now', '-30 days')`).get();
+  sendAutoDelete(msg.chat.id,
+    `Revenue Report\n━━━━━━━━━━━━━━━━━━\n` +
+    `Today: ৳${t.total.toFixed(0)} (${t.cnt})\n` +
+    `Week:  ৳${w.total.toFixed(0)} (${w.cnt})\n` +
+    `Month: ৳${m.total.toFixed(0)} (${m.cnt})\n` +
+    `━━━━━━━━━━━━━━━━━━\n` +
+    `❌ Lost Today: ৳${lostToday.total.toFixed(0)} (${lostToday.cnt})\n` +
+    `❌ Lost Month: ৳${lostMonth.total.toFixed(0)} (${lostMonth.cnt})`
+  );
+});
+
+bot.onText(/\/stats/, (msg) => {
+  if (!isOwner(msg)) return;
+  const todayStr = today();
+  const active  = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE expiry_date >= ?`).get(todayStr);
+  const expired = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE expiry_date < ?`).get(todayStr);
+  const onetime = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE expiry_date IS NULL`).get();
+  const total   = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS total FROM customers`).get();
+  const vip     = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE is_vip = 1 AND expiry_date >= ?`).get(todayStr);
+  const best    = db.prepare(`SELECT product, COUNT(*) AS cnt FROM customers GROUP BY product ORDER BY cnt DESC LIMIT 1`).get();
+  sendAutoDelete(msg.chat.id,
+    `Business Overview\n━━━━━━━━━━━━━━━━━━\n` +
+    `Total: ${active.cnt + expired.cnt + onetime.cnt}\n` +
+    `Active: ${active.cnt} | One-time: ${onetime.cnt}\n` +
+    `Expired: ${expired.cnt} | VIP: ${vip.cnt}\n` +
+    `Revenue: ৳${total.total.toFixed(0)}\n` +
+    `Best: ${best?.product || 'N/A'}`
+  );
+});
+
+bot.onText(/\/product/, (msg) => {
+  if (!isOwner(msg)) return;
+  const rows = db.prepare(`SELECT product, COUNT(*) AS cnt, SUM(store_amount) AS rev FROM customers GROUP BY product ORDER BY cnt DESC`).all();
+  if (!rows.length) return sendAutoDelete(msg.chat.id, 'No data.');
+  let text = `Sales by Product\n━━━━━━━━━━━━━━━━━━\n`;
+  rows.forEach(r => { text += `${r.product}\n${r.cnt} orders | ৳${(r.rev||0).toFixed(0)}\n\n`; });
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/retention/, (msg) => {
+  if (!isOwner(msg)) return;
+  const total   = db.prepare(`SELECT COUNT(DISTINCT phone) AS cnt FROM customers`).get();
+  const renewed = db.prepare(`SELECT COUNT(DISTINCT phone) AS cnt FROM customers WHERE renewal_count > 1`).get();
+  const rate    = total.cnt > 0 ? Math.round((renewed.cnt / total.cnt) * 100) : 0;
+  const top     = db.prepare(`SELECT name, phone, MAX(renewal_count) AS r FROM customers GROUP BY phone ORDER BY r DESC LIMIT 5`).all();
+  let text = `Retention\n━━━━━━━━━━━━━━━━━━\nTotal: ${total.cnt} | Renewed: ${renewed.cnt} | Rate: ${rate}%\n\nTop Loyal:\n`;
+  top.forEach((c, i) => { text += `${i+1}. ${cleanText(c.name)} — ${c.r}x\n`; });
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/top/, (msg) => {
+  if (!isOwner(msg)) return;
+  const rows = db.prepare(`SELECT name, phone, MAX(renewal_count) AS r, SUM(store_amount) AS spent FROM customers GROUP BY phone ORDER BY spent DESC LIMIT 10`).all();
+  if (!rows.length) return sendAutoDelete(msg.chat.id, 'No data.');
+  let text = `Top Customers by Spend\n━━━━━━━━━━━━━━━━━━\n`;
+  rows.forEach((c, i) => { text += `${i+1}. ${cleanText(c.name)} | 0${c.phone}\n💰 ৳${(c.spent||0).toFixed(0)} | 🔄 ${c.r}x\n\n`; });
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/unpaid/, (msg) => {
+  if (!isOwner(msg)) return;
+  const todayStr = today();
+  const rows = db.prepare(`SELECT * FROM pending_orders WHERE paid = 0 AND cancelled = 0 AND datetime(created_at, '+6 hours') >= ? AND datetime(created_at, '+6 hours') < ? ORDER BY created_at ASC`).all(todayStr + ' 00:00:00', todayStr + ' 23:59:59');
+  if (!rows.length) return sendAutoDelete(msg.chat.id, 'No unpaid orders today.');
+  let text = `Unpaid Orders Today (${rows.length})\n━━━━━━━━━━━━━━━━━━\n`;
+  rows.forEach((o, i) => {
+    text += `${i+1}. ${o.order_name} — ${cleanText(o.name)}\n`;
+    text += `📦 ${getProductNames(o.products)}\n`;
+    text += `💰 ৳${o.amount} | ⏰ ${timeAgo(o.created_at)}\n\n`;
+  });
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/cancelled/, (msg) => {
+  if (!isOwner(msg)) return;
+  const allTime  = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM pending_orders WHERE cancelled = 1`).get();
+  const last30   = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM pending_orders WHERE cancelled = 1 AND COALESCE(cancelled_at, created_at) >= datetime('now', '-30 days')`).get();
+  const last7    = db.prepare(`SELECT * FROM pending_orders WHERE cancelled = 1 ORDER BY COALESCE(cancelled_at, created_at) DESC LIMIT 20`).all();
+  const peakHour = db.prepare(`SELECT strftime('%H', cancelled_at) AS hr, COUNT(*) AS cnt FROM pending_orders WHERE cancelled = 1 AND cancelled_at IS NOT NULL GROUP BY hr ORDER BY cnt DESC LIMIT 1`).get();
+  const peakTime = peakHour ? `${parseInt(peakHour.hr)}:00 - ${parseInt(peakHour.hr)+1}:00` : 'N/A';
+  const cancelledPhones = db.prepare(`SELECT DISTINCT phone FROM pending_orders WHERE cancelled = 1`).all().map(r => r.phone);
+  let reorderCount = 0;
+  cancelledPhones.forEach(phone => { if (db.prepare(`SELECT id FROM customers WHERE phone = ?`).get(phone)) reorderCount++; });
+  const reorderRate = cancelledPhones.length > 0 ? Math.round((reorderCount / cancelledPhones.length) * 100) : 0;
+
+  let text = `Cancelled Orders\n━━━━━━━━━━━━━━━━━━\n`;
+  text += `All Time: ${allTime.cnt} | ৳${allTime.total.toFixed(0)}\n`;
+  text += `Last 30 days: ${last30.cnt} | ৳${last30.total.toFixed(0)}\n`;
+  text += `Peak Cancel Time: ${peakTime}\n`;
+  text += `Re-order Rate: ${reorderRate}%\n━━━━━━━━━━━━━━━━━━\n`;
+  if (last7.length) {
+    text += `Recent ${last7.length}:\n\n`;
+    last7.forEach((o, i) => {
+      text += `${i+1}. ${o.order_name} — ${cleanText(o.name)}\n`;
+      text += `📦 ${getProductNames(o.products)} | ৳${o.amount}\n`;
+      text += `⏰ ${formatEPSTime(o.cancelled_at || o.created_at)}\n\n`;
+    });
+  }
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/search (.+)/, (msg, match) => {
+  if (!isOwner(msg)) return;
+  const query = match[1].trim();
+  const phone = normalizePhone(query);
+  const rows  = db.prepare(`SELECT * FROM customers WHERE phone LIKE ? OR LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) ORDER BY created_at DESC LIMIT 10`).all(`%${phone}%`, `%${query}%`, `%${query}%`);
+  if (!rows.length) return sendAutoDelete(msg.chat.id, 'No customer found.');
+  let text = `Search: "${query}"\n━━━━━━━━━━━━━━━━━━\n`;
+  const phones = [...new Set(rows.map(r => r.phone))];
+  phones.forEach(ph => {
+    const customerRows = rows.filter(r => r.phone === ph);
+    const ltv = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS total FROM customers WHERE phone = ?`).get(ph);
+    const c   = customerRows[0];
+    const d   = c.expiry_date ? daysUntil(c.expiry_date) : null;
+    const status = c.expiry_date ? (d > 0 ? `✅ Active (${d}d)` : '❌ Expired') : '🎁 One-time';
+    text += `${c.is_vip ? '⭐' : '👤'} ${cleanText(c.name)} | 0${c.phone}\n`;
+    text += `📦 ${c.product}\n`;
+    text += `${status} | 🔄 ${c.renewal_count}x | 💰 ৳${ltv.total.toFixed(0)} lifetime\n\n`;
+  });
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/history (.+)/, (msg, match) => {
+  if (!isOwner(msg)) return;
+  const phone     = normalizePhone(match[1].trim());
+  const orders    = db.prepare(`SELECT * FROM customers WHERE phone = ? ORDER BY created_at DESC`).all(phone);
+  const cancelled = db.prepare(`SELECT * FROM pending_orders WHERE phone = ? AND cancelled = 1 ORDER BY COALESCE(cancelled_at, created_at) DESC`).all(phone);
+  const unpaid    = db.prepare(`SELECT * FROM pending_orders WHERE phone = ? AND paid = 0 AND cancelled = 0`).all(phone);
+  if (!orders.length && !cancelled.length) return sendAutoDelete(msg.chat.id, 'No history found.');
+  const totalSpent = orders.reduce((s, o) => s + (o.store_amount || 0), 0);
+  const firstOrder = orders.length ? orders[orders.length - 1] : null;
+  let text = `Customer History | 0${phone}\n━━━━━━━━━━━━━━━━━━\n`;
+  if (orders.length) {
+    text += `💰 Lifetime Value: ৳${totalSpent.toFixed(0)}\n`;
+    text += `🔄 Total Orders: ${orders.length}\n`;
+    text += `📅 Since: ${firstOrder ? formatDate(firstOrder.start_date) : 'N/A'}\n`;
+    if (orders[0]?.is_vip) text += `⭐ VIP Customer\n`;
+    text += `\n✅ Orders:\n`;
+    orders.slice(0, 5).forEach(o => {
+      text += `${o.order_name} | ${cleanText(o.product)}\n৳${o.store_amount || 0} | ${formatDate(o.start_date)}\n`;
+      if (o.expiry_date) text += `Expires: ${formatDate(o.expiry_date)}\n`;
+      text += `\n`;
+    });
+  }
+  if (cancelled.length) {
+    text += `❌ Cancelled (${cancelled.length}):\n`;
+    cancelled.slice(0, 3).forEach(o => { text += `${o.order_name} | ৳${o.amount}\n`; });
+    text += `\n`;
+  }
+  if (unpaid.length) {
+    text += `⏳ Unpaid (${unpaid.length}):\n`;
+    unpaid.forEach(o => { text += `${o.order_name} | ৳${o.amount}\n`; });
+  }
+  sendAutoDelete(msg.chat.id, text);
+});
+
+bot.onText(/\/cancel (.+)/, async (msg, match) => {
+  if (!isOwner(msg)) return;
+  const orderName = match[1].trim().toUpperCase().replace('#', '');
+  const pending   = db.prepare(`SELECT * FROM pending_orders WHERE UPPER(REPLACE(order_name, '#', '')) = ? AND cancelled = 0`).get(orderName);
+  if (!pending) return sendAutoDelete(msg.chat.id, `Order not found or already cancelled.`);
+  db.prepare(`UPDATE pending_orders SET cancelled = 1, cancelled_at = datetime('now') WHERE id = ?`).run(pending.id);
+  saveContact(pending.phone, pending.name);
+  const cancelCount = db.prepare(`SELECT COUNT(*) AS cnt FROM pending_orders WHERE phone = ? AND cancelled = 1`).get(pending.phone);
+  let text =
+    `🚫 *Order Cancelled*\n` +
+    `👤 ${cleanText(pending.name)} | 📱 0${pending.phone}\n` +
+    `🛒 ${pending.order_name}\n` +
+    `📦 ${getProductNames(pending.products)}\n` +
+    `💰 ৳${pending.amount}\n` +
+    `📱 Phone saved ✅`;
+  if (cancelCount.cnt >= 2) {
+    const lost = db.prepare(`SELECT COALESCE(SUM(amount),0) AS t FROM pending_orders WHERE phone = ? AND cancelled = 1`).get(pending.phone);
+    text += `\n⚠️ Repeat Canceller (${cancelCount.cnt}x) | Lost: ৳${lost.t.toFixed(0)}`;
+  }
+  sendAutoDelete(msg.chat.id, text);
+});
+
+const editState = {};
+bot.onText(/\/edit/, (msg) => {
+  if (!isOwner(msg)) return;
+  editState[msg.chat.id] = { step: 'phone' };
+  sendAutoDelete(msg.chat.id, 'Enter phone number to edit:');
+});
+
+bot.onText(/\/export/, async (msg) => {
+  if (!isOwner(msg)) return;
+  const rows = db.prepare(`SELECT * FROM customers ORDER BY created_at DESC`).all();
+  if (!rows.length) return sendAutoDelete(msg.chat.id, 'No data.');
+  let csv = 'Name,Phone,Email,Product,Type,Amount,Start,Expiry,Renewals,VIP\n';
+  rows.forEach(c => { csv += `"${c.name}","0${c.phone}","${c.email}","${c.product}","${c.product_type}",${c.store_amount||0},${c.start_date},${c.expiry_date||'N/A'},${c.renewal_count},${c.is_vip?'Yes':'No'}\n`; });
+  await bot.sendDocument(msg.chat.id, Buffer.from(csv,'utf8'), {}, { filename: `fanflix_${today()}.csv`, contentType: 'text/csv' });
+});
+
+bot.onText(/\/exportcontacts/, async (msg) => {
+  if (!isOwner(msg)) return;
+  if (!fs.existsSync(CONTACTS_FILE)) return sendAutoDelete(msg.chat.id, 'No contacts yet.');
+  await bot.sendDocument(msg.chat.id, CONTACTS_FILE, {}, { filename: `contacts_${today()}.txt`, contentType: 'text/plain' });
+});
+
+bot.on('message', (msg) => {
+  if (!isOwner(msg)) return;
+  const cid  = msg.chat.id;
+  const text = msg.text || '';
+  if (text.startsWith('/')) return;
+  if (editState[cid]) {
+    const s = editState[cid];
+    if (s.step === 'phone') {
+      const c = db.prepare(`SELECT * FROM customers WHERE phone = ? ORDER BY created_at DESC LIMIT 1`).get(normalizePhone(text));
+      if (!c) { delete editState[cid]; return sendAutoDelete(cid, 'Customer not found.'); }
+      s.customer = c; s.step = 'date';
+      return sendAutoDelete(cid, `${cleanText(c.name)} | ${c.product}\nExpiry: ${c.expiry_date || 'One-time'}\n\nNew date (YYYY-MM-DD):`);
+    }
+    if (s.step === 'date') {
+      db.prepare(`UPDATE customers SET expiry_date=?, reminder_1_sent=0 WHERE id=?`).run(text, s.customer.id);
+      delete editState[cid];
+      return sendAutoDelete(cid, `Updated to ${formatDate(text)}`);
+    }
+  }
+});
+
+// =============================================================
+//  SCHEDULED TASKS
+// =============================================================
+
+cron.schedule('0 8 * * *', async () => {
+  try {
+    const res     = await axios.get('https://bulksmsbd.net/api/getBalanceApi', { params: { api_key: config.SMS_API_KEY } });
+    const balance = parseFloat(res.data?.balance || res.data?.data?.balance || 0);
+    if (balance < 100) {
+      await safeSend(`⚠️ *Low SMS Balance!*\nRemaining: ${balance}\nTop up now to avoid missed reminders!`);
+    }
+  } catch(e) { console.error('SMS balance:', e.message); }
+});
+
+cron.schedule('0 19 * * *', async () => {
+  const todayStr = today();
+  const in1day   = addDaysStr(todayStr, 1);
+  const lost3ago = addDaysStr(todayStr, -config.LOST_ALERT_DAYS_AFTER_EXPIRY);
+
+  const in1 = db.prepare(`SELECT * FROM customers WHERE expiry_date = ? AND reminder_1_sent = 0`).all(in1day);
+  for (const c of in1) {
+    try {
+      await sendSMS(c.phone, SMS_MSG1(c.product));
+      db.prepare('UPDATE customers SET reminder_1_sent=1 WHERE id=?').run(c.id);
+      await safeSend(
+        `🚨 *Renewal SMS Sent (1 day)*\n` +
+        `👤 ${cleanText(c.name)} | 📱 0${c.phone}\n` +
+        `📦 ${c.product}\n` +
+        `📅 Expires: TOMORROW`
+      );
+    } catch(e) { console.error('SMS 1d:', e.message); }
+  }
+
+  const lost = db.prepare(`SELECT * FROM customers WHERE expiry_date = ? AND lost_alert_sent = 0`).all(lost3ago);
+  for (const c of lost) {
+    try {
+      await safeSend(`⚠️ *Lost Customer!*\n👤 ${cleanText(c.name)} | 0${c.phone}\n📦 ${c.product}\n💀 Expired ${config.LOST_ALERT_DAYS_AFTER_EXPIRY} days ago`);
+      db.prepare('UPDATE customers SET lost_alert_sent=1 WHERE id=?').run(c.id);
+    } catch(e) { console.error('Lost:', e.message); }
+  }
+
+  const tomorrow = db.prepare(`SELECT * FROM customers WHERE expiry_date = ?`).all(in1day);
+  if (tomorrow.length) {
+    let text = `📅 *Expiring Tomorrow (${tomorrow.length})*\n━━━━━━━━━━━━━━━━━━\n`;
+    tomorrow.forEach(c => { text += `👤 ${cleanText(c.name)} | 0${c.phone}\n📦 ${c.product}\n\n`; });
+    await safeSend(text);
+  }
+
+  db.prepare(`DELETE FROM pending_orders WHERE paid = 0 AND cancelled = 0 AND created_at < datetime('now', '-24 hours')`).run();
+});
+
+cron.schedule('0 21 * * *', async () => {
+  try {
+    const eligible = db.prepare(`
+      SELECT DISTINCT p.phone, p.name FROM pending_orders p
+      WHERE p.cancelled = 1
+      AND COALESCE(p.cancelled_at, p.created_at) <= datetime('now', '-7 days')
+      AND p.phone NOT IN (SELECT DISTINCT phone FROM customers)
+      AND p.phone NOT IN (SELECT DISTINCT phone FROM pending_orders WHERE discount_sent = 1)
+    `).all();
+    for (const c of eligible) {
+      try {
+        await sendSMS(c.phone, SMS_DISCOUNT);
+        db.prepare(`UPDATE pending_orders SET discount_sent = 1 WHERE phone = ?`).run(c.phone);
+        await safeSend(`🎁 *Discount SMS Sent!*\n👤 ${cleanText(c.name)} | 📱 0${c.phone}\nCode: WELCOMEBACK10`);
+      } catch(e) { console.error('Discount SMS:', e.message); }
+    }
+  } catch(e) { console.error('Discount cron:', e.message); }
+});
+
+cron.schedule('30 22 * * *', async () => {
+  try {
+    const todayStr = today();
+    const t        = db.prepare(`SELECT COALESCE(SUM(store_amount),0) AS revenue, COUNT(*) AS orders FROM customers WHERE start_date = ?`).get(todayStr);
+    const expiring = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE expiry_date >= ? AND expiry_date <= ?`).get(todayStr, addDaysStr(todayStr, 7));
+    const active   = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE expiry_date >= ?`).get(todayStr);
+    await safeSend(
+      `📊 *Daily Summary*\n━━━━━━━━━━━━━━━━━━\n` +
+      `✅ Orders: ${t.orders}\n` +
+      `💰 Revenue: ৳${t.revenue.toFixed(0)}\n` +
+      `👥 Active: ${active.cnt}\n` +
+      `⚠️ Expiring This Week: ${expiring.cnt}`
+    );
+  } catch(e) { console.error('Summary:', e.message); }
+});
+
+cron.schedule('50 23 * * *', async () => {
+  try {
+    const todayStr     = today();
+    const totalSuccess = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total, COALESCE(SUM(store_amount),0) AS net FROM payments WHERE date(created_at, '+6 hours') = ? AND status = 'Success'`).get(todayStr);
+    const totalFailed  = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(amount),0) AS total FROM payments WHERE date(created_at, '+6 hours') = ? AND status != 'Success'`).get(todayStr);
+    const matched      = db.prepare(`SELECT COUNT(*) AS cnt, COALESCE(SUM(store_amount),0) AS total FROM customers WHERE start_date = ?`).get(todayStr);
+    const reportDate   = new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    await safeSend(
+      `📊 *Payment Report — ${reportDate}*\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `💰 Total Received: ৳${totalSuccess.total.toFixed(0)} (${totalSuccess.cnt})\n` +
+      `✅ Matched: ${matched.cnt} | ৳${matched.total.toFixed(0)}\n` +
+      `⚠️ Unmatched: ${Math.max(0, totalSuccess.cnt - matched.cnt)}\n` +
+      `❌ Failed: ${totalFailed.cnt} | ৳${totalFailed.total.toFixed(0)}\n` +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      `🏪 Net Revenue: ৳${matched.total.toFixed(0)}\n` +
+      `📊 Gateway Fees: ৳${(totalSuccess.total - matched.total > 0 ? totalSuccess.total - matched.total : 0).toFixed(0)}`
+    );
+
+    const unpaid = db.prepare(`SELECT * FROM pending_orders WHERE paid = 0 AND cancelled = 0 ORDER BY created_at ASC`).all();
+    if (unpaid.length) {
+      const totalUnpaid = unpaid.reduce((s, o) => s + o.amount, 0);
+      const paidAfterSMS = db.prepare(`SELECT COUNT(*) AS cnt FROM pending_orders WHERE paid = 1 AND followup_sent >= 1 AND date(created_at, '+6 hours') = ?`).get(todayStr);
+      let text =
+        `📋 *Unpaid Orders — Cancel These*\n━━━━━━━━━━━━━━━━━━\n` +
+        `✅ Paid after SMS today: ${paidAfterSMS.cnt}\n` +
+        `❌ Still unpaid: ${unpaid.length} | ৳${totalUnpaid.toFixed(0)}\n` +
+        `━━━━━━━━━━━━━━━━━━\n`;
+      unpaid.forEach((o, i) => {
+        text += `${i+1}. ${o.order_name} — ${cleanText(o.name)}\n`;
+        text += `📦 ${getProductNames(o.products)} | ৳${o.amount}\n`;
+        text += `⏰ ${timeAgo(o.created_at)}\n\n`;
+      });
+      text += `Use /cancel orderid to cancel.`;
+      await safeSend(text);
+    }
+  } catch(e) { console.error('Payment report:', e.message); }
+});
+
+cron.schedule('0 10 1 * *', async () => {
+  try {
+    const tm = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE start_date >= date('now','start of month')`).get();
+    const lm = db.prepare(`SELECT COUNT(*) AS cnt FROM customers WHERE start_date >= date('now','start of month','-1 month') AND start_date < date('now','start of month')`).get();
+    const g  = lm.cnt > 0 ? Math.round(((tm.cnt - lm.cnt) / lm.cnt) * 100) : 0;
+    await safeSend(`${g >= 0 ? '📈' : '📉'} *Monthly Growth*\nLast: ${lm.cnt} | This: ${tm.cnt} | ${g >= 0 ? '+' : ''}${g}%`);
+  } catch(e) { console.error('Growth:', e.message); }
+});
+
+// =============================================================
+//  START
+// =============================================================
+
+app.listen(config.PORT, () => {
+  console.log(`FanFlix Bot v6.2 on port ${config.PORT}`);
+  safeSend('🚀 *FanFlix Bot v6.2 Started!*').catch(() => {});
+});
