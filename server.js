@@ -806,6 +806,17 @@ app.post('/api/admin/replaceall', adminAuth, (req, res) => {
   res.json({ success:true, count });
 });
 
+// Update profile for a link
+app.post('/api/admin/update-profile/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  const { profile } = req.body;
+  if (!profile) return res.status(400).json({ error:'Missing profile' });
+  links[req.params.token].profile = profile;
+  saveLinks(links);
+  res.json({ success:true });
+});
+
 app.post('/api/admin/update-phone/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
