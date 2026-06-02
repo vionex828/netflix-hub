@@ -1058,6 +1058,7 @@ app.post('/api/auto-create', (req, res) => {
     if (authToken !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
+    const d = parseInt(days) || 28;
     const slot = getNextAvailableSlot();
     if (!slot) {
       // Save to waitlist
@@ -1079,7 +1080,6 @@ app.post('/api/auto-create', (req, res) => {
     }
     const links = loadLinks();
     const now = Date.now();
-    const d = parseInt(days) || 28;
 
     // ── RECYCLE: check for never-used recycled link for same profile ──
     const recyclable = Object.values(links).find(l =>
