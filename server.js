@@ -201,32 +201,6 @@ function getNextAvailableSlot() {
   return null;
 }
 
-function recycleUnusedLinks() {
-  const links = loadLinks();
-  const now = Date.now();
-  const oneDayMs = 30 * 60 * 60 * 1000;
-  let recycled = 0;
-  for (const token of Object.keys(links)) {
-    const link = links[token];
-    if (!link.active || link.expiresAt <= now) continue;
-    if ((link.uses || 0) > 0) continue;
-    if (!link.createdAt) continue;
-    const age = now - link.createdAt;
-    if (age > oneDayMs) {
-      const oldPhone = link.phone || 'unknown';
-      links[token].phone = '';
-      links[token].recycled = true;
-      links[token].recycledAt = now;
-      // NOTE: keep active=true so link stays visible in admin
-      recycled++;
-      sendTelegram('<b>♻️ Link Recycled & Available</b>\n\nToken: /c/' + token + '\nProfile: ' + link.profile + '\nWas assigned to: ' + oldPhone + '\nNever opened in 30h — slot is now available for new customer.');
-    }
-  }
-  if (recycled > 0) saveLinks(links);
-  return recycled;
-}
-
-setInterval(recycleUnusedLinks, 60 * 60 * 1000);
 
 function generateToken() { return crypto.randomBytes(4).toString('hex'); }
 
@@ -705,49 +679,12 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const links = loadLinks();
   const now = Date.now();
   // Check if active link already exists for this email+profile
-  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now&&!l.recycled);
+  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
   if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
-
-  // ── RECYCLE: reuse a never-used recycled link for same profile ──
-  const recyclable = Object.values(links).find(l =>
-    l.profile === profile &&
-    l.uses === 0 &&
-    l.recycled === true
-  );
-
-  let token;
-  if (recyclable) {
-    token = recyclable.token;
-    links[token] = {
-      ...links[token],
-      email: email.toLowerCase(),
-      pin,
-      phone: phone || '',
-      days: parseInt(days),
-      createdAt: now,
-      expiresAt: now + parseInt(days) * 24 * 60 * 60 * 1000,
-      uses: 0,
-      lastUsed: null,
-      active: true,
-      warningSent: false,
-      recycled: false,
-      recycledAt: null,
-      recycledFrom: recyclable.email
-    };
-    sendTelegram(`♻️ <b>Link Recycled!</b>\n\n🔗 /c/${token}\n👤 ${profile}\n📧 Old: ${recyclable.email}\n📧 New: ${email.toLowerCase()}\n⏳ ${days} days`);
-  } else {
-    token = generateToken();
-    links[token] = {
-      token, email: email.toLowerCase(), profile, pin,
-      phone: phone || '', days: parseInt(days),
-      createdAt: now, expiresAt: now + parseInt(days) * 24 * 60 * 60 * 1000,
-      uses: 0, lastUsed: null, active: true, warningSent: false
-    };
-  }
   saveLinks(links);
-  res.json({ success: true, token, link: `/c/${token}`, recycled: !!recyclable });
+  res.json({ success:true, token, link:`/c/${token}` });
 });
 
 app.post('/api/admin/revoke/:token', adminAuth, (req, res) => {
@@ -1091,37 +1028,8 @@ app.post('/api/auto-create', (req, res) => {
     }
     const links = loadLinks();
     const now = Date.now();
-
-    // ── RECYCLE: check for never-used recycled link for same profile ──
-    const recyclable = Object.values(links).find(l =>
-      l.profile === slot.profile &&
-      l.uses === 0 &&
-      l.recycled === true &&
-      !l.active
-    );
-
     let token;
-    if (recyclable) {
-      token = recyclable.token;
-      links[token] = {
-        ...links[token],
-        email: slot.email,
-        pin: slot.pin,
-        phone: phone,
-        customerName: customerName || '',
-        days: d,
-        createdAt: now,
-        expiresAt: now + d * 24 * 60 * 60 * 1000,
-        uses: 0,
-        lastUsed: null,
-        active: true,
-        warningSent: false,
-        recycled: false,
-        recycledAt: null,
-        recycledFrom: recyclable.email
-      };
-      sendTelegram(`♻️ <b>Auto Link Recycled!</b>\n📞 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
-    } else {
+    {
       token = generateToken();
       links[token] = {
         token, email: slot.email, profile: slot.profile, pin: slot.pin,
@@ -1135,7 +1043,7 @@ app.post('/api/auto-create', (req, res) => {
     saveLinks(links);
     // Check low stock after creating
     checkLowStock();
-    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin, recycled: !!recyclable });
+    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin });
   } catch(e) {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
