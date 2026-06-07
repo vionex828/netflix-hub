@@ -730,13 +730,13 @@ async function loadAccounts(){
     const [rA,rL]=await Promise.all([fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}}),fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}})]);
     const dA=await rA.json(); const dL=await rL.json();
     // Build meta from accounts.json
-    const meta={};(dA.accounts||[]).forEach(a=>meta[a.email]={notes:a.notes||'',active:a.active!==false,addedAt:a.addedAt});
+    const meta={};(dA.accounts||[]).forEach(a=>meta[a.email]={notes:a.notes||'',active:a.active!==false,addedAt:a.addedAt,planDays:a.planDays||null,expiresAt:a.expiresAt||null});
     // Group links by email
     const now=Date.now(); const byEmail={};
     Object.values(dL.links||{}).forEach(l=>{
       const em=l.email;if(!byEmail[em])byEmail[em]={email:em,slotsUsed:0,notes:'',active:true};
       if(l.active&&l.expiresAt>now)byEmail[em].slotsUsed++;
-      if(meta[em]){byEmail[em].notes=meta[em].notes;byEmail[em].active=meta[em].active;}
+      if(meta[em]){byEmail[em].notes=meta[em].notes;byEmail[em].active=meta[em].active;byEmail[em].planDays=meta[em].planDays;byEmail[em].expiresAt=meta[em].expiresAt;}
     });
     // Also include accounts with no links
     (dA.accounts||[]).forEach(a=>{if(!byEmail[a.email])byEmail[a.email]={email:a.email,slotsUsed:0,notes:a.notes||'',active:a.active!==false};});
