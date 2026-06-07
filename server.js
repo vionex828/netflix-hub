@@ -37,6 +37,7 @@ const IP_FILE = `${DATA_DIR}/ips.json`;
 const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
+const PAYMENT_URL = process.env.PAYMENT_URL || 'https://pg.eps.com.bd/DefaultPaymentLink?id=805A9AEE';
 const WA_NUMBER = '8801928382918';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
@@ -182,11 +183,16 @@ function trackIP(token, ip) {
   return data[token].length;
 }
 
-function getNextAvailableSlot() {
+function getNextAvailableSlot(customerDays) {
   const accounts = loadAccounts();
   const links = loadLinks();
   const now = Date.now();
-  const sorted = [...accounts].filter(a => a.active).sort((a,b) => (a.priority||99) - (b.priority||99));
+  const days = parseInt(customerDays) || 28;
+  const sorted = [...accounts].filter(a => {
+    if (!a.active) return false;
+    if (a.planDays) return parseInt(a.planDays) === days;
+    return true; // no plan set — accept any
+  }).sort((a,b) => (a.priority||99) - (b.priority||99));
   for (const account of sorted) {
     const email = account.email;
     const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
@@ -807,8 +813,12 @@ app.get('/api/link/:token/info', (req, res) => {
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
-  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
-  res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
+  // Get sibling links (other active links for same email)
+  const siblings = Object.values(links).filter(l =>
+    l.email === link.email && l.token !== req.params.token && l.active && l.expiresAt > now
+  ).map(l => ({ token:l.token, profile:l.profile, pin:l.pin, daysLeft:Math.ceil((l.expiresAt-now)/(24*60*60*1000)) }));
+  if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token, paymentUrl:PAYMENT_URL, siblingLinks:siblings });
+  res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, siblingLinks:siblings });
 });
 
 app.get('/api/link/:token', async (req, res) => {
@@ -834,7 +844,11 @@ app.get('/api/link/:token', async (req, res) => {
   try {
     const codes = await fetchNetflixEmails(link.email, true);
     if (codes.length > 0) totalToday += 1;
-    res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    // Get sibling links
+    const siblings = Object.values(links).filter(l =>
+      l.email === link.email && l.token !== req.params.token && l.active && l.expiresAt > now
+    ).map(l => ({ token:l.token, profile:l.profile, pin:l.pin, daysLeft:Math.ceil((l.expiresAt-now)/(24*60*60*1000)) }));
+    res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, siblingLinks:siblings });
   } catch(err) {
     res.status(500).json({ success:false, error:'server', message:'Server error. Try again.' });
   }
@@ -905,7 +919,7 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
-    const slot = getNextAvailableSlot();
+    const slot = getNextAvailableSlot(d);
     if (!slot) { remaining.push(w); continue; }
     const token = generateToken();
     const d = parseInt(w.days)||28;
@@ -969,7 +983,7 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const now = Date.now();
   const result = accounts.map(a => {
     const active = Object.values(links).filter(l => l.email===a.email && l.active && l.expiresAt>now).length;
-    return { ...a, slotsUsed: active, slotsTotal: 8 };
+    return { ...a, slotsUsed: active, slotsTotal: 8, planDays: a.planDays||null };
   });
   res.json({ success:true, accounts: result });
 });
@@ -981,7 +995,8 @@ app.post('/api/admin/accounts', adminAuth, (req, res) => {
   if (accounts.find(a => a.email === email.toLowerCase().trim())) {
     return res.status(400).json({ success:false, error:'Account already exists' });
   }
-  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now() });
+  const planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
+  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now(), planDays });
   saveAccounts(accounts);
   res.json({ success:true });
 });
@@ -992,6 +1007,15 @@ app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   const filtered = accounts.filter(a => a.email.trim().toLowerCase() !== target);
   saveAccounts(filtered);
   res.json({ success:true, removed: accounts.length - filtered.length });
+});
+
+app.post('/api/admin/accounts/:email/plan', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const idx = accounts.findIndex(a => a.email === decodeURIComponent(req.params.email));
+  if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
+  accounts[idx].planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
+  saveAccounts(accounts);
+  res.json({ success:true, planDays: accounts[idx].planDays });
 });
 
 app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
@@ -1025,7 +1049,7 @@ app.post('/api/auto-create', (req, res) => {
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
     const d = parseInt(days) || 28;
-    const slot = getNextAvailableSlot();
+    const slot = getNextAvailableSlot(d);
     if (!slot) {
       // Save to waitlist
       const waitlist = loadWaitlist();
@@ -1088,7 +1112,88 @@ app.get('/api/track/:phone', (req, res) => {
 });
 
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
-app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
+app.get('/c/:token', (req, res) => {
+  const fs2 = require('fs');
+  const path2 = require('path');
+  let html = fs2.readFileSync(path2.join(__dirname,'public','customer.html'), 'utf8');
+  // Inject patch script before </body>
+  const patch = `
+<script>
+// FanFlix Patch: sibling links + payment button
+(function(){
+  // Override fetch to intercept API responses
+  const origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    return origFetch(url, opts).then(async r => {
+      if (typeof url === 'string' && url.includes('/api/link/')) {
+        const clone = r.clone();
+        const data = await clone.json().catch(()=>null);
+        if (data) {
+          // Show sibling links if available
+          if (data.success && data.siblingLinks && data.siblingLinks.length > 0) {
+            setTimeout(() => showSiblingLinks(data.siblingLinks), 500);
+          }
+          // Add payment button to expired page
+          if (!data.success && data.error === 'expired' && data.paymentUrl) {
+            window._paymentUrl = data.paymentUrl;
+            setTimeout(() => addPaymentButton(data.paymentUrl), 500);
+          }
+        }
+        return r;
+      }
+      return r;
+    });
+  };
+
+  function showSiblingLinks(siblings) {
+    if (!siblings || !siblings.length) return;
+    if (document.getElementById('sibling-links')) return;
+    const page = document.getElementById('page') || document.body;
+    const div = document.createElement('div');
+    div.id = 'sibling-links';
+    div.style.cssText = 'max-width:560px;margin:1rem auto;padding:0 1rem';
+    div.innerHTML = \`
+      <div style="background:#0e0e0e;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:1.2rem;">
+        <div style="font-family:\\'IBM Plex Mono\\',monospace;font-size:.6rem;letter-spacing:2px;color:#666;text-transform:uppercase;margin-bottom:.8rem">Your Other Profiles</div>
+        \${siblings.map(s => \`
+          <a href="/c/\${s.token}" style="display:flex;align-items:center;gap:.8rem;padding:.7rem;background:#141414;border:1px solid rgba(255,255,255,.06);border-radius:10px;text-decoration:none;margin-bottom:.5rem;transition:border-color .2s" onmouseover="this.style.borderColor='rgba(255,255,255,.2)'" onmouseout="this.style.borderColor='rgba(255,255,255,.06)'">
+            <div style="width:36px;height:36px;border-radius:50%;background:#E50914;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:.85rem;flex-shrink:0">\${s.profile.replace('Profile ','')}</div>
+            <div style="flex:1">
+              <div style="color:#fff;font-size:.85rem;font-weight:600">\${s.profile}</div>
+              <div style="font-family:\\'IBM Plex Mono\\',monospace;font-size:.62rem;color:#666;margin-top:2px">PIN: \${s.pin} · \${s.daysLeft}d left</div>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+        \`).join('')}
+      </div>
+    \`;
+    // Insert after codes section or at end of page
+    const codesSection = document.querySelector('.codes-section') || page.lastElementChild;
+    if (codesSection && codesSection.parentNode) {
+      codesSection.parentNode.insertBefore(div, codesSection.nextSibling);
+    } else {
+      page.appendChild(div);
+    }
+  }
+
+  function addPaymentButton(paymentUrl) {
+    // Find existing WhatsApp button in expired page and add payment button next to it
+    const waBtn = document.querySelector('a[href*="wa.me"]');
+    if (!waBtn || document.getElementById('renew-btn')) return;
+    const btn = document.createElement('a');
+    btn.id = 'renew-btn';
+    btn.href = paymentUrl;
+    btn.target = '_blank';
+    btn.style.cssText = 'display:inline-flex;align-items:center;gap:.5rem;background:#E50914;color:#fff;padding:12px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.88rem;margin-bottom:.6rem;width:100%;justify-content:center;box-sizing:border-box';
+    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Renew Subscription';
+    waBtn.parentNode.insertBefore(btn, waBtn);
+  }
+})();
+</script>`;
+  html = html.replace('</body>', patch + '\n</body>');
+  res.send(html);
+});
+
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
 process.on('uncaughtException', (err) => {
