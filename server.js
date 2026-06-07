@@ -983,7 +983,7 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const now = Date.now();
   const result = accounts.map(a => {
     const active = Object.values(links).filter(l => l.email===a.email && l.active && l.expiresAt>now).length;
-    return { ...a, slotsUsed: active, slotsTotal: 8, planDays: a.planDays||null };
+    return { ...a, slotsUsed: active, slotsTotal: 8, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
   });
   res.json({ success:true, accounts: result });
 });
@@ -996,7 +996,8 @@ app.post('/api/admin/accounts', adminAuth, (req, res) => {
     return res.status(400).json({ success:false, error:'Account already exists' });
   }
   const planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
-  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now(), planDays });
+  const expiresAt = req.body.expiresAt || null;
+  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now(), planDays, expiresAt });
   saveAccounts(accounts);
   res.json({ success:true });
 });
@@ -1013,9 +1014,10 @@ app.post('/api/admin/accounts/:email/plan', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const idx = accounts.findIndex(a => a.email === decodeURIComponent(req.params.email));
   if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
-  accounts[idx].planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
+  if (req.body.planDays !== undefined) accounts[idx].planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
+  if (req.body.expiresAt !== undefined) accounts[idx].expiresAt = req.body.expiresAt || null;
   saveAccounts(accounts);
-  res.json({ success:true, planDays: accounts[idx].planDays });
+  res.json({ success:true, planDays: accounts[idx].planDays, expiresAt: accounts[idx].expiresAt });
 });
 
 app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
