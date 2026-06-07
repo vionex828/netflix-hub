@@ -238,7 +238,147 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
     <div class="content" id="content">
       <div id="sec-dashboard">
-      <div class="grid-4"><div class="act-time">${timeAgo(l.lastUsed)}</div></div>`;}).join('');
+      <div class="grid-4">
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-active">-</div><div class="stat-lbl">Active Links</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div></div><div class="stat-link" onclick="filterByStatus('active')">View all active links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expiring">-</div><div class="stat-lbl">Expiring Soon</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-link" onclick="filterByStatus('expiring')">View expiring links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-expired">-</div><div class="stat-lbl">Expired</div></div><div class="stat-icon red"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div><div class="stat-link" onclick="filterByStatus('expired')">View expired links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-uses">-</div><div class="stat-lbl">Total Uses</div></div><div class="stat-icon blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div></div><div class="stat-link">View usage analytics <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem">
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-never-used" style="color:var(--amber)">-</div><div class="stat-lbl">Never Used Links</div></div><div class="stat-icon amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div></div><div class="stat-link" onclick="showNeverUsed()" style="cursor:pointer">View never used links <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="s-free-slots" style="color:var(--green)">-</div><div class="stat-lbl">Free Slots</div></div><div class="stat-icon green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-4 0v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></div></div><div class="stat-link" onclick="showSection('accounts')">View accounts <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem">
+        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('today')"><div class="stat-card-top"><div><div class="stat-num" id="exp-today" style="color:var(--red)">-</div><div class="stat-lbl">Expiring Today</div></div><div class="stat-icon red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
+        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('week')"><div class="stat-card-top"><div><div class="stat-num" id="exp-week" style="color:var(--amber)">-</div><div class="stat-lbl">Expiring This Week</div></div><div class="stat-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+        <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('month')"><div class="stat-card-top"><div><div class="stat-num" id="exp-month" style="color:var(--green)">-</div><div class="stat-lbl">Expiring This Month</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+      </div>
+
+      <div class="create-card" id="create-section">
+        <div class="card-header" style="margin-bottom:.8rem"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Customer Link</div></div>
+        <div class="form-row">
+          <div><label class="field-label">Netflix Email</label><input class="field-inp" id="c-email" placeholder="email@gmail.com" type="email"/></div>
+          <div><label class="field-label">Profile</label><input class="field-inp" id="c-profile" placeholder="Profile A"/></div>
+          <div><label class="field-label">PIN</label><input class="field-inp" id="c-pin" placeholder="5651"/></div>
+          <div><label class="field-label">Phone</label><input class="field-inp" id="c-phone" placeholder="01XXXXXXXXX" type="tel"/></div>
+          <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
+          <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
+            <button class="create-btn" onclick="doCreate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create</button>
+            <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Bulk (8 Links)</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Customer Links<span class="card-badge ok" id="active-badge">-</span></div>
+          <div style="display:flex;align-items:center;gap:.6rem;margin-left:auto">
+            <select id="sort-select" onchange="sortLinks()" style="background:var(--s3);border:1px solid var(--border);color:var(--muted);font-family:var(--m);font-size:.68rem;padding:6px 10px;border-radius:7px;cursor:pointer"><option value="created">Sort: Newest</option><option value="days-asc">Sort: Days ↑</option><option value="days-desc">Sort: Days ↓</option><option value="uses-desc">Sort: Most Used</option><option value="last-used">Sort: Last Used</option></select>
+            <div class="search-wrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7a7f8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input id="search-inp" placeholder="Search email, phone, profile or /c/token..." oninput="filterLinks()"/></div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Email / Phone</th><th>Profile</th><th>PIN</th><th>Link / Country</th><th>Days Left</th><th>Uses / IPs</th><th>Last Used</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="links-tbody"><tr class="empty-row"><td colspan="9">Loading links...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      </div><!-- /sec-dashboard -->
+
+      <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem"><div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div><button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button></div>
+        <div id="add-account-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
+            <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
+            <div><label class="form-label">Notes (optional)</label><input class="form-inp" id="acc-notes" placeholder="e.g. Main account"/></div>
+            <button class="create-btn" onclick="addAccount()">Add</button>
+          </div>
+        </div>
+        <div id="accounts-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
+      <div id="section-waitlist" style="display:none;padding:1.5rem;min-height:200px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+          <div style="font-size:1.1rem;font-weight:700">Waitlist <span id="waitlist-count" style="font-family:var(--m);font-size:.75rem;color:var(--amber);margin-left:.5rem"></span></div>
+          <button class="create-btn" onclick="processWaitlist()" style="background:var(--green);color:#000">Process All</button>
+        </div>
+        <div id="waitlist-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
+      <div id="section-settings" style="display:none;padding:1.5rem">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:1.2rem">Settings</div>
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:500px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)">
+            <div><div style="font-weight:600;margin-bottom:4px">Auto Link Creation</div><div style="font-size:.75rem;color:var(--muted);line-height:1.5">When ON — EPS payment auto creates FanFlix link.<br>OFF by default.</div></div>
+            <div style="position:relative;width:52px;height:28px;flex-shrink:0;cursor:pointer" onclick="toggleAutoLink()"><div id="auto-link-bg" style="position:absolute;inset:0;background:var(--s4);border-radius:100px;transition:background .3s"></div><div id="auto-link-knob" style="position:absolute;top:3px;left:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:transform .3s;box-shadow:0 2px 4px rgba(0,0,0,.3)"></div></div>
+          </div>
+          <div><div style="font-family:var(--m);font-size:.62rem;color:var(--muted2);margin-bottom:6px">AUTO-CREATE API URL</div><div style="font-family:var(--m);font-size:.65rem;color:var(--blue);background:var(--s2);padding:.7rem 1rem;border-radius:8px;word-break:break-all" id="auto-link-url"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const SITE=window.location.origin;
+const PROFILE_COLORS={A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
+let adminToken=sessionStorage.getItem('fanflix_admin');
+let allLinks={},curFilter='',currentPage=0,currentFiltered={},selectedLinks=new Set(),geoFlags={};
+const PAGE_SIZE=50;
+
+window.onload=()=>{updateDate();setInterval(updateDate,60000);if(adminToken)showDashboard();};
+function updateDate(){const now=new Date();document.getElementById('tb-date').textContent=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+async function doLogin(){const pass=document.getElementById('pass-inp').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});const d=await r.json();if(d.success){adminToken=d.token;sessionStorage.setItem('fanflix_admin',adminToken);showDashboard();}else document.getElementById('login-err').style.display='block';}
+function doLogout(){sessionStorage.removeItem('fanflix_admin');location.reload();}
+function showDashboard(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='flex';document.getElementById('dashboard').style.width='100%';loadAll();setInterval(loadStats,30000);setInterval(loadAll,60000);}
+async function loadAll(){await Promise.all([loadLinks(),loadStats(),loadSlots(),loadGeoFlags()]);}
+async function loadStats(){try{const r=await fetch('/api/stats');const d=await r.json();const el=document.getElementById('tb-live');const et=document.getElementById('tb-today');if(el)el.textContent=d.live;if(et)et.textContent=d.today;}catch(e){}}
+async function loadGeoFlags(){try{const r=await fetch('/api/admin/geo',{headers:{'x-admin-token':adminToken}});const d=await r.json();geoFlags=d.geo||{};}catch(e){}}
+
+async function loadSlots(){
+  try{
+    const r=await fetch('/api/admin/slots',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();const slots=d.slots||{};
+    const container=document.getElementById('slots-list');const badge=document.getElementById('slots-badge');
+    if(!Object.keys(slots).length){if(container)container.innerHTML='<p style="font-family:var(--m);font-size:.72rem;color:var(--muted);padding:.5rem 0">No accounts yet</p>';return;}
+    const totalActive=Object.values(slots).reduce((s,v)=>s+v.active,0);
+    const totalSlots=Object.keys(slots).length*8;
+    const freeSlots=d.freeSlots!==undefined?d.freeSlots:(totalSlots-totalActive);
+    const fs=document.getElementById('s-free-slots');if(fs)fs.textContent=freeSlots;
+    try{const wlr=await fetch('/api/admin/waitlist',{headers:{'x-admin-token':adminToken}});const wld=await wlr.json();const sbc=document.getElementById('sb-waitlist-count');if(sbc)sbc.textContent=(wld.waitlist||[]).length;}catch(e){}
+  }catch(e){}
+}
+
+async function loadLinks(){
+  try{
+    const r=await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();allLinks=d.links||{};
+    renderLinks(allLinks,0);updateStats(allLinks);
+    const active=Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;
+    const sbb=document.getElementById('sb-active-count');if(sbb)sbb.textContent=active;
+  }catch(e){}
+}
+
+function updateStats(links){
+  const now=Date.now();const oneDay=24*60*60*1000;const threeDays=3*oneDay;const arr=Object.values(links);
+  const safe=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  safe('exp-today',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=oneDay).length);
+  safe('exp-week',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=7*oneDay).length);
+  safe('exp-month',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*oneDay).length);
+  safe('s-active',arr.filter(l=>l.active&&l.expiresAt>now).length);
+  safe('s-expiring',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length);
+  safe('s-expired',arr.filter(l=>l.expiresAt<=now).length);
+  safe('s-uses',arr.reduce((s,l)=>s+l.uses,0));
+  const nu=document.getElementById('s-never-used');if(nu)nu.textContent=arr.filter(l=>l.uses===0&&l.active&&l.expiresAt>now).length;
+  const active=arr.filter(l=>l.active&&l.expiresAt>now).length;
+  const ab=document.getElementById('active-badge');if(ab){ab.textContent=active+' Active';ab.className='card-badge ok';}
 }
 
 function updateChart(links){
