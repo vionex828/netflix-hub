@@ -754,6 +754,24 @@ app.post('/api/admin/update-profile/:token', adminAuth, (req, res) => {
   res.json({ success:true });
 });
 
+// Update PIN for a link
+app.post('/api/admin/update-pin/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  links[req.params.token].pin = req.body.pin || '';
+  saveLinks(links);
+  res.json({ success:true });
+});
+
+// Update customer name for a link
+app.post('/api/admin/update-name/:token', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  links[req.params.token].customerName = req.body.customerName || '';
+  saveLinks(links);
+  res.json({ success:true });
+});
+
 app.post('/api/admin/update-phone/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
