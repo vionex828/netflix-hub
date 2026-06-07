@@ -294,9 +294,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem"><div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div><button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button></div>
         <div id="add-account-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
-          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.8rem;align-items:end">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:.8rem;align-items:end">
             <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
             <div><label class="form-label">Notes (optional)</label><input class="form-inp" id="acc-notes" placeholder="e.g. Main account"/></div>
+            <div><label class="form-label">Plan</label><select class="form-inp" id="acc-plan" style="cursor:pointer"><option value="">Any plan</option><option value="28">28 days only</option><option value="85">85 days only</option><option value="170">170 days only</option></select></div>
             <button class="create-btn" onclick="addAccount()">Add</button>
           </div>
         </div>
@@ -762,6 +763,14 @@ function renderAccounts(accounts){
       <div style="flex:1;min-width:150px">
         <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(a.email)}</div>
         <div style="font-size:.65rem;color:var(--muted);margin-top:2px">${a.notes||'No notes'}</div>
+        <div style="margin-top:4px">
+          <select onchange="updateAccountPlan('${esc(a.email)}',this.value)" style="background:var(--s3);border:1px solid var(--s4);color:${a.planDays?'var(--amber)':'var(--muted2)'};font-family:var(--m);font-size:.58rem;padding:3px 8px;border-radius:5px;cursor:pointer">
+            <option value="" ${!a.planDays?'selected':''}>Any plan</option>
+            <option value="28" ${a.planDays===28?'selected':''}>28 days only</option>
+            <option value="85" ${a.planDays===85?'selected':''}>85 days only</option>
+            <option value="170" ${a.planDays===170?'selected':''}>170 days only</option>
+          </select>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${avatars}</div>
       <div style="position:relative;width:44px;height:44px;flex-shrink:0">
@@ -775,6 +784,17 @@ function renderAccounts(accounts){
       </div>
     </div>`;
   }).join('');
+}
+async function updateAccountPlan(email, planDays){
+  const r = await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/plan',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':adminToken},
+    body: JSON.stringify({planDays: planDays ? parseInt(planDays) : null})
+  });
+  const d = await r.json();
+  if(d.success) showToast(planDays ? `Plan set: ${planDays} days` : 'Plan cleared');
+  else showToast('Error updating plan', true);
+  loadAccounts();
 }
 async function editAccountNotes(email){
   const newNotes=prompt('Edit notes for:\n'+email+'\n\nNew notes:');
@@ -794,7 +814,7 @@ async function replaceAccEmail(oldEmail){
   else showToast('Error: '+(d.error||'?'),true);
 }
 function showAddAccountForm(){const f=document.getElementById('add-account-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
-async function addAccount(){const email=document.getElementById('acc-email').value.trim();const notes=document.getElementById('acc-notes').value.trim();if(!email||!email.includes('@'))return showToast('Enter valid email',true);const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes})});const d=await r.json();if(d.success){showToast('Account added!');document.getElementById('acc-email').value='';document.getElementById('acc-notes').value='';loadAccounts();}else showToast('Error: '+(d.error||'Unknown'),true);}
+async function addAccount(){const email=document.getElementById('acc-email').value.trim();const notes=document.getElementById('acc-notes').value.trim();const planDays=document.getElementById('acc-plan')?.value||null;if(!email||!email.includes('@'))return showToast('Enter valid email',true);const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes,planDays:planDays?parseInt(planDays):null})});const d=await r.json();if(d.success){showToast('Account added!');document.getElementById('acc-email').value='';document.getElementById('acc-notes').value='';loadAccounts();}else showToast('Error: '+(d.error||'Unknown'),true);}
 async function toggleAccount(email){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/toggle',{method:'POST',headers:{'x-admin-token':adminToken}});const d=await r.json();if(d.success)loadAccounts();else showToast('Error',true);}
 async function deleteAccount(email){
   if(!confirm('Delete account: '+email+'?\n\nThis also removes it from the accounts list.'))return;
