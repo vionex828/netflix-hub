@@ -760,7 +760,7 @@ async function loadAccounts(){
       if(meta[em]){byEmail[em].notes=meta[em].notes;byEmail[em].active=meta[em].active;byEmail[em].planDays=meta[em].planDays;byEmail[em].expiresAt=meta[em].expiresAt;}
     });
     // Also include accounts with no links
-    (dA.accounts||[]).forEach(a=>{if(!byEmail[a.email])byEmail[a.email]={email:a.email,slotsUsed:0,notes:a.notes||'',active:a.active!==false};});
+    (dA.accounts||[]).forEach(a=>{if(!byEmail[a.email])byEmail[a.email]={email:a.email,slotsUsed:0,notes:a.notes||'',active:a.active!==false,planDays:a.planDays||null,expiresAt:a.expiresAt||null};});
     const accounts=Object.values(byEmail).sort((a,b)=>b.slotsUsed-a.slotsUsed);
     renderAccounts(accounts);
   }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';}
