@@ -190,23 +190,32 @@ function getNextAvailableSlot(customerDays) {
   const links = loadLinks();
   const now = Date.now();
   const days = parseInt(customerDays) || 28;
-  const sorted = [...accounts].filter(a => {
-    if (!a.active) return false;
-    if (a.planDays) return parseInt(a.planDays) === days;
-    return true; // no plan set — accept any
-  }).sort((a,b) => (a.priority||99) - (b.priority||99));
-  for (const account of sorted) {
-    const email = account.email;
-    const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
-    const usedProfiles = activeLinks.map(l => normalizeProfile(l.profile));
-    for (const prof of FIXED_PROFILES) {
-      const used = usedProfiles.filter(p => p === prof.profile).length;
-      if (used < prof.slots) {
-        return { email, profile: prof.profile, pin: prof.pin };
+
+  function tryAccounts(accountList) {
+    for (const account of accountList) {
+      const email = account.email;
+      const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
+      const usedProfiles = activeLinks.map(l => normalizeProfile(l.profile));
+      for (const prof of FIXED_PROFILES) {
+        const used = usedProfiles.filter(p => p === prof.profile).length;
+        if (used < prof.slots) {
+          return { email, profile: prof.profile, pin: prof.pin };
+        }
       }
     }
+    return null;
   }
-  return null;
+
+  // First try: accounts matching customer plan
+  const matched = [...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days)
+    .sort((a,b) => (a.priority||99) - (b.priority||99));
+  const result = tryAccounts(matched);
+  if (result) return result;
+
+  // Second try: accounts with no plan set (accept any)
+  const anyPlan = [...accounts].filter(a => a.active && !a.planDays)
+    .sort((a,b) => (a.priority||99) - (b.priority||99));
+  return tryAccounts(anyPlan);
 }
 
 
@@ -926,76 +935,18 @@ app.get('/api/admin/waitlist', adminAuth, (req, res) => {
 app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   const waitlist = loadWaitlist();
   if (!waitlist.length) return res.json({ success:true, processed:0, message:'Waitlist empty' });
-  const links = loadLinks();
-  const now = Date.now();
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
-    // ── RENEWAL DETECTION ──
-    // If same phone already has active link(s), extend them instead of creating new
-    const existingLinks = Object.values(loadLinks()).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') &&
-      l.active && l.expiresAt > Date.now()
-    );
-    if (existingLinks.length > 0) {
-      const links2 = loadLinks();
-      const now2 = Date.now();
-      let renewed = 0;
-      for (const el of existingLinks) {
-        links2[el.token].expiresAt = links2[el.token].expiresAt + d*24*60*60*1000;
-        links2[el.token].warningSent = false;
-        renewed++;
-      }
-      saveLinks(links2);
-      checkLowStock();
-      const firstLink = existingLinks[0];
-      sendTelegram(
-        `🔄 <b>Renewal Detected!</b>
-
-` +
-        `👤 ${customerName||'Customer'} | 📱 ${phone}
-` +
-        `🔗 Extended ${renewed} link(s) by ${d} days
-` +
-        `📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}
-` +
-        `🛒 ${req.body.orderName||''}`
-      );
-      return res.json({ success:true, renewed:true, count:renewed, token:firstLink.token, link:SITE_URL+'/c/'+firstLink.token, profile:firstLink.profile, pin:firstLink.pin });
-    }
-    // ── END RENEWAL DETECTION ──
-
-    // Renewal detection — same phone has active link → extend it
-    const allLinks2 = loadLinks();
-    const phoneNorm = phone.replace(/\D/g,'');
-    const existingActive = Object.values(allLinks2).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > Date.now()
-    );
-    if (existingActive.length > 0) {
-      let renewed = 0;
-      for (const el of existingActive) {
-        allLinks2[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-        allLinks2[el.token].warningSent = false;
-        allLinks2[el.token].renewalCount = (allLinks2[el.token].renewalCount || 0) + 1;
-        renewed++;
-      }
-      saveLinks(allLinks2);
-      checkLowStock();
-      const first = existingActive[0];
-      sendTelegram(`🔄 <b>Renewal!</b>
-👤 ${customerName||'Customer'} | 📱 ${phone}
-🔗 Extended ${renewed} link(s) +${d} days
-📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}`);
-      return res.json({ success:true, renewed:true, count:renewed, token:first.token, link:SITE_URL+'/c/'+first.token, profile:first.profile, pin:first.pin });
-    }
-
-    const slot = getNextAvailableSlot(d);
+    const slot = getNextAvailableSlot(w.days || 28);
     if (!slot) { remaining.push(w); continue; }
+    const links = loadLinks();
+    const now = Date.now();
     const token = generateToken();
-    const d = parseInt(w.days)||28;
-    links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:w.phone, customerName:w.customerName||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    const d = parseInt(w.days) || 28;
+    links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:w.phone, customerName:w.customerName||'', plan:w.product||'', amount:w.amount||0, orderName:w.orderName||'', renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
     saveLinks(links);
-    sendTelegram(`✅ <b>Waitlist Link Created!</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${w.phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
+    sendTelegram(`✅ <b>Waitlist Link Created!</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${w.phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${SITE_URL}/c/${token}\n⏳ ${d} days`);
     processed++;
   }
   saveWaitlist(remaining);
