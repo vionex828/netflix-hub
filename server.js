@@ -684,11 +684,17 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   if (!email||!profile||!pin||!days) return res.status(400).json({ error:'Missing fields' });
   const links = loadLinks();
   const now = Date.now();
+  // Normalize profile name
+  const normalizedProfile = normalizeProfile(profile);
+  const normalizedPin = pin;
   // Check if active link already exists for this email+profile
-  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&l.profile===profile&&l.active&&l.expiresAt>now);
+  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&normalizeProfile(l.profile)===normalizedProfile&&l.active&&l.expiresAt>now);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
   if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
+  const token = generateToken();
+  const d = parseInt(days);
+  links[token] = { token, email:email.toLowerCase(), profile:normalizedProfile, pin:normalizedPin, phone:phone||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
   saveLinks(links);
   res.json({ success:true, token, link:`/c/${token}` });
 });
