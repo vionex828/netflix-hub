@@ -415,6 +415,13 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
     if (filtered.length > 0) {
       const unique = [...new Set(filtered)];
+      // Priority 1: appears exactly once
+      const exactlyOnce = unique.filter(n => allNums.filter(x => x === n).length === 1);
+      if (exactlyOnce.length > 0) {
+        const signinCode = exactlyOnce[exactlyOnce.length - 1];
+        if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+      }
+      // Priority 2: appears ≤5 times
       const singleOccurrence = unique.filter(n => allNums.filter(x => x === n).length <= 5);
       const signinCode = singleOccurrence[singleOccurrence.length - 1] || unique[unique.length - 1];
       if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
