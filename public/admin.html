@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FanFlix Admin</title>
+<link rel="manifest" href="/admin-manifest.json">
+<meta name="theme-color" content="#E50914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FanFlix Admin">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -217,6 +222,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-section">System</div>
       <div class="sb-item" onclick="showSection('accounts')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Netflix Accounts</div>
       <div class="sb-item" onclick="showSection('waitlist')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Waitlist<span class="sb-badge" id="sb-waitlist-count" style="background:var(--amber)">0</span></div>
+      <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
     <div class="sb-user">
@@ -311,6 +317,16 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <button class="create-btn" onclick="processWaitlist()" style="background:var(--green);color:#000">Process All</button>
         </div>
         <div id="waitlist-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
+      <div id="section-customers" style="display:none;padding:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+          <div style="font-size:1.1rem;font-weight:700">Customers</div>
+          <div style="display:flex;gap:.5rem">
+            <input id="cust-search" class="field-inp" placeholder="Search name or phone..." oninput="filterCustomers()" style="width:220px;font-size:.75rem"/>
+          </div>
+        </div>
+        <div id="customers-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
       <div id="section-settings" style="display:none;padding:1.5rem">
@@ -462,7 +478,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -471,6 +487,11 @@ function showSection(s){
     document.getElementById('section-accounts').style.display='block';
     if(t)t.textContent='Netflix Accounts';
     loadAccounts();return;
+  }
+  if(s==='customers'){
+    document.getElementById('section-customers').style.display='block';
+    if(t)t.textContent='Customers';
+    loadCustomers();return;
   }
   if(s==='waitlist'){
     document.getElementById('section-waitlist').style.display='block';
@@ -886,6 +907,85 @@ async function removeWaitlist(phone){
   loadWaitlist();
 }
 
+// ── CUSTOMERS ──
+let allCustomers = [];
+async function loadCustomers(){
+  const list = document.getElementById('customers-list');
+  if(list) list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r = await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
+    const d = await r.json();
+    const now = Date.now();
+    const links = Object.values(d.links||{});
+    // Group by phone
+    const byPhone = {};
+    for(const l of links){
+      const phone = l.phone||'';
+      if(!phone) continue;
+      if(!byPhone[phone]) byPhone[phone] = {phone, name:l.customerName||'', links:[], totalPaid:0, renewals:0};
+      byPhone[phone].links.push(l);
+      byPhone[phone].totalPaid += l.amount||0;
+      byPhone[phone].renewals = Math.max(byPhone[phone].renewals, l.renewalCount||0);
+      if(l.customerName) byPhone[phone].name = l.customerName;
+    }
+    allCustomers = Object.values(byPhone).sort((a,b)=>b.links[0].createdAt-a.links[0].createdAt);
+    const cnt = document.getElementById('sb-customers-count');
+    if(cnt) cnt.textContent = allCustomers.length;
+    renderCustomers(allCustomers);
+  }catch(e){ if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error</div>'; }
+}
+
+function filterCustomers(){
+  const q = document.getElementById('cust-search')?.value.toLowerCase().trim()||'';
+  if(!q){ renderCustomers(allCustomers); return; }
+  renderCustomers(allCustomers.filter(c => c.phone.includes(q) || c.name.toLowerCase().includes(q)));
+}
+
+function renderCustomers(customers){
+  const list = document.getElementById('customers-list');
+  if(!list) return;
+  if(!customers.length){ list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No customers found.</div>'; return; }
+  const now = Date.now();
+  list.innerHTML = customers.map(c => {
+    const activeLinks = c.links.filter(l=>l.active&&l.expiresAt>now);
+    const expiredLinks = c.links.filter(l=>l.expiresAt<=now);
+    const nextExpiry = activeLinks.length ? Math.min(...activeLinks.map(l=>l.expiresAt)) : null;
+    const daysLeft = nextExpiry ? Math.ceil((nextExpiry-now)/86400000) : 0;
+    const statusColor = activeLinks.length ? 'var(--green)' : 'var(--red)';
+    return \`<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;cursor:pointer" onclick="toggleCustomerDetail('\${esc(c.phone)}')">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:var(--text);flex-shrink:0">\${(c.name||'?').charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:.85rem">\${esc(c.name||'Unknown')}</div>
+          <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);margin-top:2px">📞 \${esc(c.phone)} · \${c.links.length} link(s) · \${c.renewals} renewal(s)</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:var(--m);font-size:.72rem;color:\${statusColor};font-weight:600">\${activeLinks.length ? daysLeft+'d left' : 'Expired'}</div>
+          <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">৳\${c.totalPaid.toLocaleString()}</div>
+        </div>
+      </div>
+      <div id="cust-detail-\${esc(c.phone)}" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
+        \${c.links.map(l=>{
+          const dl=Math.max(0,Math.ceil((l.expiresAt-now)/86400000));
+          const st=!l.active?'revoked':l.expiresAt<=now?'expired':'active';
+          return \`<div style="display:flex;align-items:center;gap:.8rem;padding:.4rem 0;font-family:var(--m);font-size:.68rem;color:var(--muted)">
+            <span style="color:var(--text)">\${esc(l.profile)}</span>
+            <span>PIN: \${esc(l.pin)}</span>
+            <a href="/c/\${l.token}" target="_blank" style="color:var(--blue)">/c/\${l.token}</a>
+            <span style="color:\${st==='active'?'var(--green)':st==='expired'?'var(--red)':'var(--muted)'}">\${st==='active'?dl+'d':st}</span>
+            <span>৳\${l.amount||0}</span>
+          </div>\`;
+        }).join('')}
+      </div>
+    </div>\`;
+  }).join('');
+}
+
+function toggleCustomerDetail(phone){
+  const el = document.getElementById('cust-detail-'+phone);
+  if(el) el.style.display = el.style.display==='none'?'block':'none';
+}
+
 let settingsData={};
 async function loadSettingsData(){try{const r=await fetch('/api/admin/settings',{headers:{'x-admin-token':adminToken}});const d=await r.json();settingsData=d.settings||{};renderSettings();}catch(e){}}
 function renderSettings(){const bg=document.getElementById('auto-link-bg');const knob=document.getElementById('auto-link-knob');const url=document.getElementById('auto-link-url');const on=settingsData.autoLink||false;if(bg)bg.style.background=on?'var(--green)':'var(--s4)';if(knob)knob.style.transform=on?'translateX(24px)':'translateX(0)';if(url)url.textContent=window.location.origin+'/api/auto-create';}
@@ -896,6 +996,11 @@ function closeMobNav(){document.querySelector('.sidebar').classList.remove('open
 function showToast(msg,err=false){const t=document.getElementById('toast');t.textContent=msg;t.className=err?'err show':'show';setTimeout(()=>t.className='',2500);}
 function timeAgo(ts){const d=Date.now()-ts,m=Math.floor(d/6e4),h=Math.floor(d/36e5),dy=Math.floor(d/864e5);if(m<1)return'Just now';if(m<60)return m+'m ago';if(h<24)return h+'h ago';return dy+'d ago';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/admin-sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
