@@ -445,8 +445,8 @@ async function replaceAllLinks(){
   const d=await r.json();if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
-function showRevoked(){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(!v.active)filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} revoked links`);}
+function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
+function showRevoked(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(!v.active)filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} revoked links`);}
 
 function filterLinks(){
   const q=document.getElementById('search-inp').value.toLowerCase().replace('/c/','').trim();
@@ -460,7 +460,7 @@ function filterLinks(){
   renderLinks(filtered,0);
 }
 
-function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
+function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
   const now=Date.now();const oneDay=24*60*60*1000;const threeDays=3*oneDay;const sevenDays=7*oneDay;const thirtyDays=30*oneDay;const filtered={};
   for(const[k,v]of Object.entries(allLinks)){
     if(status==='active'&&v.active&&v.expiresAt>now)filtered[k]=v;
