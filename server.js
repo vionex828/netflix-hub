@@ -76,6 +76,14 @@ const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
 function loadWaitlist() { try { return JSON.parse(fs.readFileSync(WAITLIST_FILE,'utf8')); } catch(e) { return []; } }
 function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data,null,2)); }
 
+// Normalize customer days to match account plan types (28/85/170)
+function normalizeDays(d) {
+  const n = parseInt(d) || 28;
+  if (n <= 30) return 28;
+  if (n <= 90) return 85;
+  return 170;
+}
+
 function normalizeProfile(p) {
   if (!p) return '';
   p = String(p).trim();
@@ -189,7 +197,7 @@ function getNextAvailableSlot(customerDays) {
   const accounts = loadAccounts();
   const links = loadLinks();
   const now = Date.now();
-  const days = parseInt(customerDays) || 28;
+  const days = normalizeDays(customerDays);
 
   function tryAccounts(accountList) {
     for (const account of accountList) {
@@ -943,7 +951,7 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
     const links = loadLinks();
     const now = Date.now();
     const token = generateToken();
-    const d = parseInt(w.days) || 28;
+    const d = normalizeDays(w.days);
     links[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone:w.phone, customerName:w.customerName||'', plan:w.product||'', amount:w.amount||0, orderName:w.orderName||'', renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
     saveLinks(links);
     sendTelegram(`✅ <b>Waitlist Link Created!</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${w.phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${SITE_URL}/c/${token}\n⏳ ${d} days`);
@@ -987,7 +995,7 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     let days = 28;
     let product = 'Netflix';
     if (amountNum >= 1200) { days = 85; product = 'Netflix 3 Month'; }
-    else if (amountNum >= 400) { days = 28; product = 'Netflix 1 Month'; }
+    else if (amountNum >= 390) { days = 28; product = 'Netflix 1 Month'; }
 
     // Check metadata for order info
     const orderName = metadata?.order_id || metadata?.order_name || invoice_id || '';
