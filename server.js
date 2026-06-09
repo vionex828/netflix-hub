@@ -410,18 +410,23 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     }
   }
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
+    // Strategy 1: Spaced digits "6 7 2 7" in plain text — most reliable
+    const spacedMatch4 = bodyPlain.match(/(?<!\d)(\d)\s(\d)\s(\d)\s(\d)(?!\s\d)(?!\d)/);
+    if (spacedMatch4) {
+      const code = spacedMatch4[1]+spacedMatch4[2]+spacedMatch4[3]+spacedMatch4[4];
+      if (!BLOCKED_CODES.includes(code)) return { type:'signin', label:'Sign-in Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    }
+    // Strategy 2: Appears exactly once in HTML
     const TEMPLATE_NUMS = [...BLOCKED_CODES, '8199'];
     const allNums = [...bodyHtml.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)].map(m => m[1]);
     const filtered = allNums.filter(n => !TEMPLATE_NUMS.includes(n));
     if (filtered.length > 0) {
       const unique = [...new Set(filtered)];
-      // Priority 1: appears exactly once
       const exactlyOnce = unique.filter(n => allNums.filter(x => x === n).length === 1);
       if (exactlyOnce.length > 0) {
         const signinCode = exactlyOnce[exactlyOnce.length - 1];
         if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
       }
-      // Priority 2: appears ≤5 times
       const singleOccurrence = unique.filter(n => allNums.filter(x => x === n).length <= 5);
       const signinCode = singleOccurrence[singleOccurrence.length - 1] || unique[unique.length - 1];
       if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
