@@ -37,6 +37,8 @@ const IP_FILE = `${DATA_DIR}/ips.json`;
 const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
+const UDDOKTAPAY_API_KEY = process.env.UDDOKTAPAY_API_KEY || 'WCHHkn251WojpUh2zKc8UKSVe5UXCRR0sOLkS6tL';
+const UDDOKTAPAY_BASE_URL = process.env.UDDOKTAPAY_BASE_URL || 'https://payment.fanflixbd.com/api';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'https://pg.eps.com.bd/DefaultPaymentLink?id=805A9AEE';
 const WA_NUMBER = '8801928382918';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
@@ -917,6 +919,64 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
+    // ── RENEWAL DETECTION ──
+    // If same phone already has active link(s), extend them instead of creating new
+    const existingLinks = Object.values(loadLinks()).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') &&
+      l.active && l.expiresAt > Date.now()
+    );
+    if (existingLinks.length > 0) {
+      const links2 = loadLinks();
+      const now2 = Date.now();
+      let renewed = 0;
+      for (const el of existingLinks) {
+        links2[el.token].expiresAt = links2[el.token].expiresAt + d*24*60*60*1000;
+        links2[el.token].warningSent = false;
+        renewed++;
+      }
+      saveLinks(links2);
+      checkLowStock();
+      const firstLink = existingLinks[0];
+      sendTelegram(
+        `🔄 <b>Renewal Detected!</b>
+
+` +
+        `👤 ${customerName||'Customer'} | 📱 ${phone}
+` +
+        `🔗 Extended ${renewed} link(s) by ${d} days
+` +
+        `📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}
+` +
+        `🛒 ${req.body.orderName||''}`
+      );
+      return res.json({ success:true, renewed:true, count:renewed, token:firstLink.token, link:SITE_URL+'/c/'+firstLink.token, profile:firstLink.profile, pin:firstLink.pin });
+    }
+    // ── END RENEWAL DETECTION ──
+
+    // Renewal detection — same phone has active link → extend it
+    const allLinks2 = loadLinks();
+    const phoneNorm = phone.replace(/\D/g,'');
+    const existingActive = Object.values(allLinks2).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > Date.now()
+    );
+    if (existingActive.length > 0) {
+      let renewed = 0;
+      for (const el of existingActive) {
+        allLinks2[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+        allLinks2[el.token].warningSent = false;
+        allLinks2[el.token].renewalCount = (allLinks2[el.token].renewalCount || 0) + 1;
+        renewed++;
+      }
+      saveLinks(allLinks2);
+      checkLowStock();
+      const first = existingActive[0];
+      sendTelegram(`🔄 <b>Renewal!</b>
+👤 ${customerName||'Customer'} | 📱 ${phone}
+🔗 Extended ${renewed} link(s) +${d} days
+📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}`);
+      return res.json({ success:true, renewed:true, count:renewed, token:first.token, link:SITE_URL+'/c/'+first.token, profile:first.profile, pin:first.pin });
+    }
+
     const slot = getNextAvailableSlot(d);
     if (!slot) { remaining.push(w); continue; }
     const token = generateToken();
@@ -936,6 +996,117 @@ app.delete('/api/admin/waitlist/:phone', adminAuth, (req, res) => {
   const filtered = waitlist.filter(w=>w.phone!==decodeURIComponent(req.params.phone));
   saveWaitlist(filtered);
   res.json({ success:true });
+});
+
+
+// ── UDDOKTAPAY WEBHOOK ────────────────────────────────────────────────────────
+app.post('/uddoktapay-ipn', async (req, res) => {
+  try {
+    // Verify API key
+    const apiKey = req.headers['rt-uddoktapay-api-key'];
+    if (!apiKey || apiKey !== process.env.UDDOKTAPAY_API_KEY) {
+      console.error('UddoktaPay: Invalid API key');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    res.status(200).json({ success: true }); // Respond immediately
+
+    const data = req.body;
+    const { full_name, sender_number, amount, payment_method, invoice_id, metadata } = data;
+
+    if (!sender_number || !amount) return;
+
+    const phone = sender_number.replace(/\D/g, '');
+    const customerName = full_name || '';
+    const amountNum = parseFloat(amount) || 0;
+
+    // Detect plan from amount
+    let days = 28;
+    let product = 'Netflix';
+    if (amountNum >= 1200) { days = 85; product = 'Netflix 3 Month'; }
+    else if (amountNum >= 400) { days = 28; product = 'Netflix 1 Month'; }
+
+    // Check metadata for order info
+    const orderName = metadata?.order_id || metadata?.order_name || invoice_id || '';
+
+    // Send Telegram notification
+    sendTelegram(
+      `✅ <b>New Payment — UddoktaPay</b>
+` +
+      `━━━━━━━━━━━━━━━━━━
+` +
+      `👤 ${customerName} | 📱 ${sender_number}
+` +
+      `💰 ৳${amount} | 💳 ${payment_method}
+` +
+      `🔖 ${invoice_id}
+` +
+      `━━━━━━━━━━━━━━━━━━`
+    );
+
+    const settings = loadSettings();
+    if (!settings.autoLink) return;
+
+    // Auto-create link (reuse same logic as /api/auto-create)
+    const phoneNorm = phone;
+    const allLinks = loadLinks();
+    const now = Date.now();
+
+    // Renewal check
+    const existingActive = Object.values(allLinks).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > now
+    );
+    if (existingActive.length > 0) {
+      let renewed = 0;
+      for (const el of existingActive) {
+        allLinks[el.token].expiresAt += days * 24 * 60 * 60 * 1000;
+        allLinks[el.token].warningSent = false;
+        allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
+        renewed++;
+      }
+      saveLinks(allLinks);
+      const first = existingActive[0];
+      sendTelegram(`🔄 <b>Renewal via UddoktaPay!</b>
+👤 ${customerName} | 📱 ${sender_number}
+🔗 Extended ${renewed} link(s) +${days} days`);
+      return;
+    }
+
+    // New customer
+    const slot = getNextAvailableSlot(days);
+    if (!slot) {
+      const waitlist = loadWaitlist();
+      if (!waitlist.find(w => w.phone === phone)) {
+        waitlist.push({ phone, customerName, days, product, orderName, amount: amountNum, addedAt: now });
+        saveWaitlist(waitlist);
+      }
+      sendTelegram(`🚨 <b>STOCK OUT — UddoktaPay!</b>
+👤 ${customerName} | 📱 ${sender_number}
+📦 ${product} | ৳${amount}
+Added to waitlist.`);
+      return;
+    }
+
+    const token = generateToken();
+    allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName, plan:product, amount:amountNum, orderName, renewalCount:0, days, createdAt:now, expiresAt:now+days*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    saveLinks(allLinks);
+    checkLowStock();
+
+    sendTelegram(
+      `🔗 <b>Link Created — UddoktaPay!</b>
+` +
+      `👤 ${customerName} | 📱 ${sender_number}
+` +
+      `👤 ${slot.profile} | PIN: ${slot.pin}
+` +
+      `🔗 ${SITE_URL}/c/${token}
+` +
+      `⏳ ${days} days`
+    );
+
+  } catch(e) {
+    console.error('UddoktaPay IPN error:', e.message);
+  }
 });
 
 app.get('/api/health', (req, res) => {
@@ -973,6 +1144,8 @@ app.get('/api/codes', async (req, res) => {
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
+app.get('/admin-manifest.json', (req, res) => res.sendFile(path.join(__dirname,'public','admin-manifest.json')));
+app.get('/admin-sw.js', (req, res) => res.sendFile(path.join(__dirname,'public','admin-sw.js')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
 
 app.get('/api/admin/accounts', adminAuth, (req, res) => {
@@ -1049,6 +1222,64 @@ app.post('/api/auto-create', (req, res) => {
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
     const d = parseInt(days) || 28;
+    // ── RENEWAL DETECTION ──
+    // If same phone already has active link(s), extend them instead of creating new
+    const existingLinks = Object.values(loadLinks()).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') &&
+      l.active && l.expiresAt > Date.now()
+    );
+    if (existingLinks.length > 0) {
+      const links2 = loadLinks();
+      const now2 = Date.now();
+      let renewed = 0;
+      for (const el of existingLinks) {
+        links2[el.token].expiresAt = links2[el.token].expiresAt + d*24*60*60*1000;
+        links2[el.token].warningSent = false;
+        renewed++;
+      }
+      saveLinks(links2);
+      checkLowStock();
+      const firstLink = existingLinks[0];
+      sendTelegram(
+        `🔄 <b>Renewal Detected!</b>
+
+` +
+        `👤 ${customerName||'Customer'} | 📱 ${phone}
+` +
+        `🔗 Extended ${renewed} link(s) by ${d} days
+` +
+        `📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}
+` +
+        `🛒 ${req.body.orderName||''}`
+      );
+      return res.json({ success:true, renewed:true, count:renewed, token:firstLink.token, link:SITE_URL+'/c/'+firstLink.token, profile:firstLink.profile, pin:firstLink.pin });
+    }
+    // ── END RENEWAL DETECTION ──
+
+    // Renewal detection — same phone has active link → extend it
+    const allLinks2 = loadLinks();
+    const phoneNorm = phone.replace(/\D/g,'');
+    const existingActive = Object.values(allLinks2).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > Date.now()
+    );
+    if (existingActive.length > 0) {
+      let renewed = 0;
+      for (const el of existingActive) {
+        allLinks2[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+        allLinks2[el.token].warningSent = false;
+        allLinks2[el.token].renewalCount = (allLinks2[el.token].renewalCount || 0) + 1;
+        renewed++;
+      }
+      saveLinks(allLinks2);
+      checkLowStock();
+      const first = existingActive[0];
+      sendTelegram(`🔄 <b>Renewal!</b>
+👤 ${customerName||'Customer'} | 📱 ${phone}
+🔗 Extended ${renewed} link(s) +${d} days
+📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}`);
+      return res.json({ success:true, renewed:true, count:renewed, token:first.token, link:SITE_URL+'/c/'+first.token, profile:first.profile, pin:first.pin });
+    }
+
     const slot = getNextAvailableSlot(d);
     if (!slot) {
       // Save to waitlist
@@ -1075,7 +1306,7 @@ app.post('/api/auto-create', (req, res) => {
       token = generateToken();
       links[token] = {
         token, email: slot.email, profile: slot.profile, pin: slot.pin,
-        phone: phone, customerName: customerName || '', days: d,
+        phone: phone, customerName: customerName || '', plan: req.body.product||'', amount: req.body.amount||0, orderName: req.body.orderName||'', renewalCount: 0, days: d,
         createdAt: now, expiresAt: now + d * 24 * 60 * 60 * 1000,
         uses: 0, lastUsed: null, active: true, warningSent: false
       };
