@@ -942,49 +942,58 @@ function filterCustomers(){
 }
 
 function renderCustomers(customers){
-  const list = document.getElementById('customers-list');
-  if(!list) return;
-  if(!customers.length){ list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No customers found.</div>'; return; }
-  const now = Date.now();
-  list.innerHTML = customers.map(c => {
-    const activeLinks = c.links.filter(l=>l.active&&l.expiresAt>now);
-    const expiredLinks = c.links.filter(l=>l.expiresAt<=now);
-    const nextExpiry = activeLinks.length ? Math.min(...activeLinks.map(l=>l.expiresAt)) : null;
-    const daysLeft = nextExpiry ? Math.ceil((nextExpiry-now)/86400000) : 0;
-    const statusColor = activeLinks.length ? 'var(--green)' : 'var(--red)';
-    return \`<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;cursor:pointer" onclick="toggleCustomerDetail('\${esc(c.phone)}')">
-      <div style="display:flex;align-items:center;gap:1rem">
-        <div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:var(--text);flex-shrink:0">\${(c.name||'?').charAt(0).toUpperCase()}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:.85rem">\${esc(c.name||'Unknown')}</div>
-          <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);margin-top:2px">📞 \${esc(c.phone)} · \${c.links.length} link(s) · \${c.renewals} renewal(s)</div>
-        </div>
-        <div style="text-align:right;flex-shrink:0">
-          <div style="font-family:var(--m);font-size:.72rem;color:\${statusColor};font-weight:600">\${activeLinks.length ? daysLeft+'d left' : 'Expired'}</div>
-          <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">৳\${c.totalPaid.toLocaleString()}</div>
-        </div>
-      </div>
-      <div id="cust-detail-\${esc(c.phone)}" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">
-        \${c.links.map(l=>{
-          const dl=Math.max(0,Math.ceil((l.expiresAt-now)/86400000));
-          const st=!l.active?'revoked':l.expiresAt<=now?'expired':'active';
-          return \`<div style="display:flex;align-items:center;gap:.8rem;padding:.4rem 0;font-family:var(--m);font-size:.68rem;color:var(--muted)">
-            <span style="color:var(--text)">\${esc(l.profile)}</span>
-            <span>PIN: \${esc(l.pin)}</span>
-            <a href="/c/\${l.token}" target="_blank" style="color:var(--blue)">/c/\${l.token}</a>
-            <span style="color:\${st==='active'?'var(--green)':st==='expired'?'var(--red)':'var(--muted)'}">\${st==='active'?dl+'d':st}</span>
-            <span>৳\${l.amount||0}</span>
-          </div>\`;
-        }).join('')}
-      </div>
-    </div>\`;
+  const list=document.getElementById('customers-list');
+  if(!list)return;
+  if(!customers.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No customers found.</div>';return;}
+  const now=Date.now();
+  list.innerHTML=customers.map(c=>{
+    const al=c.links.filter(l=>l.active&&l.expiresAt>now);
+    const ne=al.length?Math.min(...al.map(l=>l.expiresAt)):null;
+    const dl=ne?Math.ceil((ne-now)/86400000):0;
+    const sc=al.length?'#46d369':'#E50914';
+    const st=al.length?dl+'d left':'Expired';
+    const ph=encodeURIComponent(c.phone);
+    const rows=c.links.map(l=>{
+      const d2=Math.max(0,Math.ceil((l.expiresAt-now)/86400000));
+      const s2=!l.active?'revoked':l.expiresAt<=now?'expired':'active';
+      const c2=s2==='active'?'#46d369':s2==='expired'?'#E50914':'#7a7f8a';
+      return '<div style="display:flex;align-items:center;gap:.8rem;padding:.4rem 0;font-family:var(--m);font-size:.68rem;color:#7a7f8a">'+
+        '<span style="color:#f0f1f3">'+esc(l.profile)+'</span>'+
+        '<span>PIN: '+esc(l.pin)+'</span>'+
+        '<a href="/c/'+l.token+'" target="_blank" style="color:#4da6ff">/c/'+l.token+'</a>'+
+        '<span style="color:'+c2+'">'+(s2==='active'?d2+'d':s2)+'</span>'+
+        '<span>৳'+(l.amount||0)+'</span></div>';
+    }).join('');
+    return '<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">'+
+      '<div class="cust-row" data-ph="'+ph+'" style="display:flex;align-items:center;gap:1rem;cursor:pointer">'+
+        '<div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#f0f1f3;flex-shrink:0">'+(c.name||'?').charAt(0).toUpperCase()+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:600;font-size:.85rem">'+esc(c.name||'Unknown')+'</div>'+
+          '<div style="font-family:var(--m);font-size:.65rem;color:#7a7f8a;margin-top:2px">'+esc(c.phone)+' · '+c.links.length+' link(s) · '+c.renewals+' renewal(s)</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex-shrink:0">'+
+          '<div style="font-family:var(--m);font-size:.72rem;font-weight:600;color:'+sc+'">'+st+'</div>'+
+          '<div style="font-family:var(--m);font-size:.6rem;color:#4a4f5a;margin-top:2px">৳'+c.totalPaid.toLocaleString()+'</div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="cust-detail" style="display:none;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border)">'+rows+'</div>'+
+    '</div>';
   }).join('');
+  // Attach click handlers after render
+  document.querySelectorAll('.cust-row').forEach(row=>{
+    row.onclick=()=>{
+      const detail=row.parentElement.querySelector('.cust-detail');
+      if(detail)detail.style.display=detail.style.display==='none'?'block':'none';
+    };
+  });
 }
 
-function toggleCustomerDetail(phone){
-  const el = document.getElementById('cust-detail-'+phone);
-  if(el) el.style.display = el.style.display==='none'?'block':'none';
+function toggleCustomerDetail(ph){
+  const rows=document.querySelectorAll('.cust-row');
+  rows.forEach(r=>{if(r.dataset.ph===ph){const d=r.parentElement.querySelector('.cust-detail');if(d)d.style.display=d.style.display==='none'?'block':'none';}});
 }
+
+
 
 let settingsData={};
 async function loadSettingsData(){try{const r=await fetch('/api/admin/settings',{headers:{'x-admin-token':adminToken}});const d=await r.json();settingsData=d.settings||{};renderSettings();}catch(e){}}
