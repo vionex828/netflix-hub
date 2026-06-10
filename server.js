@@ -494,7 +494,7 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   }
   if (includeSignin && (sl.includes('sign-in code') || sl.includes('sign in code'))) {
     // Strategy 1: Spaced digits "6 7 2 7" in plain text — most reliable
-    const spacedMatch4 = bodyPlain.match(/(?<!\d)(\d)\s(\d)\s(\d)\s(\d)(?!\s\d)(?!\d)/);
+    const spacedMatch4 = bodyPlain.match(/(?<!\d)(\d)\s(\d)\s(\d)\s(\d)(?:[\s\-–—]*(?!\d))/);
     if (spacedMatch4) {
       const code = spacedMatch4[1]+spacedMatch4[2]+spacedMatch4[3]+spacedMatch4[4];
       if (!BLOCKED_CODES.includes(code)) return { type:'signin', label:'Sign-in Code', code, to:toEmail, ts, expiresAt:ts+15*60*1000 };
@@ -967,9 +967,8 @@ app.get('/api/debug-email', async (req, res) => {
         imap.openBox('INBOX', true, (err) => {
           if (err) { imap.end(); return reject(err); }
           const since = new Date(Date.now() - 10*60*1000);
-          const searchCriteria = filterEmail
-            ? [['SINCE', since], ['TO', filterEmail], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]]
-            : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+          // Don't filter by TO - forwarded emails won't match
+          const searchCriteria = [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
           imap.search(searchCriteria, async (err, uids) => {
             if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
             const fetch = imap.fetch(uids, { bodies: '' });
