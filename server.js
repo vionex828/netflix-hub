@@ -935,6 +935,55 @@ app.get('/api/admin/geo', (req, res) => {
 });
 
 // Waitlist API
+// Approve single waitlist customer — create link immediately
+app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
+  try {
+    const phone = decodeURIComponent(req.params.phone);
+    const waitlist = loadWaitlist();
+    const idx = waitlist.findIndex(w => w.phone === phone);
+    if (idx === -1) return res.status(404).json({ success:false, error:'Not in waitlist' });
+    const w = waitlist[idx];
+    const d = normalizeDays(w.days);
+
+    // Renewal check
+    const allLinks = loadLinks();
+    const now = Date.now();
+    const phoneNorm = phone.replace(/\D/g,'');
+    const existingActive = Object.values(allLinks).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > now
+    );
+    if (existingActive.length > 0) {
+      for (const el of existingActive) {
+        allLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+        allLinks[el.token].warningSent = false;
+        allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
+      }
+      saveLinks(allLinks);
+      waitlist.splice(idx, 1);
+      saveWaitlist(waitlist);
+      const first = existingActive[0];
+      sendTelegram(`🔄 <b>Renewal Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n🔗 Extended ${existingActive.length} link(s) +${d} days`);
+      return res.json({ success:true, renewed:true, token:first.token, link:SITE_URL+'/c/'+first.token });
+    }
+
+    // New customer — get slot
+    const slot = getNextAvailableSlot(d);
+    if (!slot) return res.status(503).json({ success:false, error:'No slots available for ' + d + ' day plan' });
+
+    const token = generateToken();
+    allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName:w.customerName||'', plan:w.product||'', amount:w.amount||0, orderName:w.orderName||'', renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    saveLinks(allLinks);
+    waitlist.splice(idx, 1);
+    saveWaitlist(waitlist);
+    checkLowStock();
+    sendTelegram(`✅ <b>Link Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${SITE_URL}/c/${token}\n⏳ ${d} days`);
+    res.json({ success:true, token, link:SITE_URL+'/c/'+token, profile:slot.profile, pin:slot.pin });
+  } catch(e) {
+    console.error('Approve error:', e.message);
+    res.status(500).json({ success:false, error:e.message });
+  }
+});
+
 app.get('/api/admin/waitlist', adminAuth, (req, res) => {
   const waitlist = loadWaitlist();
   res.json({ success:true, waitlist, count: waitlist.length });
@@ -1187,112 +1236,34 @@ app.post('/api/auto-create', (req, res) => {
   try {
     const settings = loadSettings();
     if (!settings.autoLink) return res.status(403).json({ success:false, error:'Auto link is disabled' });
-    // FIX: accept secret from body too (EPS bot can't easily send custom headers)
     const authToken = req.headers['x-admin-token'] || req.body.secret;
     if (authToken !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
-    const d = parseInt(days) || 28;
-    // ── RENEWAL DETECTION ──
-    // If same phone already has active link(s), extend them instead of creating new
-    const existingLinks = Object.values(loadLinks()).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phone.replace(/\D/g,'') &&
-      l.active && l.expiresAt > Date.now()
+    const d = normalizeDays(days);
+
+    // autoLink=ON → always go to waitlist for manual approval
+    const waitlist = loadWaitlist();
+    const alreadyWaiting = waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phone.replace(/\D/g,''));
+    if (!alreadyWaiting) {
+      waitlist.push({ phone, customerName: customerName||'', days: d, product: req.body.product||'Netflix', orderName: req.body.orderName||'', amount: req.body.amount||0, addedAt: Date.now() });
+      saveWaitlist(waitlist);
+    }
+    sendTelegram(
+      `🔔 <b>New Order — Pending Approval</b>\n\n` +
+      `👤 ${customerName||'Customer'} | 📱 ${phone}\n` +
+      `📦 ${req.body.product||'Netflix'} | ${d} days\n` +
+      `💰 ৳${req.body.amount||0}\n` +
+      `🛒 ${req.body.orderName||''}\n\n` +
+      `<b>Admin → Waitlist to approve</b>`
     );
-    if (existingLinks.length > 0) {
-      const links2 = loadLinks();
-      const now2 = Date.now();
-      let renewed = 0;
-      for (const el of existingLinks) {
-        links2[el.token].expiresAt = links2[el.token].expiresAt + d*24*60*60*1000;
-        links2[el.token].warningSent = false;
-        renewed++;
-      }
-      saveLinks(links2);
-      checkLowStock();
-      const firstLink = existingLinks[0];
-      sendTelegram(
-        `🔄 <b>Renewal Detected!</b>
-
-` +
-        `👤 ${customerName||'Customer'} | 📱 ${phone}
-` +
-        `🔗 Extended ${renewed} link(s) by ${d} days
-` +
-        `📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}
-` +
-        `🛒 ${req.body.orderName||''}`
-      );
-      return res.json({ success:true, renewed:true, count:renewed, token:firstLink.token, link:SITE_URL+'/c/'+firstLink.token, profile:firstLink.profile, pin:firstLink.pin });
-    }
-    // ── END RENEWAL DETECTION ──
-
-    // Renewal detection — same phone has active link → extend it
-    const allLinks2 = loadLinks();
-    const phoneNorm = phone.replace(/\D/g,'');
-    const existingActive = Object.values(allLinks2).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > Date.now()
-    );
-    if (existingActive.length > 0) {
-      let renewed = 0;
-      for (const el of existingActive) {
-        allLinks2[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-        allLinks2[el.token].warningSent = false;
-        allLinks2[el.token].renewalCount = (allLinks2[el.token].renewalCount || 0) + 1;
-        renewed++;
-      }
-      saveLinks(allLinks2);
-      checkLowStock();
-      const first = existingActive[0];
-      sendTelegram(`🔄 <b>Renewal!</b>
-👤 ${customerName||'Customer'} | 📱 ${phone}
-🔗 Extended ${renewed} link(s) +${d} days
-📦 ${req.body.product||'Netflix'} | ৳${req.body.amount||0}`);
-      return res.json({ success:true, renewed:true, count:renewed, token:first.token, link:SITE_URL+'/c/'+first.token, profile:first.profile, pin:first.pin });
-    }
-
-    const slot = getNextAvailableSlot(d);
-    if (!slot) {
-      // Save to waitlist
-      const waitlist = loadWaitlist();
-      const alreadyWaiting = waitlist.find(w=>w.phone===phone);
-      if (!alreadyWaiting) {
-        waitlist.push({ phone, customerName: customerName||'', days: d, product: req.body.product||'Netflix', orderName: req.body.orderName||'', amount: req.body.amount||0, addedAt: Date.now() });
-        saveWaitlist(waitlist);
-      }
-      sendTelegram(
-        `🚨 <b>STOCK OUT! No Slots Available!</b>\n\n` +
-        `👤 ${customerName||'Customer'} | 📱 ${phone}\n` +
-        `📦 ${req.body.product||'Netflix'} | ${d} days\n` +
-        `💰 ৳${req.body.amount||0}\n` +
-        `🛒 ${req.body.orderName||''}\n\n` +
-        `<b>Added to waitlist. Add Netflix accounts to auto-process!</b>`
-      );
-      return res.status(503).json({ success:false, error:'No slots available', waitlisted:true });
-    }
-    const links = loadLinks();
-    const now = Date.now();
-    let token;
-    {
-      token = generateToken();
-      links[token] = {
-        token, email: slot.email, profile: slot.profile, pin: slot.pin,
-        phone: phone, customerName: customerName || '', plan: req.body.product||'', amount: req.body.amount||0, orderName: req.body.orderName||'', renewalCount: 0, days: d,
-        createdAt: now, expiresAt: now + d * 24 * 60 * 60 * 1000,
-        uses: 0, lastUsed: null, active: true, warningSent: false
-      };
-      sendTelegram(`<b>Auto Link Created!</b>\n📞 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 /c/${token}\n⏳ ${d} days`);
-    }
-
-    saveLinks(links);
-    // Check low stock after creating
-    checkLowStock();
-    res.json({ success:true, token, link: SITE_URL + '/c/' + token, profile:slot.profile, pin:slot.pin });
+    return res.json({ success:true, waitlisted:true });
   } catch(e) {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
   }
 });
+
 
 // Phone lookup API for /track page
 app.get('/api/track/:phone', (req, res) => {
