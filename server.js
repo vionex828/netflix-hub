@@ -375,10 +375,9 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
-        const since = new Date(Date.now() - 15*60*1000);
-        const searchQuery = filterEmail
-          ? [['SINCE', since], ['TO', filterEmail]]
-          : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+        const since = new Date(Date.now() - 20*60*1000);
+        // Search Netflix emails - filter by email address in classifyEmail
+        const searchQuery = [['SINCE', since], ['OR', ['FROM', 'info@account.netflix.com'], ['FROM', 'netflix.com']]];
         imap.search(searchQuery, (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const fetch = imap.fetch(uids, { bodies: '' });
@@ -936,7 +935,7 @@ app.get('/api/debug-email', async (req, res) => {
   const filterEmail = (req.query.email || '').trim().toLowerCase();
   try {
     const results = await new Promise((resolve, reject) => {
-      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false}, connTimeout:12000, authTimeout:10000 });
+      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false}, connTimeout:8000, authTimeout:6000 });
       imap.once('ready', () => {
         imap.openBox('INBOX', true, (err) => {
           if (err) { imap.end(); return reject(err); }
