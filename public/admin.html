@@ -885,6 +885,7 @@ async function loadWaitlist(){
           <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||28}d · ৳${w.amount||0}</div>
           <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(w.addedAt)}</div>
         </div>
+        <button onclick="approveWaitlist('${esc(w.phone)}')" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">✅ Approve</button>
         <button class="icon-btn danger" onclick="removeWaitlist('${esc(w.phone)}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
       </div>`).join('');
   }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading waitlist</div>';}
@@ -900,6 +901,26 @@ async function processWaitlist(){
   } else showToast('Error: '+(d.error||'?'),true);
 }
 
+async function approveWaitlist(phone){
+  const btn = event.target;
+  btn.textContent = '...';
+  btn.disabled = true;
+  const r = await fetch('/api/admin/waitlist/approve/'+encodeURIComponent(phone),{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':adminToken}
+  });
+  const d = await r.json();
+  if(d.success){
+    if(d.renewed) showToast('🔄 Renewed! Link extended');
+    else showToast('✅ Link created! '+d.profile+' | '+d.pin);
+    loadWaitlist();
+    loadAll();
+  } else {
+    showToast('❌ '+(d.error||'Failed'), true);
+    btn.textContent = '✅ Approve';
+    btn.disabled = false;
+  }
+}
 async function removeWaitlist(phone){
   if(!confirm('Remove from waitlist?'))return;
   await fetch('/api/admin/waitlist/'+encodeURIComponent(phone),{method:'DELETE',headers:{'x-admin-token':adminToken}});
