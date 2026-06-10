@@ -10,7 +10,7 @@ function getCodesFromCache(email) {
   const entry = emailCodeCache.get(email.toLowerCase());
   if (!entry) return null;
   const age = Date.now() - entry.fetchedAt;
-  if (age > 60 * 1000) { emailCodeCache.delete(email.toLowerCase()); return null; } // 60s cache
+  if (age > 120 * 1000) { emailCodeCache.delete(email.toLowerCase()); return null; } // 2min cache
   return entry.codes;
 }
 
@@ -395,7 +395,11 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
                   const toEmail = toValues[0] || toText.toLowerCase().trim();
                   if (filterEmail) {
                     const filterLower = filterEmail.toLowerCase().trim();
-                    const matched = toValues.some(a => a === filterLower) || toText.toLowerCase().includes(filterLower);
+                    // Check TO header AND body (for forwarded emails where TO = master Gmail)
+                    const matched = toValues.some(a => a === filterLower) 
+                      || toText.toLowerCase().includes(filterLower)
+                      || (mail.text||'').toLowerCase().includes(filterLower)
+                      || (mail.html||'').toLowerCase().includes(filterLower);
                     if (!matched) return res(null);
                   }
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
@@ -893,11 +897,7 @@ app.get('/api/link/:token/info', (req, res) => {
 });
 
 app.get('/api/link/:token', async (req, res) => {
-  const timeout = setTimeout(() => {
-    if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
-  }, 30000);
-  const origJson = res.json.bind(res);
-  res.json = (data) => { clearTimeout(timeout); return origJson(data); };
+
   const links = loadLinks();
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
@@ -919,11 +919,15 @@ app.get('/api/link/:token', async (req, res) => {
       if (cached.length > 0) totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache miss — fetch ONLY this email from Gmail
-    const codes = await fetchNetflixEmailsFresh(link.email, true);
-    setCodesInCache(link.email, codes);
-    if (codes.length > 0) totalToday += 1;
-    res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    // Cache miss — return instantly with empty codes, fetch in background
+    // Customer page will auto-refresh to get codes
+    setCodesInCache(link.email, []); // placeholder so parallel requests don't all fetch
+    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
+    // Fetch in background and update cache
+    fetchNetflixEmailsFresh(link.email, true).then(codes => {
+      setCodesInCache(link.email, codes);
+      if (codes.length > 0) totalToday += 1;
+    }).catch(() => {});
   } catch(err) {
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   }
