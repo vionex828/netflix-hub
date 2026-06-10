@@ -18,38 +18,43 @@ function setCodesInCache(email, codes) {
   emailCodeCache.set(email.toLowerCase(), { codes, fetchedAt: Date.now() });
 }
 
-// Background poller — fetches all active Netflix account emails every 30s
-async function pollEmailCodes() {
+// Background poller — fetches one email at a time, sequentially
+let pollIndex = 0;
+let activeEmailList = [];
+
+function updateEmailList() {
+  const links = loadLinks();
+  const now = Date.now();
+  activeEmailList = [...new Set(
+    Object.values(links)
+      .filter(l => l.active && l.expiresAt > now)
+      .map(l => l.email.toLowerCase())
+  )];
+}
+
+async function pollNextEmail() {
   try {
-    const links = loadLinks();
-    const now = Date.now();
-    // Get unique active emails
-    const activeEmails = [...new Set(
-      Object.values(links)
-        .filter(l => l.active && l.expiresAt > now)
-        .map(l => l.email.toLowerCase())
-    )];
-    if (!activeEmails.length) return;
-    // Fetch codes for each email
-    for (const email of activeEmails) {
-      try {
-        const codes = await fetchNetflixEmailsFresh(email, true);
-        if (codes.length > 0) setCodesInCache(email, codes);
-        else if (!emailCodeCache.has(email)) setCodesInCache(email, []);
-      } catch(e) {
-        // Silent fail — will retry next poll
-      }
+    updateEmailList();
+    if (!activeEmailList.length) return;
+    // Poll one email per tick
+    if (pollIndex >= activeEmailList.length) pollIndex = 0;
+    const email = activeEmailList[pollIndex];
+    pollIndex++;
+    try {
+      const codes = await fetchNetflixEmailsFresh(email, true);
+      setCodesInCache(email, codes.length ? codes : []);
+    } catch(e) {
+      // Silent fail
     }
   } catch(e) {
     console.error('Poll error:', e.message);
   }
 }
 
-// Start polling after 5s, then every 30s
+// Poll one email every 10 seconds (14 emails = full cycle every ~2.5 minutes)
 setTimeout(() => {
-  pollEmailCodes();
-  setInterval(pollEmailCodes, 30 * 1000);
-}, 5000);
+  setInterval(pollNextEmail, 10 * 1000);
+}, 10000);
 
 
 const cors = require('cors');
