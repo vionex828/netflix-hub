@@ -1,6 +1,110 @@
 const express = require('express');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
+
+// ── PERSISTENT IMAP CONNECTION ────────────────────────────────────────────────
+let imapConnection = null;
+let imapReady = false;
+let imapReconnecting = false;
+const imapQueue = [];
+
+function getImap() {
+  return new Imap({
+    user: GMAIL_USER, password: GMAIL_PASS,
+    host: 'imap.gmail.com', port: 993, tls: true,
+    tlsOptions: { rejectUnauthorized: false },
+    connTimeout: 15000, authTimeout: 12000,
+    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: true }
+  });
+}
+
+function connectImap() {
+  if (imapReconnecting) return;
+  imapReconnecting = true;
+  imapReady = false;
+  const imap = getImap();
+  imap.once('ready', () => {
+    imap.openBox('INBOX', true, (err) => {
+      if (err) { imap.end(); return; }
+      imapConnection = imap;
+      imapReady = true;
+      imapReconnecting = false;
+      console.log('IMAP: Connected and ready');
+      // Process any queued requests
+      while (imapQueue.length > 0) {
+        const { resolve, reject, filterEmail, includeSignin } = imapQueue.shift();
+        searchImap(filterEmail, includeSignin).then(resolve).catch(reject);
+      }
+    });
+  });
+  imap.once('error', (err) => {
+    console.error('IMAP error:', err.message);
+    imapReady = false;
+    imapConnection = null;
+    imapReconnecting = false;
+    setTimeout(connectImap, 5000);
+  });
+  imap.once('end', () => {
+    console.log('IMAP: Disconnected, reconnecting...');
+    imapReady = false;
+    imapConnection = null;
+    imapReconnecting = false;
+    setTimeout(connectImap, 3000);
+  });
+  imap.connect();
+}
+
+function searchImap(filterEmail, includeSignin) {
+  return new Promise((resolve, reject) => {
+    if (!imapReady || !imapConnection) {
+      // Fall back to fresh connection
+      return fetchNetflixEmailsFresh(filterEmail, includeSignin).then(resolve).catch(reject);
+    }
+    const since = new Date(Date.now() - 10*60*1000);
+    const criteria = filterEmail
+      ? [['SINCE', since], ['TO', filterEmail], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]]
+      : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+    imapConnection.search(criteria, (err, uids) => {
+      if (err) return fetchNetflixEmailsFresh(filterEmail, includeSignin).then(resolve).catch(reject);
+      if (!uids || uids.length === 0) return resolve([]);
+      const fetch = imapConnection.fetch(uids, { bodies: '' });
+      const promises = [];
+      fetch.on('message', (msg) => {
+        const p = new Promise((res2) => {
+          msg.on('body', (stream) => {
+            simpleParser(stream, async (err, mail) => {
+              if (err) return res2(null);
+              const toValues = (mail.to?.value || []).map(a => (a.address||'').toLowerCase());
+              const toText = mail.to?.text || '';
+              const subject = (mail.subject || '').toLowerCase();
+              const bodyHtml = mail.html || '';
+              const bodyText = mail.text || '';
+              const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+              const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
+              const toEmail = toValues[0] || toText.toLowerCase().trim();
+              if (filterEmail) {
+                const matched = toValues.some(a => a === filterEmail.toLowerCase()) || toText.toLowerCase().includes(filterEmail.toLowerCase());
+                if (!matched) return res2(null);
+              }
+              const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
+              res2(parsed);
+            });
+          });
+        });
+        promises.push(p);
+      });
+      fetch.once('end', async () => {
+        const items = (await Promise.all(promises)).filter(Boolean);
+        resolve(items.sort((a,b) => b.ts - a.ts));
+      });
+      fetch.once('error', () => resolve([]));
+    });
+  });
+}
+
+// Start persistent connection when server starts
+setTimeout(() => { if (GMAIL_USER && GMAIL_PASS) connectImap(); }, 2000);
+
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -339,6 +443,10 @@ async function scrapeOTP(link) {
 }
 
 function fetchNetflixEmails(filterEmail, includeSignin=false) {
+  return searchImap(filterEmail, includeSignin);
+}
+
+function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
   return new Promise((resolve, reject) => {
     const imap = new Imap({
       user: GMAIL_USER, password: GMAIL_PASS,
@@ -391,7 +499,7 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
     imap.once('error', (err) => {
       if (attempt < 2) {
         console.log('IMAP retry attempt', attempt+1);
-        setTimeout(() => fetchNetflixEmails(filterEmail, includeSignin, attempt+1).then(resolve).catch(reject), 1000);
+        setTimeout(() => fetchNetflixEmailsFresh(filterEmail, includeSignin, attempt+1).then(resolve).catch(reject), 1000);
       } else {
         reject(err);
       }
@@ -920,7 +1028,7 @@ app.get('/api/debug-email', async (req, res) => {
           const searchCriteria = filterEmail
             ? [['SINCE', since], ['TO', filterEmail], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]]
             : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
-          imap.search(searchCriteria, (err, uids) => {
+          imap.search(searchCriteria, async (err, uids) => {
             if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
             const fetch = imap.fetch(uids, { bodies: '' });
             const promises = [];
