@@ -2,20 +2,23 @@ const express = require('express');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 
-// ── EMAIL CODE CACHE (background poller) ──────────────────────────────────────
-// Stores latest codes per email address, refreshed every 30s in background
+// ── EMAIL CODE CACHE ─────────────────────────────────────────────────────────
 const emailCodeCache = new Map(); // email → { codes: [], fetchedAt: timestamp }
+const fetchingEmails = new Set(); // emails currently being IMAP fetched
 
 function getCodesFromCache(email) {
   const entry = emailCodeCache.get(email.toLowerCase());
   if (!entry) return null;
   const age = Date.now() - entry.fetchedAt;
-  if (age > 120 * 1000) { emailCodeCache.delete(email.toLowerCase()); return null; } // 2min cache
+  // Short TTL for empty results (10s), long TTL for codes (2min)
+  const ttl = entry.codes.length > 0 ? 120 * 1000 : 10 * 1000;
+  if (age > ttl) { emailCodeCache.delete(email.toLowerCase()); return null; }
   return entry.codes;
 }
 
 function clearEmailCache(email) {
   emailCodeCache.delete(email.toLowerCase());
+  fetchingEmails.delete(email.toLowerCase());
 }
 
 function setCodesInCache(email, codes) {
@@ -395,11 +398,14 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
                   const toEmail = toValues[0] || toText.toLowerCase().trim();
                   if (filterEmail) {
                     const filterLower = filterEmail.toLowerCase().trim();
-                    // Check TO header AND body (for forwarded emails where TO = master Gmail)
-                    const matched = toValues.some(a => a === filterLower) 
+                    const fromValues = (mail.from?.value || []).map(a => (a.address||'').toLowerCase());
+                    const fromText = mail.from?.text || '';
+                    // Check TO, FROM (iCloud forwards with FROM=iCloud), and body (Outlook forwards)
+                    const matched = toValues.some(a => a === filterLower)
                       || toText.toLowerCase().includes(filterLower)
-                      || (mail.text||'').toLowerCase().includes(filterLower)
-                      || (mail.html||'').toLowerCase().includes(filterLower);
+                      || fromValues.some(a => a === filterLower)
+                      || fromText.toLowerCase().includes(filterLower)
+                      || (mail.text||'').toLowerCase().includes(filterLower);
                     if (!matched) return res(null);
                   }
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
@@ -913,21 +919,26 @@ app.get('/api/link/:token', async (req, res) => {
   const ipCount = trackIP(req.params.token, ip);
   trackIPGeo(req.params.token, ip).catch(()=>{});
   try {
-    // Check 60s cache first — instant if recently fetched
+    // Check cache first — instant response if recently fetched
     const cached = getCodesFromCache(link.email);
     if (cached !== null) {
       if (cached.length > 0) totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache miss — return instantly with empty codes, fetch in background
-    // Customer page will auto-refresh to get codes
-    setCodesInCache(link.email, []); // placeholder so parallel requests don't all fetch
+    // Already fetching in background — return fetching:true so customer keeps retrying
+    if (fetchingEmails.has(link.email.toLowerCase())) {
+      return res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
+    }
+    // Start background fetch — return instantly, customer retries every 10s
+    fetchingEmails.add(link.email.toLowerCase());
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
-    // Fetch in background and update cache
     fetchNetflixEmailsFresh(link.email, true).then(codes => {
       setCodesInCache(link.email, codes);
+      fetchingEmails.delete(link.email.toLowerCase());
       if (codes.length > 0) totalToday += 1;
-    }).catch(() => {});
+    }).catch(() => {
+      fetchingEmails.delete(link.email.toLowerCase());
+    });
   } catch(err) {
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   }
