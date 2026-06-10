@@ -370,13 +370,16 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 12000, authTimeout: 10000
+      connTimeout: 8000, authTimeout: 6000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
-        const since = new Date(Date.now() - 10*60*1000);
-        imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+        const since = new Date(Date.now() - 15*60*1000);
+        const searchQuery = filterEmail
+          ? [['SINCE', since], ['TO', filterEmail]]
+          : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+        imap.search(searchQuery, (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const fetch = imap.fetch(uids, { bodies: '' });
           const promises = [];
@@ -895,7 +898,7 @@ app.get('/api/link/:token/info', (req, res) => {
 app.get('/api/link/:token', async (req, res) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
-  }, 25000);
+  }, 30000);
   const origJson = res.json.bind(res);
   res.json = (data) => { clearTimeout(timeout); return origJson(data); };
   const links = loadLinks();
