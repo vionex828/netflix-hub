@@ -10,51 +10,18 @@ function getCodesFromCache(email) {
   const entry = emailCodeCache.get(email.toLowerCase());
   if (!entry) return null;
   const age = Date.now() - entry.fetchedAt;
-  if (age > 15 * 60 * 1000) { emailCodeCache.delete(email.toLowerCase()); return null; } // 15min max
+  if (age > 60 * 1000) { emailCodeCache.delete(email.toLowerCase()); return null; } // 60s cache
   return entry.codes;
+}
+
+function clearEmailCache(email) {
+  emailCodeCache.delete(email.toLowerCase());
 }
 
 function setCodesInCache(email, codes) {
   emailCodeCache.set(email.toLowerCase(), { codes, fetchedAt: Date.now() });
 }
 
-// Background poller — fetches one email at a time, sequentially
-let pollIndex = 0;
-let activeEmailList = [];
-
-function updateEmailList() {
-  const links = loadLinks();
-  const now = Date.now();
-  activeEmailList = [...new Set(
-    Object.values(links)
-      .filter(l => l.active && l.expiresAt > now)
-      .map(l => l.email.toLowerCase())
-  )];
-}
-
-async function pollNextEmail() {
-  try {
-    updateEmailList();
-    if (!activeEmailList.length) return;
-    // Poll one email per tick
-    if (pollIndex >= activeEmailList.length) pollIndex = 0;
-    const email = activeEmailList[pollIndex];
-    pollIndex++;
-    try {
-      const codes = await fetchNetflixEmailsFresh(email, true);
-      setCodesInCache(email, codes.length ? codes : []);
-    } catch(e) {
-      // Silent fail
-    }
-  } catch(e) {
-    console.error('Poll error:', e.message);
-  }
-}
-
-// Poll one email every 10 seconds (14 emails = full cycle every ~2.5 minutes)
-setTimeout(() => {
-  setInterval(pollNextEmail, 10 * 1000);
-}, 10000);
 
 
 const cors = require('cors');
@@ -946,20 +913,19 @@ app.get('/api/link/:token', async (req, res) => {
   const ipCount = trackIP(req.params.token, ip);
   trackIPGeo(req.params.token, ip).catch(()=>{});
   try {
-    // Check background cache first — instant response
+    // Check 60s cache first — instant if recently fetched
     const cached = getCodesFromCache(link.email);
     if (cached !== null) {
       if (cached.length > 0) totalToday += 1;
-      return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, cached:true });
+      return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache miss — fetch directly (first load or after restart)
+    // Cache miss — fetch ONLY this email from Gmail
     const codes = await fetchNetflixEmailsFresh(link.email, true);
     setCodesInCache(link.email, codes);
     if (codes.length > 0) totalToday += 1;
     res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   } catch(err) {
-    // Return empty codes rather than error — customer can refresh
-    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, message:'Checking inbox...' });
+    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   }
 });
 
@@ -973,7 +939,10 @@ app.get('/api/debug-email', async (req, res) => {
           if (err) { imap.end(); return reject(err); }
           const since = new Date(Date.now() - 10*60*1000);
           // Don't filter by TO - forwarded emails won't match
-          const searchCriteria = [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+          // ONLY fetch emails for this specific account
+          const searchCriteria = filterEmail
+            ? [['SINCE', since], ['TO', filterEmail], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]]
+            : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
           imap.search(searchCriteria, async (err, uids) => {
             if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
             const fetch = imap.fetch(uids, { bodies: '' });
@@ -1208,6 +1177,23 @@ Added to waitlist.`);
 
   } catch(e) {
     console.error('UddoktaPay IPN error:', e.message);
+  }
+});
+
+// Force refresh codes for a token (clears cache)
+app.get('/api/link/:token/refresh', async (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false });
+  if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
+  // Clear cache and fetch fresh
+  clearEmailCache(link.email);
+  try {
+    const codes = await fetchNetflixEmailsFresh(link.email, true);
+    setCodesInCache(link.email, codes);
+    res.json({ success:true, codes, count:codes.length, refreshed:true });
+  } catch(err) {
+    res.json({ success:true, codes:[], count:0, refreshed:true });
   }
 });
 
