@@ -248,6 +248,11 @@ const cache = new Map();
 function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<30000) return e.data; return null; }
 function setCache(key, data) { cache.set(key, {data, time:Date.now()}); }
 
+// Per-token code cache (60s TTL)
+const tokenCodeCache = new Map();
+function getTokenCache(token) { const e=tokenCodeCache.get(token); if(e&&Date.now()-e.time<60000) return e.data; return null; }
+function setTokenCache(token, data) { tokenCodeCache.set(token, {data, time:Date.now()}); }
+
 async function sendTelegram(msg, chatId=TG_CHAT) {
   try {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -339,12 +344,12 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 10000, authTimeout: 8000
+      connTimeout: 12000, authTimeout: 10000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
-        const since = new Date(Date.now() - 20*60*1000);
+        const since = new Date(Date.now() - 10*60*1000);
         imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const fetch = imap.fetch(uids, { bodies: '' });
@@ -383,7 +388,14 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
         });
       });
     });
-    imap.once('error', (err) => { reject(err); });
+    imap.once('error', (err) => {
+      if (attempt < 2) {
+        console.log('IMAP retry attempt', attempt+1);
+        setTimeout(() => fetchNetflixEmails(filterEmail, includeSignin, attempt+1).then(resolve).catch(reject), 1000);
+      } else {
+        reject(err);
+      }
+    });
     imap.connect();
   });
 }
@@ -857,7 +869,7 @@ app.get('/api/link/:token/info', (req, res) => {
 app.get('/api/link/:token', async (req, res) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) res.status(504).json({ success:false, error:'timeout', message:'Request timed out. Please refresh.' });
-  }, 15000);
+  }, 25000);
   const origJson = res.json.bind(res);
   res.json = (data) => { clearTimeout(timeout); return origJson(data); };
   const links = loadLinks();
@@ -875,10 +887,23 @@ app.get('/api/link/:token', async (req, res) => {
   const ipCount = trackIP(req.params.token, ip);
   trackIPGeo(req.params.token, ip).catch(()=>{});
   try {
+    // Check token cache first (60s TTL)
+    const cached = getTokenCache(req.params.token);
+    if (cached) {
+      return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, cached:true });
+    }
     const codes = await fetchNetflixEmails(link.email, true);
-    if (codes.length > 0) totalToday += 1;
+    if (codes.length > 0) {
+      totalToday += 1;
+      setTokenCache(req.params.token, codes);
+    }
     res.json({ success:true, codes, count:codes.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   } catch(err) {
+    // On error, try returning cached data if available
+    const staleCache = tokenCodeCache.get(req.params.token);
+    if (staleCache) {
+      return res.json({ success:true, codes:staleCache.data, count:staleCache.data.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, cached:true });
+    }
     res.status(500).json({ success:false, error:'server', message:'Server error. Try again.' });
   }
 });
@@ -887,12 +912,15 @@ app.get('/api/debug-email', async (req, res) => {
   const filterEmail = (req.query.email || '').trim().toLowerCase();
   try {
     const results = await new Promise((resolve, reject) => {
-      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false}, connTimeout:10000, authTimeout:8000 });
+      const imap = new Imap({ user:GMAIL_USER, password:GMAIL_PASS, host:'imap.gmail.com', port:993, tls:true, tlsOptions:{rejectUnauthorized:false}, connTimeout:12000, authTimeout:10000 });
       imap.once('ready', () => {
         imap.openBox('INBOX', true, (err) => {
           if (err) { imap.end(); return reject(err); }
-          const since = new Date(Date.now() - 20*60*1000);
-          imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+          const since = new Date(Date.now() - 10*60*1000);
+          const searchCriteria = filterEmail
+            ? [['SINCE', since], ['TO', filterEmail], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]]
+            : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+          imap.search(searchCriteria, (err, uids) => {
             if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
             const fetch = imap.fetch(uids, { bodies: '' });
             const promises = [];
