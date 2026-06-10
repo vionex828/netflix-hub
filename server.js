@@ -376,9 +376,7 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
         const since = new Date(Date.now() - 20*60*1000);
-        // Search Netflix emails - filter by email address in classifyEmail
-        const searchQuery = [['SINCE', since], ['OR', ['FROM', 'info@account.netflix.com'], ['FROM', 'netflix.com']]];
-        imap.search(searchQuery, (err, uids) => {
+        imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           const fetch = imap.fetch(uids, { bodies: '' });
           const promises = [];
