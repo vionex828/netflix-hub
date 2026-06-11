@@ -9,14 +9,7 @@
 <link rel="manifest" href="/manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-:root{
-  --red:#E50914;--red2:#a50000;
-  --bg:#0a0a0a;--s1:#111;--s2:#161616;--s3:#1c1c1c;--s4:#222;--s5:#2a2a2a;
-  --border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);
-  --text:#fff;--muted:#888;--muted2:#555;
-  --green:#46d369;--amber:#f5a623;--blue:#4da6ff;--purple:#9664ff;
-  --f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;--h:'Anton',sans-serif;
-}
+:root{--red:#E50914;--red2:#a50000;--bg:#0a0a0a;--s1:#111;--s2:#161616;--s3:#1c1c1c;--s4:#222;--s5:#2a2a2a;--border:rgba(255,255,255,.08);--border2:rgba(255,255,255,.15);--text:#fff;--muted:#888;--muted2:#555;--green:#46d369;--amber:#f5a623;--blue:#4da6ff;--purple:#9664ff;--f:'Inter',sans-serif;--m:'IBM Plex Mono',monospace;--h:'Anton',sans-serif;}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{overflow-x:hidden}
 body{background:var(--bg);color:var(--text);font-family:var(--f);min-height:100vh;-webkit-font-smoothing:antialiased}
@@ -55,8 +48,7 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .iico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .iico.red{background:rgba(229,9,20,.15)}.iico.blue{background:rgba(77,166,255,.12)}.iico.amber{background:rgba(245,166,35,.12)}.iico.green{background:rgba(70,211,105,.12)}.iico.grey{background:var(--s4)}.iico.purple{background:rgba(150,100,255,.12)}
 .ilbl{font-family:var(--m);font-size:.52rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted2);margin-bottom:4px}
-.ival{font-size:.9rem;font-weight:600;color:var(--text)}
-.ival.green{color:var(--green)}
+.ival{font-size:.9rem;font-weight:600;color:var(--text)}.ival.green{color:var(--green)}
 .isub{font-size:.7rem;color:var(--muted);margin-top:2px}
 .copy-btn{display:inline-flex;align-items:center;gap:5px;margin-top:7px;background:var(--s3);border:1px solid var(--border2);border-radius:7px;padding:5px 12px;color:var(--muted);font-family:var(--m);font-size:.6rem;cursor:pointer;transition:all .2s}
 .copy-btn:hover{color:var(--text)}
@@ -64,8 +56,7 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .eye-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px}
 .rbtn{width:100%;background:linear-gradient(135deg,var(--red),var(--red2));border:none;border-radius:16px;padding:1.1rem 1.5rem;cursor:pointer;margin-bottom:.9rem;display:flex;align-items:center;gap:1.1rem;transition:all .2s;animation:fu .5s ease .1s both;position:relative;overflow:hidden}
 .rbtn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.06),transparent);pointer-events:none}
-.rbtn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 28px rgba(229,9,20,.4)}
-.rbtn:disabled{opacity:.7;cursor:not-allowed}
+.rbtn:hover{transform:translateY(-1px);box-shadow:0 8px 28px rgba(229,9,20,.4)}
 .rbtn-ico-wrap{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .rbtn-ico.spinning{animation:spin 1s linear infinite}
 .rbtn-text{flex:1;text-align:left}
@@ -153,7 +144,6 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .covl.show .cbox{transform:scale(1)}
 .ccheck{width:52px;height:52px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center}
 .clbl{font-family:var(--h);font-size:1.1rem;letter-spacing:3px;color:var(--text);text-transform:uppercase}
-/* RENEWAL MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;transition:opacity .3s;pointer-events:none}
 .modal-overlay.show{opacity:1;pointer-events:all}
 .modal-box{background:var(--s1);border:1px solid var(--border2);border-radius:20px 20px 0 0;padding:1.5rem 1.4rem 2.5rem;width:100%;max-width:500px;transform:translateY(100%);transition:transform .35s cubic-bezier(.34,1.1,.64,1)}
@@ -171,8 +161,6 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
 .renew-pay-btn{width:100%;background:linear-gradient(135deg,var(--red),#a50000);border:none;border-radius:12px;padding:1rem;color:#fff;font-family:var(--h);font-size:1.1rem;letter-spacing:3px;cursor:pointer;transition:all .2s;text-transform:uppercase}
 .renew-pay-btn:disabled{opacity:.5;cursor:not-allowed}
 .renew-pay-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(229,9,20,.3)}
-.renew-success{text-align:center;padding:1rem 0}
-
 #toast{position:fixed;bottom:1.8rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#000;font-family:var(--h);font-size:.88rem;padding:10px 24px;border-radius:6px;letter-spacing:3px;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;z-index:999;white-space:nowrap;text-transform:uppercase}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @keyframes fu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -192,18 +180,11 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
     <div class="clbl">Copied!</div>
   </div>
 </div>
-<a class="waf" href="https://wa.me/8801928382918" target="_blank">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-</a>
+<a class="waf" href="https://wa.me/8801928382918" target="_blank"><svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></a>
 <div id="toast"></div>
-
-<!-- RENEWAL MODAL -->
 <div class="modal-overlay" id="renew-modal" onclick="if(event.target===this)closeRenewModal()">
   <div class="modal-box">
-    <div class="modal-header">
-      <div class="modal-title">Extend Your Plan</div>
-      <button class="modal-close" onclick="closeRenewModal()">×</button>
-    </div>
+    <div class="modal-header"><div class="modal-title">Extend Your Plan</div><button class="modal-close" onclick="closeRenewModal()">×</button></div>
     <div id="renew-modal-body">
       <div style="font-family:var(--m);font-size:.65rem;color:var(--muted2);margin-bottom:.8rem;letter-spacing:1px">SELECT DURATION / TYPE</div>
       <div class="plan-grid" id="plan-grid"></div>
@@ -243,12 +224,22 @@ async function fetchCodes(token,isRefresh=false){
     ep();
     const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
     if(!data.success){
-      if(data.error==='expired')showExpired(null, data.profile, data.token);
+      if(data.error==='expired')showExpired(null,data.profile,data.token);
       else showError(data.error,data.message);
       return;
     }
+    // ── FIX: Handle server background fetching ──
+    if(data.fetching&&(!data.codes||data.codes.length===0)){
+      if(!isRefresh)buildPage(data);
+      const c=document.getElementById('cards');
+      if(c)c.innerHTML='<div class="empty"><div style="width:48px;height:48px;border-radius:50%;background:rgba(229,9,20,.1);display:flex;align-items:center;justify-content:center;margin:0 auto .8rem"><svg style="animation:spin 1s linear infinite" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div><h3>Checking Inbox...</h3><p>Scanning for new Netflix codes.<br>Auto-updates every few seconds.</p></div>';
+      if(refTimer)clearInterval(refTimer);
+      refTimer=setTimeout(()=>fetchCodes(token,true),3000);
+      return;
+    }
+    // ── Normal response ──
     const now=Date.now();
-    data.codes=data.codes.filter(c=>{
+    data.codes=(data.codes||[]).filter(c=>{
       if(c.code&&BLOCKED.includes(c.code))return false;
       if(c.expiresAt&&c.expiresAt<now)return false;
       return true;
@@ -261,24 +252,29 @@ async function fetchCodes(token,isRefresh=false){
     else{
       updateCodes(data);
       if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
+      else{addAct('grey','No codes yet','Waiting for Netflix email...');}
     }
+    // ── FIX: 10s auto-refresh (was 60s) ──
     if(refTimer)clearInterval(refTimer);
-    refTimer=setInterval(()=>fetchCodes(token,true),60*1000);
+    refTimer=setInterval(()=>fetchCodes(token,true),10*1000);
     if(cdTimer)clearInterval(cdTimer);
     cdTimer=setInterval(tickCd,1000);
     if(data.daysLeft<=3&&data.daysLeft>0){
       setTimeout(()=>{const p=document.getElementById('rpopup');if(p){p.style.display='flex';setTimeout(()=>p.style.opacity='1',50);}},1500);
     }
-    if(data.daysLeft<=3&&data.daysLeft>0){
-      const waRenewMsg = encodeURIComponent('Hi FanFlix BD! My subscription expires in '+data.daysLeft+' day(s).\n\nProfile: '+(data.profile||'')+'\nLink: /c/'+token+'\n\nI want to renew to keep my profile & watch history. Please confirm! 🙏');
-      window._waRenewMsg = waRenewMsg;
-    }
   }catch(e){
     ep();
     const r=document.getElementById('rbtn-ico');if(r)r.classList.remove('spinning');
     if(!isRefresh)showError('error','Could not connect.');
+    else{
+      if(refTimer)clearInterval(refTimer);
+      refTimer=setTimeout(()=>fetchCodes(token,true),5000);
+    }
   }
 }
+
+// ── FIX: Refresh button never disabled ──
+function doRefresh(){fetchCodes(window._tok,true);}
 
 function buildPage(data){
   const days=data.daysLeft||0;
@@ -302,10 +298,7 @@ function buildPage(data){
     <div class="scard ${sc}">
       <div class="scard-top">
         <div class="netflix-n">N</div>
-        <div class="scard-mid">
-          <div class="stitle"><span class="sdot"></span>${stitle}</div>
-          <div class="ssub">${ssub}</div>
-        </div>
+        <div class="scard-mid"><div class="stitle"><span class="sdot"></span>${stitle}</div><div class="ssub">${ssub}</div></div>
         ${days>0?`<div class="days-block"><div class="days-num">${days}</div><div class="days-lbl">Days Left</div></div>`:''}
       </div>
       <div class="scard-prog">
@@ -358,18 +351,14 @@ function buildPage(data){
       <div style="flex:1"><div style="font-size:.84rem;font-weight:600;color:var(--amber)">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.72rem;color:var(--muted);margin-top:2px">Contact FanFlix BD to renew.</div></div>
       <button onclick="openRenewModal()" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:700;font-size:.76rem;white-space:nowrap">Renew Now</button>
     </div>
-    <button onclick="openRenewModal()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:16px;padding:.8rem;margin-bottom:.7rem;color:var(--muted);font-family:var(--m);font-size:.72rem;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">
-      RENEW SUBSCRIPTION
-    </button>
+    <button onclick="openRenewModal()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:16px;padding:.8rem;margin-bottom:.7rem;color:var(--muted);font-family:var(--m);font-size:.72rem;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">RENEW SUBSCRIPTION</button>
     <button class="rbtn" id="rbtn" onclick="doRefresh()">
       <div class="rbtn-ico-wrap"><svg id="rbtn-ico" class="rbtn-ico" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div>
       <div class="rbtn-text"><span class="rbtn-title">Refresh Codes</span><span class="rbtn-sub">Scan inbox and get new codes</span></div>
       <div class="rbtn-arrow"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
     </button>
     <div class="acard">
-      <div class="ahead">
-        <div class="atitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Live Activity</div>
-      </div>
+      <div class="ahead"><div class="atitle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Live Activity</div></div>
       <div class="alist" id="alist">
         <div class="aitem"><div class="adot green"></div><div class="atime">${now}</div><div><div class="atxt">Ready</div><div class="asub">System is active</div></div></div>
       </div>
@@ -387,11 +376,6 @@ function buildPage(data){
     </div>
   </div>`;
   renderCards();
-}
-
-function doRefresh(){
-  const b=document.getElementById('rbtn');if(b)b.disabled=true;
-  fetchCodes(window._tok,true).finally(()=>{const b=document.getElementById('rbtn');if(b)b.disabled=false;});
 }
 
 function updateCodes(data){
@@ -468,65 +452,21 @@ function cardHtml(item,i){
   return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code</div><a class="clink g" href="${esc(item.link)}" target="_blank">Get Code →</a><div class="cmeta">${tt}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.link)}',this,false)">Copy</button></div>`;
 }
 
-function showExpired(expiresAt, profile, token){
-  const expTime = expiresAt || (Date.now() - 1000);
-  const graceEnd = expTime + 3*60*60*1000; // 3 hours grace period
-  const prof = profile || (window._ld?.profile || '');
-  const tok = token || window._tok || '';
-  const waMsg = encodeURIComponent('Hi FanFlix BD! My subscription has expired.\n\nProfile: '+prof+'\nLink: /c/'+tok+'\n\nI want to renew and keep my profile & watch history. Please help! 🙏');
-
-  function renderExpired() {
-    const now = Date.now();
-    const remaining = graceEnd - now;
-    const inGrace = remaining > 0;
-    const h = Math.floor(remaining/3600000);
-    const m = Math.floor((remaining%3600000)/60000);
-    const s = Math.floor((remaining%60000)/1000);
-    const countdownStr = h+'h '+m+'m '+s+'s';
-
-    document.getElementById('page').innerHTML = `
-    <div class="ewrap">
-      <div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div>
-      <div class="ebox" style="max-width:400px">
-        <div style="width:60px;height:60px;border-radius:50%;background:rgba(229,9,20,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </div>
-        <div class="etitle" style="font-size:1.4rem">Subscription Expired</div>
-        ${inGrace ? `
-        <div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:1rem;margin:1rem 0;text-align:center">
-          <div style="font-family:var(--m);font-size:.65rem;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:.5rem">⚠️ Renew within</div>
-          <div id="exp-countdown" style="font-family:var(--h);font-size:2.2rem;color:var(--amber);letter-spacing:4px">${countdownStr}</div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:.4rem">to keep your Profile & watch history</div>
-        </div>
-        <div class="emsg" style="font-size:.82rem">Renew now to keep <strong style="color:var(--text)">${prof}</strong> profile and all your watch history intact.</div>
-        <a class="wabig" href="https://wa.me/8801928382918?text=${waMsg}" target="_blank" style="width:100%;justify-content:center;margin-bottom:.7rem">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Renew Now — Keep My Profile
-        </a>
-        ` : `
-        <div style="background:rgba(229,9,20,.08);border:1px solid rgba(229,9,20,.2);border-radius:12px;padding:1rem;margin:1rem 0;text-align:center">
-          <div style="font-family:var(--h);font-size:1rem;color:var(--red);letter-spacing:2px">GRACE PERIOD EXPIRED</div>
-          <div style="font-size:.78rem;color:var(--muted);margin-top:.4rem;line-height:1.6">If you buy now, we will provide<br><strong style="color:var(--text)">new account info</strong> — profile & watch history cannot be kept</div>
-        </div>
-        <div class="emsg" style="font-size:.82rem">Your 3-hour grace period has passed. Contact us to get a new subscription.</div>
-        <a class="wabig" href="https://wa.me/8801928382918?text=${encodeURIComponent('Hi FanFlix BD! My subscription expired and grace period passed.\n\nProfile: '+prof+'\nLink: /c/'+tok+'\n\nI want to buy a new subscription. 🙏')}" target="_blank" style="width:100%;justify-content:center;margin-bottom:.7rem">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          Buy New Subscription
-        </a>
-        `}
-      </div>
-    </div>`;
-
-    if(inGrace) {
-      setTimeout(()=>{
-        const cd = document.getElementById('exp-countdown');
-        if(cd) renderExpired();
-      }, 1000);
-    }
+function showExpired(expiresAt,profile,token){
+  const expTime=expiresAt||(Date.now()-1000);
+  const graceEnd=expTime+3*60*60*1000;
+  const prof=profile||(window._ld?.profile||'');
+  const tok=token||window._tok||'';
+  const waMsg=encodeURIComponent('Hi FanFlix BD! My subscription has expired.\n\nProfile: '+prof+'\nLink: /c/'+tok+'\n\nI want to renew and keep my profile & watch history. Please help! 🙏');
+  function renderExpired(){
+    const now=Date.now(),remaining=graceEnd-now,inGrace=remaining>0;
+    const h=Math.floor(remaining/3600000),m=Math.floor((remaining%3600000)/60000),s=Math.floor((remaining%60000)/1000);
+    document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox" style="max-width:400px"><div style="width:60px;height:60px;border-radius:50%;background:rgba(229,9,20,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="etitle" style="font-size:1.4rem">Subscription Expired</div>${inGrace?`<div style="background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.25);border-radius:12px;padding:1rem;margin:1rem 0;text-align:center"><div style="font-family:var(--m);font-size:.65rem;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:.5rem">⚠️ Renew within</div><div id="exp-countdown" style="font-family:var(--h);font-size:2.2rem;color:var(--amber);letter-spacing:4px">${h}h ${m}m ${s}s</div><div style="font-size:.75rem;color:var(--muted);margin-top:.4rem">to keep your Profile & watch history</div></div><div class="emsg" style="font-size:.82rem">Renew now to keep <strong style="color:var(--text)">${prof}</strong> profile and all your watch history intact.</div><a class="wabig" href="https://wa.me/8801928382918?text=${waMsg}" target="_blank" style="width:100%;justify-content:center;margin-bottom:.7rem">Renew Now — Keep My Profile</a>`:`<div style="background:rgba(229,9,20,.08);border:1px solid rgba(229,9,20,.2);border-radius:12px;padding:1rem;margin:1rem 0;text-align:center"><div style="font-family:var(--h);font-size:1rem;color:var(--red);letter-spacing:2px">GRACE PERIOD EXPIRED</div></div><div class="emsg" style="font-size:.82rem">Contact us to get a new subscription.</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank" style="width:100%;justify-content:center;margin-bottom:.7rem">Buy New Subscription</a>`}</div></div>`;
+    if(inGrace)setTimeout(()=>{if(document.getElementById('exp-countdown'))renderExpired();},1000);
   }
-
   renderExpired();
 }
+
 function showError(type,msg){document.getElementById('page').innerHTML=`<div class="ewrap"><div class="elogo"><span class="f">FAN</span><span class="l">FLIX</span></div><div class="ebox"><div class="etitle">${type==='revoked'?'Access Revoked':'Error'}</div><div class="emsg">${msg||'Could not connect.'}</div><a class="wabig" href="https://wa.me/8801928382918" target="_blank">Contact FanFlix BD</a></div></div>`;}
 
 function fmtCd(exp){
@@ -558,88 +498,37 @@ function doCopy(text,btn,overlay){
 }
 
 function playBeep(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=880;g.gain.setValueAtTime(.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.3);o.start();o.stop(ctx.currentTime+.3);}catch(e){}}
-// ── RENEWAL ──────────────────────────────────────────────
-let selectedPlan = null;
-let renewPlans = [];
 
-async function openRenewModal() {
-  const modal = document.getElementById('renew-modal');
-  if(!modal) return;
-  // Load plans
-  // Hardcoded fallback plans
-  const HARDCODED_PLANS = [
-    { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28 },
-    { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:28 },
-    { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85 },
-    { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28 },
-    { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28 },
-    { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:85 },
-  ];
-  try {
-    const r = await fetch('/api/renew/plans');
-    const d = await r.json();
-    renewPlans = d.plans && d.plans.length ? d.plans : HARDCODED_PLANS;
-  } catch(e) {
-    renewPlans = HARDCODED_PLANS;
-  }
-  renderPlans();
-  modal.classList.add('show');
+let selectedPlan=null,renewPlans=[];
+async function openRenewModal(){
+  const modal=document.getElementById('renew-modal');if(!modal)return;
+  const PLANS=[{id:'netflix-mobile-1m',name:'Netflix Mobile 1M',price:350,days:28},{id:'netflix-tv-1m',name:'Netflix TV 1M',price:450,days:28},{id:'netflix-tv-3m',name:'Netflix TV 3M',price:1350,days:85},{id:'combo-mobile-1m',name:'Combo Mobile 1M',price:389,days:28},{id:'combo-tv-1m',name:'Combo TV 1M',price:489,days:28},{id:'combo-tv-3m',name:'Combo TV 3M',price:1500,days:85}];
+  try{const r=await fetch('/api/renew/plans');const d=await r.json();renewPlans=d.plans&&d.plans.length?d.plans:PLANS;}catch(e){renewPlans=PLANS;}
+  renderPlans();modal.classList.add('show');
 }
-
-function renderPlans() {
-  const grid = document.getElementById('plan-grid');
-  if(!grid) return;
-  grid.innerHTML = renewPlans.map(p => `
-    <div class="plan-card" id="plan-${p.id}" onclick="selectPlan('${p.id}')">
-      <div class="plan-card-name">${p.name}</div>
-      <div class="plan-card-price">৳${p.price}</div>
-      <div class="plan-card-days">${p.days} days</div>
-    </div>`).join('');
+function renderPlans(){
+  const grid=document.getElementById('plan-grid');if(!grid)return;
+  grid.innerHTML=renewPlans.map(p=>`<div class="plan-card" id="plan-${p.id}" onclick="selectPlan('${p.id}')"><div class="plan-card-name">${p.name}</div><div class="plan-card-price">৳${p.price}</div><div class="plan-card-days">${p.days} days</div></div>`).join('');
 }
-
-function selectPlan(planId) {
-  selectedPlan = renewPlans.find(p => p.id === planId);
-  document.querySelectorAll('.plan-card').forEach(c => c.classList.remove('selected'));
-  const el = document.getElementById('plan-' + planId);
-  if(el) el.classList.add('selected');
-  const priceEl = document.getElementById('selected-price');
-  if(priceEl) priceEl.textContent = selectedPlan ? '৳' + selectedPlan.price : '—';
-  const btn = document.getElementById('renew-pay-btn');
-  if(btn) btn.disabled = !selectedPlan;
+function selectPlan(planId){
+  selectedPlan=renewPlans.find(p=>p.id===planId);
+  document.querySelectorAll('.plan-card').forEach(c=>c.classList.remove('selected'));
+  const el=document.getElementById('plan-'+planId);if(el)el.classList.add('selected');
+  const priceEl=document.getElementById('selected-price');if(priceEl)priceEl.textContent=selectedPlan?'৳'+selectedPlan.price:'—';
+  const btn=document.getElementById('renew-pay-btn');if(btn)btn.disabled=!selectedPlan;
 }
-
-function startPayment() {
-  if(!selectedPlan || !window._tok) return;
-  const profile = window._ld?.profile || '';
-  const msg = 'Hi FanFlix BD! I want to renew my subscription.\n\n' +
-    'Profile: ' + profile + '\n' +
-    'Link: /c/' + window._tok + '\n' +
-    'Plan: ' + selectedPlan.name + ' - ৳' + selectedPlan.price + '\n\n' +
-    'Please confirm payment details. 🙏';
+function startPayment(){
+  if(!selectedPlan||!window._tok)return;
+  const profile=window._ld?.profile||'';
+  const msg='Hi FanFlix BD! I want to renew my subscription.\n\nProfile: '+profile+'\nLink: /c/'+window._tok+'\nPlan: '+selectedPlan.name+' - ৳'+selectedPlan.price+'\n\nPlease confirm payment details. 🙏';
   closeRenewModal();
-  window.open('https://wa.me/8801928382918?text=' + encodeURIComponent(msg), '_blank');
+  window.open('https://wa.me/8801928382918?text='+encodeURIComponent(msg),'_blank');
 }
-
-function closeRenewModal() {
-  const modal = document.getElementById('renew-modal');
-  if(modal) modal.classList.remove('show');
-  selectedPlan = null;
+function closeRenewModal(){const modal=document.getElementById('renew-modal');if(modal)modal.classList.remove('show');selectedPlan=null;}
+function checkRenewalSuccess(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('renewed')==='1'){const days=params.get('days')||'';setTimeout(()=>{showToast('Renewed! '+days+' days added');window.history.replaceState({},'',window.location.pathname);},1000);}
 }
-
-// Check if redirected back after successful renewal
-function checkRenewalSuccess() {
-  const params = new URLSearchParams(window.location.search);
-  if(params.get('renewed') === '1') {
-    const plan = params.get('plan') || '';
-    const days = params.get('days') || '';
-    setTimeout(()=>{
-      showToast('Renewed! ' + days + ' days added');
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-    }, 1000);
-  }
-}
-
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 </script>
