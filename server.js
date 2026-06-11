@@ -1374,53 +1374,7 @@ app.get('/api/track/:phone', (req, res) => {
 });
 
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
-app.get('/c/:token', (req, res) => {
-  // Inject patch script to fix auto-refresh and loading behavior
-  const fs2 = require('fs');
-  const path2 = require('path');
-  try {
-    let html = fs2.readFileSync(path2.join(__dirname,'public','customer.html'), 'utf8');
-    const patch = `
-<script>
-// FanFlix patch: 10s auto-refresh + always-on refresh button + instant page load
-(function(){
-  // Wait for original JS to load
-  const _orig = window.onload;
-  window.onload = function(){
-    if(_orig) _orig();
-  };
-
-  // Override fetchCodes after page loads
-  document.addEventListener('DOMContentLoaded', function(){
-    setTimeout(function(){
-      // Patch 1: doRefresh never disables button
-      window.doRefresh = function(){
-        fetchCodes(window._tok, true);
-      };
-
-      // Patch 2: Override auto-refresh interval to 10s
-      // The original sets 60s - we'll reset it after first call
-      const _origFetch = window.fetchCodes;
-      if(_origFetch) {
-        window.fetchCodes = async function(token, isRefresh){
-          await _origFetch(token, isRefresh);
-          // Reset timer to 10s after every call
-          if(window.refTimer) clearInterval(window.refTimer);
-          window.refTimer = setInterval(function(){ 
-            fetchCodes(window._tok, true); 
-          }, 10000);
-        };
-      }
-    }, 100);
-  });
-})();
-</script>`;
-    html = html.replace('</body>', patch + '\n</body>');
-    res.send(html);
-  } catch(e) {
-    res.sendFile(path.join(__dirname,'public','customer.html'));
-  }
-});
+app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 
 app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
 
