@@ -273,8 +273,35 @@ async function fetchCodes(token,isRefresh=false){
   }
 }
 
-// ── FIX: Refresh button never disabled ──
-function doRefresh(){fetchCodes(window._tok,true);}
+// ── FIX: Refresh button clears cache and forces fresh IMAP fetch ──
+function doRefresh(){
+  const r=document.getElementById('rbtn-ico');if(r)r.classList.add('spinning');
+  sp();
+  fetch(`/api/link/${window._tok}/refresh`)
+    .then(res=>res.json())
+    .then(data=>{
+      ep();
+      if(r)r.classList.remove('spinning');
+      if(!data.success)return;
+      const now=Date.now();
+      data.codes=(data.codes||[]).filter(c=>{
+        if(c.code&&BLOCKED.includes(c.code))return false;
+        if(c.expiresAt&&c.expiresAt<now)return false;
+        return true;
+      });
+      const seen=new Set();
+      data.codes=data.codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
+      allCodes=data.codes;
+      window._ld={...window._ld,...data};
+      updateCodes(data);
+      if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
+      else{addAct('grey','No codes yet','Waiting for Netflix email...');}
+    })
+    .catch(()=>{
+      ep();
+      if(r)r.classList.remove('spinning');
+    });
+}
 
 function buildPage(data){
   const days=data.daysLeft||0;
