@@ -10,8 +10,8 @@ function getCodesFromCache(email) {
   const entry = emailCodeCache.get(email.toLowerCase());
   if (!entry) return null;
   const age = Date.now() - entry.fetchedAt;
-  // Short TTL for empty results (10s), long TTL for codes (2min)
-  const ttl = entry.codes.length > 0 ? 120 * 1000 : 10 * 1000;
+  // Short TTL for empty results (10s), normal TTL for codes (30s)
+  const ttl = entry.codes.length > 0 ? 30 * 1000 : 10 * 1000;
   if (age > ttl) { emailCodeCache.delete(email.toLowerCase()); return null; }
   return entry.codes;
 }
