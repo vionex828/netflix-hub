@@ -914,7 +914,7 @@ async function loadWaitlist(){
       <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
         <div style="flex:1;min-width:0">
           <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}</div>
-          <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||28}d · ৳${w.amount||0}</div>
+          <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||30}d · ৳${w.amount||0}</div>
           <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(w.addedAt)}</div>
         </div>
         <button onclick="approveWaitlist('${esc(w.phone)}')" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">✅ Approve</button>
