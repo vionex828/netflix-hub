@@ -70,8 +70,8 @@ const WA_NUMBER = '8801928382918';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
-  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28, product:'Netflix Subscription' },
-  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:28, product:'Netflix TV Subscription' },
+  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:349, days:28, product:'Netflix Subscription' },
+  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:449, days:28, product:'Netflix TV Subscription' },
   { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85, product:'Netflix TV Subscription 3M' },
   { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28, product:'Netflix+Prime Mobile 1M' },
   { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28, product:'Netflix+Prime TV 1M' },
@@ -104,8 +104,8 @@ function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, J
 
 // Normalize customer days to match account plan types (28/85/170)
 function normalizeDays(d) {
-  const n = parseInt(d) || 28;
-  if (n <= 30) return 28;
+  const n = parseInt(d) || 30;
+  if (n <= 30) return 30;
   if (n <= 90) return 85;
   return 170;
 }
@@ -240,15 +240,15 @@ function getNextAvailableSlot(customerDays) {
     return null;
   }
 
-  // First try: accounts matching customer plan
+  // First try: accounts matching customer plan — sorted by addedAt (oldest first = serial order)
   const matched = [...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days)
-    .sort((a,b) => (a.priority||99) - (b.priority||99));
+    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   const result = tryAccounts(matched);
   if (result) return result;
 
-  // Second try: accounts with no plan set (accept any)
+  // Second try: accounts with no plan set — serial order
   const anyPlan = [...accounts].filter(a => a.active && !a.planDays)
-    .sort((a,b) => (a.priority||99) - (b.priority||99));
+    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   return tryAccounts(anyPlan);
 }
 
@@ -324,21 +324,76 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
+// ── BULKSMS ───────────────────────────────────────────────────────────────────
+const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
+const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
+
+async function sendBulkSMS(phone, message) {
+  try {
+    const num = String(phone).replace(/\D/g,'');
+    if (!num || num.length < 7) return;
+    const url = `http://bulksmsbd.net/api/smsapi?api_key=${BULKSMS_API_KEY}&type=text&number=${num}&senderid=${BULKSMS_SENDER}&message=${encodeURIComponent(message)}`;
+    const res = await fetch(url);
+    const data = await res.text();
+    console.log('SMS sent to', num, ':', data);
+  } catch(e) { console.error('SMS error:', e.message); }
+}
+
 function checkExpiringLinks() {
   const links = loadLinks();
-  const now = Date.now(), threeDays = 3*24*60*60*1000;
+  const now = Date.now();
+  const threeDays = 3*24*60*60*1000;
+  const oneDay    = 1*24*60*60*1000;
+  let changed = false;
   for (const link of Object.values(links)) {
     if (!link.active) continue;
     const remaining = link.expiresAt - now;
+    // Telegram alert 3 days before
     if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
       const days = Math.ceil(remaining/(24*60*60*1000));
-      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
+      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 30`);
       links[link.token].warningSent = true;
-      saveLinks(links);
+      changed = true;
+    }
+    // SMS 1 day before expiry
+    if (remaining > 0 && remaining <= oneDay && !link.smsSent && link.phone) {
+      const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ আগামীকাল শেষ হবে। একই প্রোফাইল ও একই আইডি রাখতে আজই রিনিউ করুন। আপনার ড্যাশবোর্ড: ${SITE_URL}/c/${link.token} রিনিউ করতে WhatsApp করুন: wa.me/${WA_NUMBER}`;
+      sendBulkSMS(link.phone, msg);
+      links[link.token].smsSent = true;
+      changed = true;
     }
   }
+  if (changed) saveLinks(links);
 }
 setInterval(checkExpiringLinks, 60*60*1000);
+
+// ── NETFLIX ACCOUNT EXPIRY CHECK ─────────────────────────────────────────────
+function checkAccountExpiry() {
+  try {
+    const accounts = loadAccounts();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0]; // "2026-07-15"
+    let changed = false;
+    for (const account of accounts) {
+      if (!account.active || !account.expiresAt) continue;
+      if (account.expiresAt === tomorrowStr && !account.expirySent) {
+        sendTelegram(`⚠️ <b>Netflix Account Expiring Tomorrow!</b>\n\n📧 ${account.email}\n📅 Expires: ${account.expiresAt}\n\nUpdate the account subscription before it expires!`);
+        account.expirySent = true;
+        changed = true;
+      }
+      // Reset expirySent flag if account was renewed (expiresAt changed to future)
+      if (account.expirySent && account.expiresAt > tomorrowStr) {
+        account.expirySent = false;
+        changed = true;
+      }
+    }
+    if (changed) saveAccounts(accounts);
+  } catch(e) { console.error('Account expiry check error:', e.message); }
+}
+setInterval(checkAccountExpiry, 6*60*60*1000); // Every 6 hours
+try { checkAccountExpiry(); } catch(e) {}
+
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
 async function scrapeOTP(link) {
