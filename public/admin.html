@@ -325,6 +325,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
       <div id="section-accounts" style="display:none;padding:1.5rem;min-height:400px;overflow-y:auto">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem"><div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div><button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button></div>
+        <div style="margin-bottom:1rem"><input class="form-inp" id="acct-search" placeholder="🔍 Search by email..." oninput="filterAccounts(this.value)" style="width:100%"/></div>
         <div id="add-account-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.8rem;align-items:end">
             <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
@@ -779,20 +780,22 @@ async function loadAccounts(){
   try{
     const [rA,rL]=await Promise.all([fetch('/api/admin/accounts',{headers:{'x-admin-token':adminToken}}),fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}})]);
     const dA=await rA.json(); const dL=await rL.json();
-    // Build meta from accounts.json
     const meta={};(dA.accounts||[]).forEach(a=>meta[a.email]={notes:a.notes||'',active:a.active!==false,addedAt:a.addedAt,planDays:a.planDays||null,expiresAt:a.expiresAt||null});
-    // Group links by email
     const now=Date.now(); const byEmail={};
     Object.values(dL.links||{}).forEach(l=>{
       const em=l.email;if(!byEmail[em])byEmail[em]={email:em,slotsUsed:0,notes:'',active:true};
       if(l.active&&l.expiresAt>now)byEmail[em].slotsUsed++;
       if(meta[em]){byEmail[em].notes=meta[em].notes;byEmail[em].active=meta[em].active;byEmail[em].planDays=meta[em].planDays;byEmail[em].expiresAt=meta[em].expiresAt;}
     });
-    // Also include accounts with no links
     (dA.accounts||[]).forEach(a=>{if(!byEmail[a.email])byEmail[a.email]={email:a.email,slotsUsed:0,notes:a.notes||'',active:a.active!==false,planDays:a.planDays||null,expiresAt:a.expiresAt||null};});
-    const accounts=Object.values(byEmail).sort((a,b)=>b.slotsUsed-a.slotsUsed);
-    renderAccounts(accounts);
+    window._allAccounts=Object.values(byEmail).sort((a,b)=>b.slotsUsed-a.slotsUsed);
+    renderAccounts(window._allAccounts);
   }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m);font-size:.75rem">Error: '+e.message+'</div>';}
+}
+function filterAccounts(q){
+  if(!window._allAccounts)return;
+  const filtered=q?window._allAccounts.filter(a=>a.email.toLowerCase().includes(q.toLowerCase())):window._allAccounts;
+  renderAccounts(filtered);
 }
 function renderAccounts(accounts){
   const list=document.getElementById('accounts-list');if(!list)return;
