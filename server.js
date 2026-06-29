@@ -240,13 +240,13 @@ function getNextAvailableSlot(customerDays) {
     return null;
   }
 
-  // First try: accounts matching customer plan — sorted by addedAt (oldest first = serial order)
+  // First try: accounts matching customer plan
   const matched = [...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days)
     .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   const result = tryAccounts(matched);
   if (result) return result;
 
-  // Second try: accounts with no plan set — serial order
+  // Second try: accounts with no plan set - serial order
   const anyPlan = [...accounts].filter(a => a.active && !a.planDays)
     .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   return tryAccounts(anyPlan);
@@ -324,7 +324,7 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
-// ── BULKSMS ───────────────────────────────────────────────────────────────────
+// ── BULKSMS ─────────────────────────────────────────────────────────────────
 const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
 const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
 
@@ -348,14 +348,12 @@ function checkExpiringLinks() {
   for (const link of Object.values(links)) {
     if (!link.active) continue;
     const remaining = link.expiresAt - now;
-    // Telegram alert 3 days before
     if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
       const days = Math.ceil(remaining/(24*60*60*1000));
       sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 30`);
       links[link.token].warningSent = true;
       changed = true;
     }
-    // SMS 1 day before expiry
     if (remaining > 0 && remaining <= oneDay && !link.smsSent && link.phone) {
       const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ আগামীকাল শেষ হবে। একই প্রোফাইল ও একই আইডি রাখতে আজই রিনিউ করুন। আপনার ড্যাশবোর্ড: ${SITE_URL}/c/${link.token} রিনিউ করতে WhatsApp করুন: wa.me/${WA_NUMBER}`;
       sendBulkSMS(link.phone, msg);
@@ -367,22 +365,20 @@ function checkExpiringLinks() {
 }
 setInterval(checkExpiringLinks, 60*60*1000);
 
-// ── NETFLIX ACCOUNT EXPIRY CHECK ─────────────────────────────────────────────
 function checkAccountExpiry() {
   try {
     const accounts = loadAccounts();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0]; // "2026-07-15"
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
     let changed = false;
     for (const account of accounts) {
       if (!account.active || !account.expiresAt) continue;
       if (account.expiresAt === tomorrowStr && !account.expirySent) {
-        sendTelegram(`⚠️ <b>Netflix Account Expiring Tomorrow!</b>\n\n📧 ${account.email}\n📅 Expires: ${account.expiresAt}\n\nUpdate the account subscription before it expires!`);
+        sendTelegram(`⚠️ <b>Netflix Account Expiring Tomorrow!</b>\n\n📧 ${account.email}\n📅 Expires: ${account.expiresAt}\n\nUpdate the account subscription!`);
         account.expirySent = true;
         changed = true;
       }
-      // Reset expirySent flag if account was renewed (expiresAt changed to future)
       if (account.expirySent && account.expiresAt > tomorrowStr) {
         account.expirySent = false;
         changed = true;
@@ -391,9 +387,8 @@ function checkAccountExpiry() {
     if (changed) saveAccounts(accounts);
   } catch(e) { console.error('Account expiry check error:', e.message); }
 }
-setInterval(checkAccountExpiry, 6*60*60*1000); // Every 6 hours
+setInterval(checkAccountExpiry, 6*60*60*1000);
 try { checkAccountExpiry(); } catch(e) {}
-
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
 async function scrapeOTP(link) {
@@ -723,6 +718,7 @@ app.post('/tg-webhook', async (req, res) => {
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt += days*24*60*60*1000;
     links[token].warningSent = false;
+    links[token].smsSent = false;
     saveLinks(links);
     return sendTelegram(`✅ Extended /c/${token} by ${days} days`, chatId);
   }
@@ -851,6 +847,7 @@ app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
   const { days } = req.body;
   links[req.params.token].expiresAt += parseInt(days)*24*60*60*1000;
   links[req.params.token].warningSent = false;
+  links[req.params.token].smsSent = false;
   saveLinks(links); res.json({ success:true });
 });
 
@@ -860,6 +857,7 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   const { days } = req.body; const d = parseInt(days)||30;
   links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
   links[req.params.token].warningSent = false;
+  links[req.params.token].smsSent = false;
   links[req.params.token].active = true;
   saveLinks(links); res.json({ success:true });
 });
@@ -1162,7 +1160,7 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     const customerName = full_name || '';
     const amountNum = parseFloat(amount) || 0;
 
-    // Detect plan from amount (plans: 349=Mobile, 389=Combo Mobile, 449=TV, 489=Combo TV, 1350=TV 3M, 1500=Combo 3M)
+    // Detect plan from amount (349=Mobile, 389=Combo Mobile, 449=TV, 489=Combo TV, 1350=TV 3M, 1500=Combo 3M)
     let days = 30;
     let product = 'Netflix Mobile 1M';
     if (amountNum >= 1490)      { days = 85; product = 'Combo TV 3M'; }
@@ -1193,64 +1191,40 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     const settings = loadSettings();
     if (!settings.autoLink) return;
 
-    // Auto-create link (reuse same logic as /api/auto-create)
-    const phoneNorm = phone;
+    // autoLink=ON -> always push to waitlist for manual approval
     const allLinks = loadLinks();
     const now = Date.now();
+    const phoneNorm = phone;
 
-    // Renewal check
+    // Renewal check - if existing active link, extend it directly
     const existingActive = Object.values(allLinks).filter(l =>
       l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > now
     );
     if (existingActive.length > 0) {
-      let renewed = 0;
       for (const el of existingActive) {
         allLinks[el.token].expiresAt += days * 24 * 60 * 60 * 1000;
         allLinks[el.token].warningSent = false;
         allLinks[el.token].smsSent = false;
         allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
-        renewed++;
       }
       saveLinks(allLinks);
-      const first = existingActive[0];
-      sendTelegram(`🔄 <b>Renewal via UddoktaPay!</b>
-👤 ${customerName} | 📱 ${sender_number}
-🔗 Extended ${renewed} link(s) +${days} days`);
+      sendTelegram(`🔄 <b>Renewal via UddoktaPay!</b>\n🤜 ${customerName} | 📱 ${sender_number}\n🔗 Extended ${existingActive.length} link(s) +${days} days`);
       return;
     }
 
-    // New customer
-    const slot = getNextAvailableSlot(days);
-    if (!slot) {
-      const waitlist = loadWaitlist();
-      if (!waitlist.find(w => w.phone === phone)) {
-        waitlist.push({ phone, customerName, days, product, orderName, amount: amountNum, addedAt: now });
-        saveWaitlist(waitlist);
-      }
-      sendTelegram(`🚨 <b>STOCK OUT — UddoktaPay!</b>
-👤 ${customerName} | 📱 ${sender_number}
-📦 ${product} | ৳${amount}
-Added to waitlist.`);
-      return;
+    // New customer -> always add to waitlist, never auto-create
+    const waitlist = loadWaitlist();
+    if (!waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phoneNorm)) {
+      waitlist.push({ phone, customerName, days, product, orderName, amount: amountNum, addedAt: now });
+      saveWaitlist(waitlist);
     }
-
-    const token = generateToken();
-    allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName, plan:product, amount:amountNum, orderName, renewalCount:0, days, createdAt:now, expiresAt:now+days*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
-    saveLinks(allLinks);
-    checkLowStock();
-
     sendTelegram(
-      `🔗 <b>Link Created — UddoktaPay!</b>
-` +
-      `👤 ${customerName} | 📱 ${sender_number}
-` +
-      `👤 ${slot.profile} | PIN: ${slot.pin}
-` +
-      `🔗 ${SITE_URL}/c/${token}
-` +
-      `⏳ ${days} days`
+      `🔔 <b>New Order - Pending Approval (UddoktaPay)</b>\n\n` +
+      `🤜 ${customerName} | 📱 ${sender_number}\n` +
+      `📦 ${product} | ${days} days | ৳${amount}\n` +
+      `🔖 ${invoice_id}\n\n` +
+      `<b>Admin -> Waitlist to approve</b>`
     );
-
   } catch(e) {
     console.error('UddoktaPay IPN error:', e.message);
   }
