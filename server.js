@@ -70,11 +70,11 @@ const WA_NUMBER = '8801928382918';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
-  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:349, days:28, product:'Netflix Subscription' },
-  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:449, days:28, product:'Netflix TV Subscription' },
+  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:349, days:30, product:'Netflix Subscription' },
+  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:449, days:30, product:'Netflix TV Subscription' },
   { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85, product:'Netflix TV Subscription 3M' },
-  { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28, product:'Netflix+Prime Mobile 1M' },
-  { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28, product:'Netflix+Prime TV 1M' },
+  { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:30, product:'Netflix+Prime Mobile 1M' },
+  { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:30, product:'Netflix+Prime TV 1M' },
   { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:85, product:'Netflix+Prime TV 3M' },
 ];
 const MAX_SLOTS = 8;
@@ -309,7 +309,7 @@ async function sendMorningReport() {
     msg += `<b>Expiring in 3 days — Renew now:</b>\n`;
     for (const l of expiring3) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 28\n`;
+      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 30\n`;
     }
     msg += '\n';
   }
@@ -636,7 +636,7 @@ app.post('/tg-webhook', async (req, res) => {
     const emailRaw = parts[0];
     if (!emailRaw||!emailRaw.includes('@')) return sendTelegram('❌ Format: /create email@gmail.com\nOptional: /create email@gmail.com | 85', chatId);
     const email = emailRaw.toLowerCase();
-    const days = parts[1] ? parseInt(parts[1]) : 28;
+    const days = parts[1] ? parseInt(parts[1]) : 30;
     const links = loadLinks();
     const now = Date.now();
     const existing = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
@@ -706,11 +706,11 @@ app.post('/tg-webhook', async (req, res) => {
 
   if (text.startsWith('/renew')) {
     const parts = text.replace('/renew','').trim().split(' ');
-    const token = parts[0]; const days = parseInt(parts[1])||28;
+    const token = parts[0]; const days = parseInt(parts[1])||30;
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt = Date.now()+days*24*60*60*1000;
-    links[token].warningSent = false; links[token].active = true;
+    links[token].warningSent = false; links[token].smsSent = false; links[token].active = true;
     saveLinks(links);
     return sendTelegram(`✅ Renewed /c/${token} for ${days} days`, chatId);
   }
@@ -718,7 +718,7 @@ app.post('/tg-webhook', async (req, res) => {
   if (text.startsWith('/extend')) {
     const parts = text.replace('/extend','').trim().split(' ');
     if (parts.length < 2) return sendTelegram('❌ Format: /extend TOKEN days', chatId);
-    const [token, daysStr] = parts; const days = parseInt(daysStr)||28;
+    const [token, daysStr] = parts; const days = parseInt(daysStr)||30;
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt += days*24*60*60*1000;
@@ -751,7 +751,7 @@ app.post('/tg-webhook', async (req, res) => {
     let msg2 = `📅 <b>Expiring This Week</b>\n\n`;
     for (const l of expiring) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 28\n\n`;
+      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 30\n\n`;
     }
     return sendTelegram(msg2, chatId);
   }
@@ -857,7 +857,7 @@ app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
 app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  const { days } = req.body; const d = parseInt(days)||28;
+  const { days } = req.body; const d = parseInt(days)||30;
   links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
   links[req.params.token].warningSent = false;
   links[req.params.token].active = true;
@@ -952,7 +952,7 @@ app.get('/api/link/:token/info', (req, res) => {
   if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
-  const totalDays = link.days || 28;
+  const totalDays = link.days || 30;
   if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
 });
@@ -965,7 +965,7 @@ app.get('/api/link/:token', async (req, res) => {
   if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
-  const totalDays = link.days || 28;
+  const totalDays = link.days || 30;
   if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   link.uses += 1; link.lastUsed = now; saveLinks(links);
   trackAnalytics(req.params.token);
@@ -1077,6 +1077,7 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       for (const el of existingActive) {
         allLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
         allLinks[el.token].warningSent = false;
+        allLinks[el.token].smsSent = false;
         allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
       }
       saveLinks(allLinks);
@@ -1116,7 +1117,7 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
-    const slot = getNextAvailableSlot(w.days || 28);
+    const slot = getNextAvailableSlot(w.days || 30);
     if (!slot) { remaining.push(w); continue; }
     const links = loadLinks();
     const now = Date.now();
@@ -1161,11 +1162,15 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     const customerName = full_name || '';
     const amountNum = parseFloat(amount) || 0;
 
-    // Detect plan from amount
-    let days = 28;
-    let product = 'Netflix';
-    if (amountNum >= 1200) { days = 85; product = 'Netflix 3 Month'; }
-    else if (amountNum >= 390) { days = 28; product = 'Netflix 1 Month'; }
+    // Detect plan from amount (plans: 349=Mobile, 389=Combo Mobile, 449=TV, 489=Combo TV, 1350=TV 3M, 1500=Combo 3M)
+    let days = 30;
+    let product = 'Netflix Mobile 1M';
+    if (amountNum >= 1490)      { days = 85; product = 'Combo TV 3M'; }
+    else if (amountNum >= 1200) { days = 85; product = 'Netflix TV 3M'; }
+    else if (amountNum >= 480)  { days = 30; product = 'Combo TV 1M'; }
+    else if (amountNum >= 440)  { days = 30; product = 'Netflix TV 1M'; }
+    else if (amountNum >= 380)  { days = 30; product = 'Combo Mobile 1M'; }
+    else                        { days = 30; product = 'Netflix Mobile 1M'; }
 
     // Check metadata for order info
     const orderName = metadata?.order_id || metadata?.order_name || invoice_id || '';
@@ -1202,6 +1207,7 @@ app.post('/uddoktapay-ipn', async (req, res) => {
       for (const el of existingActive) {
         allLinks[el.token].expiresAt += days * 24 * 60 * 60 * 1000;
         allLinks[el.token].warningSent = false;
+        allLinks[el.token].smsSent = false;
         allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
         renewed++;
       }
