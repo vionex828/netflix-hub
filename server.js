@@ -170,7 +170,7 @@ async function trackIPGeo(token, ip) {
     saveIPs(data);
     // Geo lookup
     try {
-      const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode`);
+      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,countryCode`);
       const geo = await geoRes.json();
       if (geo.countryCode && geo.countryCode !== 'BD') {
         const geoData = loadGeo();
@@ -185,13 +185,6 @@ async function trackIPGeo(token, ip) {
         sendTelegram(`🌍 <b>Outside BD Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
       }
     } catch(e) { console.error('Geo lookup error:', e.message); }
-    if (data[token].length >= 4) {
-      try {
-        const links = loadLinks();
-        const link = links[token];
-        sendTelegram(`⚠️ <b>Suspicious Activity!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i=>`• ${i}`).join('\n')}`);
-      } catch(e) { console.error('IP alert error:', e.message); }
-    }
   }
   return data[token].length;
 }
@@ -204,17 +197,6 @@ function trackIP(token, ip) {
   if (isNew) {
     data[token].push(ip);
     saveIPs(data);
-    if (data[token].length >= 4) {
-      try {
-      const links = loadLinks();
-      const link = links[token];
-      sendTelegram(
-        `⚠️ <b>Suspicious Activity!</b>\n\n` +
-        `🔗 /c/${token}\n📧 ${link?.email || 'unknown'}\n👤 ${link?.profile || 'unknown'}\n` +
-        `<b>${data[token].length} different IPs detected!</b>\n\nIPs:\n${data[token].map(i => `• ${i}`).join('\n')}`
-      );
-      } catch(e) { console.error('IP alert error:', e.message); }
-    }
   }
   return data[token].length;
 }
