@@ -415,7 +415,7 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
           // Fetch only last 5 UIDs (most recent emails) to reduce load
           const recentUids = uids.slice(-5);
-          const fetch = imap.fetch(recentUids, { bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT'], struct: false });
+          const fetch = imap.fetch(recentUids, { bodies: '' });
           const promises = [];
           fetch.on('message', (msg) => {
             const p = new Promise((res) => {
