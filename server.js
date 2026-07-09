@@ -306,21 +306,71 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
+// BulkSMS
+const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
+const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
+async function sendBulkSMS(phone, message) {
+  try {
+    const num = String(phone).replace(/\D/g,'');
+    if (!num || num.length < 7) return;
+    const url = `http://bulksmsbd.net/api/smsapi?api_key=${BULKSMS_API_KEY}&type=text&number=${num}&senderid=${BULKSMS_SENDER}&message=${encodeURIComponent(message)}`;
+    const res = await fetch(url);
+    console.log('SMS sent to', num, ':', await res.text());
+  } catch(e) { console.error('SMS error:', e.message); }
+}
+
 function checkExpiringLinks() {
   const links = loadLinks();
-  const now = Date.now(), threeDays = 3*24*60*60*1000;
+  const now = Date.now();
+  const threeDays = 3*24*60*60*1000;
+  let changed = false;
   for (const link of Object.values(links)) {
     if (!link.active) continue;
     const remaining = link.expiresAt - now;
+    // Telegram 3 days before
     if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
       const days = Math.ceil(remaining/(24*60*60*1000));
       sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
       links[link.token].warningSent = true;
-      saveLinks(links);
+      changed = true;
+    }
+    // SMS once when expired
+    if (remaining <= 0 && !link.expiredSmsSent && link.phone) {
+      const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ শেষ হয়ে গেছে। রিনিউ করতে WhatsApp করুন: wa.me/${WA_NUMBER} আপনার ড্যাশবোর্ড: ${SITE_URL}/c/${link.token}`;
+      sendBulkSMS(link.phone, msg);
+      links[link.token].expiredSmsSent = true;
+      changed = true;
     }
   }
+  if (changed) saveLinks(links);
 }
 setInterval(checkExpiringLinks, 60*60*1000);
+
+// Netflix account expiry alert
+function checkAccountExpiry() {
+  try {
+    const accounts = loadAccounts();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    let changed = false;
+    for (const account of accounts) {
+      if (!account.active || !account.expiresAt) continue;
+      if (account.expiresAt === tomorrowStr && !account.expirySent) {
+        sendTelegram(`⚠️ <b>Netflix Account Expiring Tomorrow!</b>\n\n📧 ${account.email}\n📅 Expires: ${account.expiresAt}\n\nUpdate the account subscription!`);
+        account.expirySent = true;
+        changed = true;
+      }
+      if (account.expirySent && account.expiresAt > tomorrowStr) {
+        account.expirySent = false;
+        changed = true;
+      }
+    }
+    if (changed) saveAccounts(accounts);
+  } catch(e) { console.error('Account expiry check error:', e.message); }
+}
+setInterval(checkAccountExpiry, 6*60*60*1000);
+try { checkAccountExpiry(); } catch(e) {}
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
 
 async function scrapeOTP(link) {
@@ -637,7 +687,7 @@ app.post('/tg-webhook', async (req, res) => {
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt = Date.now()+days*24*60*60*1000;
-    links[token].warningSent = false; links[token].active = true;
+    links[token].warningSent = false; links[token].expiredSmsSent = false; links[token].active = true;
     saveLinks(links);
     return sendTelegram(`✅ Renewed /c/${token} for ${days} days`, chatId);
   }
@@ -649,7 +699,7 @@ app.post('/tg-webhook', async (req, res) => {
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt += days*24*60*60*1000;
-    links[token].warningSent = false;
+    links[token].warningSent = false; links[token].expiredSmsSent = false;
     saveLinks(links);
     return sendTelegram(`✅ Extended /c/${token} by ${days} days`, chatId);
   }
@@ -778,6 +828,7 @@ app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
   const { days } = req.body;
   links[req.params.token].expiresAt += parseInt(days)*24*60*60*1000;
   links[req.params.token].warningSent = false;
+  links[req.params.token].expiredSmsSent = false;
   saveLinks(links); res.json({ success:true });
 });
 
@@ -787,6 +838,7 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   const { days } = req.body; const d = parseInt(days)||28;
   links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
   links[req.params.token].warningSent = false;
+  links[req.params.token].expiredSmsSent = false;
   links[req.params.token].active = true;
   saveLinks(links); res.json({ success:true });
 });
@@ -1004,6 +1056,7 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       for (const el of existingActive) {
         allLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
         allLinks[el.token].warningSent = false;
+        allLinks[el.token].expiredSmsSent = false;
         allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
       }
       saveLinks(allLinks);
@@ -1129,6 +1182,7 @@ app.post('/uddoktapay-ipn', async (req, res) => {
       for (const el of existingActive) {
         allLinks[el.token].expiresAt += days * 24 * 60 * 60 * 1000;
         allLinks[el.token].warningSent = false;
+        allLinks[el.token].expiredSmsSent = false;
         allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
         renewed++;
       }
@@ -1267,6 +1321,11 @@ app.post('/api/admin/accounts', adminAuth, (req, res) => {
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const target = decodeURIComponent(req.params.email).trim().toLowerCase();
+  // Block delete if account has active customers
+  const links = loadLinks();
+  const now = Date.now();
+  const hasActive = Object.values(links).some(l => l.email === target && l.active && l.expiresAt > now);
+  if (hasActive) return res.status(400).json({ success:false, error:'Cannot delete — account has active customers. Revoke their links first.' });
   const filtered = accounts.filter(a => a.email.trim().toLowerCase() !== target);
   saveAccounts(filtered);
   res.json({ success:true, removed: accounts.length - filtered.length });
