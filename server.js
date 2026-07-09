@@ -405,15 +405,17 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 8000, authTimeout: 6000
+      connTimeout: 5000, authTimeout: 4000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
-        const since = new Date(Date.now() - 20*60*1000);
+        const since = new Date(Date.now() - 15*60*1000);
         imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
           if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
-          const fetch = imap.fetch(uids, { bodies: '' });
+          // Fetch only last 5 UIDs (most recent emails) to reduce load
+          const recentUids = uids.slice(-5);
+          const fetch = imap.fetch(recentUids, { bodies: ['HEADER.FIELDS (FROM TO SUBJECT DATE)', 'TEXT'], struct: false });
           const promises = [];
           fetch.on('message', (msg) => {
             const p = new Promise((res) => {
