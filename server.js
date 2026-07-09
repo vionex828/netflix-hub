@@ -2,28 +2,146 @@ const express = require('express');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
 
-// ── EMAIL CODE CACHE ─────────────────────────────────────────────────────────
+// ── EMAIL CODE CACHE + PERSISTENT IMAP POLLER ───────────────────────────────
 const emailCodeCache = new Map(); // email → { codes: [], fetchedAt: timestamp }
-const fetchingEmails = new Set(); // emails currently being IMAP fetched
 
 function getCodesFromCache(email) {
   const entry = emailCodeCache.get(email.toLowerCase());
   if (!entry) return null;
   const age = Date.now() - entry.fetchedAt;
-  // Short TTL for empty results (10s), normal TTL for codes (30s)
-  const ttl = entry.codes.length > 0 ? 30 * 1000 : 10 * 1000;
+  const ttl = entry.codes.length > 0 ? 60 * 1000 : 15 * 1000;
   if (age > ttl) { emailCodeCache.delete(email.toLowerCase()); return null; }
   return entry.codes;
 }
 
 function clearEmailCache(email) {
   emailCodeCache.delete(email.toLowerCase());
-  fetchingEmails.delete(email.toLowerCase());
 }
 
 function setCodesInCache(email, codes) {
   emailCodeCache.set(email.toLowerCase(), { codes, fetchedAt: Date.now() });
 }
+
+// ── PERSISTENT IMAP CONNECTION ───────────────────────────────────────────────
+let _imap = null;
+let _imapReady = false;
+let _imapPolling = false;
+let _reconnTimer = null;
+
+function startIMAPPoller() {
+  if (!GMAIL_USER || !GMAIL_PASS) return;
+  _connectIMAP();
+}
+
+function _connectIMAP() {
+  if (_imap) { try { _imap.destroy(); } catch(e) {} _imap = null; }
+  _imapReady = false;
+
+  const imap = new Imap({
+    user: GMAIL_USER, password: GMAIL_PASS,
+    host: 'imap.gmail.com', port: 993, tls: true,
+    tlsOptions: { rejectUnauthorized: false },
+    connTimeout: 10000, authTimeout: 8000,
+    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: true }
+  });
+
+  _imap = imap;
+
+  imap.once('ready', () => {
+    imap.openBox('INBOX', true, (err) => {
+      if (err) { console.error('IMAP openBox:', err.message); _scheduleReconnect(); return; }
+      _imapReady = true;
+      console.log('IMAP: persistent connection ready');
+      _pollAll(); // immediate first poll
+    });
+  });
+
+  imap.on('error', (err) => {
+    console.error('IMAP error:', err.message);
+    _imapReady = false;
+    _scheduleReconnect();
+  });
+
+  imap.once('end', () => {
+    console.log('IMAP: connection ended');
+    _imapReady = false;
+    _imap = null;
+    _scheduleReconnect();
+  });
+
+  imap.connect();
+}
+
+function _scheduleReconnect() {
+  if (_reconnTimer) return;
+  _reconnTimer = setTimeout(() => { _reconnTimer = null; _connectIMAP(); }, 20000);
+}
+
+async function _pollAll() {
+  if (!_imapReady || !_imap || _imapPolling) return;
+  _imapPolling = true;
+  try {
+    await new Promise((resolve) => {
+      const since = new Date(Date.now() - 20*60*1000);
+      _imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], async (err, uids) => {
+        if (err || !uids || !uids.length) { resolve(); return; }
+        const recentUids = uids.slice(-10);
+        const fetch = _imap.fetch(recentUids, { bodies: '' });
+        const promises = [];
+        fetch.on('message', (msg) => {
+          const p = new Promise((res) => {
+            msg.on('body', (stream) => {
+              simpleParser(stream, async (err, mail) => {
+                if (err) { res(); return; }
+                await _updateCacheFromMail(mail);
+                res();
+              });
+            });
+          });
+          promises.push(p);
+        });
+        fetch.once('end', async () => { await Promise.all(promises); resolve(); });
+        fetch.once('error', () => resolve());
+      });
+    });
+  } catch(e) { console.error('IMAP poll error:', e.message); }
+  _imapPolling = false;
+}
+
+async function _updateCacheFromMail(mail) {
+  const toValues = (mail.to?.value || []).map(a => (a.address||'').toLowerCase());
+  const toText = mail.to?.text || '';
+  const fromValues = (mail.from?.value || []).map(a => (a.address||'').toLowerCase());
+  const subject = (mail.subject || '').toLowerCase();
+  const bodyHtml = mail.html || '';
+  const bodyText = mail.text || '';
+  const bodyPlain = (bodyHtml || bodyText).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+  const ts = mail.date ? new Date(mail.date).getTime() : Date.now();
+  const toEmail = toValues[0] || toText.toLowerCase().trim();
+
+  const accounts = loadAccounts().filter(a => a.active);
+  for (const account of accounts) {
+    const emailLower = account.email.toLowerCase();
+    const matched = toValues.some(a => a === emailLower)
+      || toText.toLowerCase().includes(emailLower)
+      || fromValues.some(a => a === emailLower)
+      || (mail.text||'').toLowerCase().includes(emailLower);
+    if (!matched) continue;
+
+    const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin: true });
+    if (!parsed) continue;
+
+    const existing = emailCodeCache.get(emailLower);
+    const codes = existing ? existing.codes : [];
+    const key = parsed.code || parsed.link;
+    if (key && !codes.find(c => (c.code||c.link) === key)) {
+      setCodesInCache(emailLower, [parsed, ...codes].slice(0, 10));
+    }
+  }
+}
+
+// Poll every 15 seconds
+setInterval(() => _pollAll(), 15000);
 
 
 
@@ -955,26 +1073,16 @@ app.get('/api/link/:token', async (req, res) => {
   const ipCount = trackIP(req.params.token, ip);
   trackIPGeo(req.params.token, ip).catch(()=>{});
   try {
-    // Check cache first — instant response if recently fetched
+    // Check cache — poller keeps this fresh every 15s
     const cached = getCodesFromCache(link.email);
-    if (cached !== null) {
-      if (cached.length > 0) totalToday += 1;
+    if (cached !== null && cached.length > 0) {
+      totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Already fetching in background — return fetching:true so customer keeps retrying
-    if (fetchingEmails.has(link.email.toLowerCase())) {
-      return res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
-    }
-    // Start background fetch — return instantly, customer retries every 10s
-    fetchingEmails.add(link.email.toLowerCase());
+    // Cache empty or miss — return fetching:true, poller will update within 15s
+    // Also trigger immediate poll to get codes faster
+    if (_imapReady && !_imapPolling) _pollAll().catch(()=>{});
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
-    fetchNetflixEmailsFresh(link.email, true).then(codes => {
-      setCodesInCache(link.email, codes);
-      fetchingEmails.delete(link.email.toLowerCase());
-      if (codes.length > 0) totalToday += 1;
-    }).catch(() => {
-      fetchingEmails.delete(link.email.toLowerCase());
-    });
   } catch(err) {
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   }
@@ -1239,11 +1347,12 @@ app.get('/api/link/:token/refresh', async (req, res) => {
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false });
   if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
-  // Clear cache and fetch fresh
+  // Clear cache and trigger immediate poll
   clearEmailCache(link.email);
   try {
-    const codes = await fetchNetflixEmailsFresh(link.email, true);
-    setCodesInCache(link.email, codes);
+    if (_imapReady && !_imapPolling) await _pollAll();
+    else await fetchNetflixEmailsFresh(link.email, true).then(codes => setCodesInCache(link.email, codes));
+    const codes = getCodesFromCache(link.email) || [];
     res.json({ success:true, codes, count:codes.length, refreshed:true });
   } catch(err) {
     res.json({ success:true, codes:[], count:0, refreshed:true });
@@ -1433,4 +1542,6 @@ ensureDataDir();
 app.listen(PORT, () => {
   console.log(`FanFlix running on port ${PORT}`);
   try { sendTelegram('<b>FanFlix Started</b>\nType /help for commands'); } catch(e) { console.error('TG startup error:', e.message); }
+  // Start persistent IMAP poller after 3 seconds
+  setTimeout(() => startIMAPPoller(), 3000);
 });
