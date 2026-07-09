@@ -1048,7 +1048,7 @@ function renderCustomers(customers){
       '<div class="cust-row" data-ph="'+ph+'" style="display:flex;align-items:center;gap:1rem;cursor:pointer">'+
         '<div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#f0f1f3;flex-shrink:0">'+(c.name||'?').charAt(0).toUpperCase()+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="font-weight:600;font-size:.85rem">'+esc(c.name||'Unknown')+renewBadge+</div>'+
+          '<div style="font-weight:600;font-size:.85rem">'+esc(c.name||'Unknown')+renewBadge+'</div>'+
           '<div style="font-family:var(--m);font-size:.65rem;color:#7a7f8a;margin-top:2px">'+esc(c.phone)+' · '+c.links.length+' link(s) · '+c.renewals+' renewal(s)</div>'+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0">'+
