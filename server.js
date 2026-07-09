@@ -599,27 +599,6 @@ function extractLink(body) {
   return null;
 }
 
-async function autoClickLink(link, accountEmail) {
-  try {
-    const res = await fetch(link, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      },
-      redirect: 'follow'
-    });
-    const success = res.ok || res.status === 302 || res.status === 200;
-    if (success) {
-      console.log('Auto-clicked Netflix link for', accountEmail);
-      sendTelegram(`🏠 <b>Auto-Verified Household!</b>\n\n📧 ${accountEmail}\n✅ Netflix household link auto-clicked\n⚡ Customer access restored automatically`);
-    }
-    return success;
-  } catch(e) {
-    console.error('Auto-click error:', e.message);
-    return false;
-  }
-}
-
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
   if (sl.includes('verification code') || sl.includes('your verification code')) {
@@ -675,16 +654,9 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   const result = extractLink(bodyHtml) || extractLink(bodyText);
   if (!result) return null;
   if (result.type === 'household') {
-    // Auto-click household verify link in background
-    autoClickLink(result.link, toEmail).catch(()=>{});
     const otp = await scrapeOTP(result.link);
-    if (otp && !BLOCKED_CODES.includes(otp)) return { type:'household', label:'Temporary Access Code', code:otp, autoClicked:true, to:toEmail, ts, expiresAt:ts+15*60*1000 };
-    return { ...result, autoClicked:true, to:toEmail, ts, expiresAt:ts+15*60*1000 };
-  }
-  if (result.type === 'update') {
-    // Auto-click TV update household link in background
-    autoClickLink(result.link, toEmail).catch(()=>{});
-    return { ...result, autoClicked:true, to:toEmail, ts };
+    if (otp && !BLOCKED_CODES.includes(otp)) return { type:'household', label:'Temporary Access Code', code:otp, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    return { ...result, to:toEmail, ts, expiresAt:ts+15*60*1000 };
   }
   return { ...result, to:toEmail, ts };
 }
