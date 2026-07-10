@@ -185,8 +185,6 @@ const UDDOKTAPAY_API_KEY = process.env.UDDOKTAPAY_API_KEY || 'WCHHkn251WojpUh2zK
 const UDDOKTAPAY_BASE_URL = process.env.UDDOKTAPAY_BASE_URL || 'https://payment.fanflixbd.com/api';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'https://pg.eps.com.bd/DefaultPaymentLink?id=805A9AEE';
 const WA_NUMBER = '8801928382918';
-const CLICKER_URL = process.env.CLICKER_URL || '';
-const CLICKER_SECRET = process.env.CLICKER_SECRET || 'fanflix-clicker-secret-2024';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
@@ -601,23 +599,6 @@ function extractLink(body) {
   return null;
 }
 
-async function autoClickLink(link, accountEmail) {
-  if (!CLICKER_URL) return false;
-  try {
-    const clickUrl = `${CLICKER_URL}/click?secret=${CLICKER_SECRET}&url=${encodeURIComponent(link)}`;
-    const res = await fetch(clickUrl, { signal: AbortSignal.timeout(12000) });
-    const data = await res.json();
-    if (data.success) {
-      console.log('BD auto-click success for', accountEmail);
-      sendTelegram(`🏠 <b>Auto-Verified Household!</b>\n\n📧 ${accountEmail}\n✅ Clicked from BD IP\n⚡ Customer access restored`);
-    }
-    return data.success;
-  } catch(e) {
-    console.error('Clicker error:', e.message);
-    return false;
-  }
-}
-
 async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin }) {
   const sl = subject.toLowerCase();
   if (sl.includes('verification code') || sl.includes('your verification code')) {
@@ -673,16 +654,9 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   const result = extractLink(bodyHtml) || extractLink(bodyText);
   if (!result) return null;
   if (result.type === 'household') {
-    // Auto-click from BD laptop via ngrok
-    autoClickLink(result.link, toEmail).catch(()=>{});
     const otp = await scrapeOTP(result.link);
-    if (otp && !BLOCKED_CODES.includes(otp)) return { type:'household', label:'Temporary Access Code', code:otp, autoClicked:true, to:toEmail, ts, expiresAt:ts+15*60*1000 };
-    return { ...result, autoClicked:true, to:toEmail, ts, expiresAt:ts+15*60*1000 };
-  }
-  if (result.type === 'update') {
-    // Auto-click TV update from BD laptop
-    autoClickLink(result.link, toEmail).catch(()=>{});
-    return { ...result, autoClicked:true, to:toEmail, ts };
+    if (otp && !BLOCKED_CODES.includes(otp)) return { type:'household', label:'Temporary Access Code', code:otp, to:toEmail, ts, expiresAt:ts+15*60*1000 };
+    return { ...result, to:toEmail, ts, expiresAt:ts+15*60*1000 };
   }
   return { ...result, to:toEmail, ts };
 }
