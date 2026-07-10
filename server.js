@@ -140,8 +140,14 @@ async function _updateCacheFromMail(mail) {
   }
 }
 
-// Poll every 15 seconds
-setInterval(() => _pollAll(), 15000);
+// Smart polling - 15s when customers active, 2min when idle
+setInterval(() => {
+  if (hasRecentActivity()) {
+    _pollAll();
+  }
+}, 15000);
+// Always poll every 2 minutes regardless (keep cache fresh)
+setInterval(() => _pollAll(), 2*60*1000);
 
 
 
@@ -359,6 +365,9 @@ let totalToday = 0, lastReset = new Date().toDateString();
 const visitors = new Map();
 function resetDailyIfNeeded() { const t = new Date().toDateString(); if (t !== lastReset) { totalToday = 0; lastReset = t; } }
 function trackVisitor(ip) { visitors.set(ip, Date.now()); const c = Date.now()-5*60*1000; for(const[k,v] of visitors) if(v<c) visitors.delete(k); }
+let lastCustomerActivity = 0;
+function markActivity() { lastCustomerActivity = Date.now(); }
+function hasRecentActivity() { return Date.now() - lastCustomerActivity < 2*60*1000; } // active in last 2 min
 function getLiveVisitors() { const c = Date.now()-5*60*1000; return [...visitors.values()].filter(v=>v>c).length; }
 
 const rateLimitMap = new Map();
@@ -1068,6 +1077,7 @@ app.get('/api/link/:token', async (req, res) => {
   if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   link.uses += 1; link.lastUsed = now; saveLinks(links);
   trackAnalytics(req.params.token);
+  markActivity();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   trackVisitor(ip);
   const ipCount = trackIP(req.params.token, ip);
