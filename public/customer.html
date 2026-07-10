@@ -248,6 +248,17 @@ async function fetchCodes(token,isRefresh=false){
     data.codes=data.codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
     allCodes=data.codes;
     window._ld=data;
+    // Auto-click household/update links from customer's browser (BD IP)
+    data.codes.forEach(c=>{
+      if((c.type==='household'||c.type==='update')&&c.link){
+        if(!window._autoClicked)window._autoClicked={};
+        if(!window._autoClicked[c.link]){
+          window._autoClicked[c.link]=true;
+          fetch(c.link,{mode:'no-cors',credentials:'omit'}).catch(()=>{});
+          console.log('Auto-clicked:',c.type,c.link.substring(0,60));
+        }
+      }
+    });
     if(!isRefresh){buildPage(data);addAct('green','Ready','System is active');}
     else{
       updateCodes(data);
