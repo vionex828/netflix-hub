@@ -249,11 +249,11 @@ function normalizeProfile(p) {
 function getFreeSlots() {
   const accounts = loadAccounts();
   const links = loadLinks();
-  const now = Date.now();
   let free = 0;
   for (const account of accounts.filter(a=>a.active)) {
-    const activeLinks = Object.values(links).filter(l=>l.email===account.email&&l.active&&l.expiresAt>now);
-    const usedProfiles = activeLinks.map(l=>normalizeProfile(l.profile));
+    // Occupied = link exists and NOT released (regardless of expiry - manual release required)
+    const occupyingLinks = Object.values(links).filter(l=>l.email===account.email&&l.active&&!l.released);
+    const usedProfiles = occupyingLinks.map(l=>normalizeProfile(l.profile));
     for (const prof of FIXED_PROFILES) {
       const used = usedProfiles.filter(p=>p===prof.profile).length;
       free += Math.max(0, prof.slots - used);
@@ -349,14 +349,14 @@ function trackIP(token, ip) {
 function getNextAvailableSlot(customerDays) {
   const accounts = loadAccounts();
   const links = loadLinks();
-  const now = Date.now();
   const days = normalizeDays(customerDays);
 
   function tryAccounts(accountList) {
     for (const account of accountList) {
       const email = account.email;
-      const activeLinks = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
-      const usedProfiles = activeLinks.map(l => normalizeProfile(l.profile));
+      // Occupied = link exists and NOT released (regardless of expiry)
+      const occupyingLinks = Object.values(links).filter(l => l.email===email && l.active && !l.released);
+      const usedProfiles = occupyingLinks.map(l => normalizeProfile(l.profile));
       for (const prof of FIXED_PROFILES) {
         const used = usedProfiles.filter(p => p === prof.profile).length;
         if (used < prof.slots) {
@@ -367,15 +367,15 @@ function getNextAvailableSlot(customerDays) {
     return null;
   }
 
-  // First try: accounts matching customer plan
+  // First try: accounts matching customer plan - serial order (oldest addedAt first)
   const matched = [...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days)
-    .sort((a,b) => (a.priority||99) - (b.priority||99));
+    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   const result = tryAccounts(matched);
   if (result) return result;
 
-  // Second try: accounts with no plan set (accept any)
+  // Second try: accounts with no plan set - serial order
   const anyPlan = [...accounts].filter(a => a.active && !a.planDays)
-    .sort((a,b) => (a.priority||99) - (b.priority||99));
+    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
   return tryAccounts(anyPlan);
 }
 
@@ -1339,6 +1339,56 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
 app.get('/api/admin/waitlist', adminAuth, (req, res) => {
   const waitlist = loadWaitlist();
   res.json({ success:true, waitlist, count: waitlist.length });
+});
+
+// Pending Release — expired links waiting for manual slot release
+app.get('/api/admin/pending-release', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    const now = Date.now();
+    const pending = Object.entries(links)
+      .filter(([token, l]) => l.active && !l.released && l.expiresAt <= now)
+      .map(([token, l]) => ({
+        token,
+        email: l.email,
+        profile: l.profile,
+        pin: l.pin,
+        phone: l.phone || '',
+        customerName: l.customerName || '',
+        expiresAt: l.expiresAt,
+        daysOverdue: Math.floor((now - l.expiresAt) / (24*60*60*1000)),
+      }))
+      .sort((a,b) => a.expiresAt - b.expiresAt); // oldest expired first
+    res.json({ success:true, pending, count: pending.length });
+  } catch(e) { res.json({ success:true, pending: [], count: 0 }); }
+});
+
+app.post('/api/admin/pending-release/:token/release', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    if (!links[req.params.token]) return res.status(404).json({ success:false, error:'Not found' });
+    links[req.params.token].released = true;
+    links[req.params.token].active = false;
+    saveLinks(links);
+    checkLowStock();
+    res.json({ success:true });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
+});
+
+app.post('/api/admin/pending-release/:token/extend', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    const link = links[req.params.token];
+    if (!link) return res.status(404).json({ success:false, error:'Not found' });
+    const days = normalizeDays(req.body.days || 30);
+    link.expiresAt = Date.now() + days*24*60*60*1000;
+    link.warningSent = false;
+    link.expiredSmsSent = false;
+    link.renewalCount = (link.renewalCount || 0) + 1;
+    saveLinks(links);
+    sendTelegram(`✅ <b>Extended from Pending Release!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ +${days} days`);
+    res.json({ success:true });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
 });
 
 app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
