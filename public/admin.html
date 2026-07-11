@@ -988,8 +988,8 @@ async function loadOutsideBD(){
       <div style="background:var(--s1);border:1px solid rgba(229,9,20,.25);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="flex:1;min-width:0">
-            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;color:var(--red)">🚨 ${esc(a.email)}</div>
-            <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📍 ${esc(a.location||'Unknown')} · 📱 ${esc(a.device||'Unknown')}</div>
+            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;color:var(--red)">🚨 ${esc(a.email)} ${a.source==='dashboard'?'<span style="background:rgba(77,166,255,.15);color:var(--blue);font-size:.55rem;padding:2px 7px;border-radius:100px;margin-left:4px">📊 Dashboard Access</span>':'<span style="background:rgba(229,9,20,.15);color:var(--red);font-size:.55rem;padding:2px 7px;border-radius:100px;margin-left:4px">🎬 Netflix Login</span>'}</div>
+            <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📍 ${esc(a.location||'Unknown')} · ${a.source==='dashboard'?'🌐 IP: '+esc(a.device||''):'📱 '+esc(a.device||'Unknown')}</div>
             <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(a.ts)}</div>
           </div>
           <button class="icon-btn danger" onclick="deleteOutsideBDAlert(${i})" title="Dismiss"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
