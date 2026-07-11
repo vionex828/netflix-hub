@@ -248,6 +248,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-section">System</div>
       <div class="sb-item" onclick="showSection('accounts')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Netflix Accounts</div>
       <div class="sb-item" onclick="showSection('waitlist')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Waitlist<span class="sb-badge" id="sb-waitlist-count" style="background:var(--amber)">0</span></div>
+      <div class="sb-item" onclick="showSection('outsidebd')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>Outside BD Login<span class="sb-badge" id="sb-outsidebd-count" style="background:var(--red)">0</span></div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
@@ -348,6 +349,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="waitlist-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
+      <div id="section-outsidebd" style="display:none;padding:1.5rem;min-height:200px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
+          <div style="font-size:1.1rem;font-weight:700">Outside BD Login Alerts <span id="outsidebd-count" style="font-family:var(--m);font-size:.75rem;color:var(--red);margin-left:.5rem"></span></div>
+          <button class="create-btn" onclick="clearAllOutsideBD()" style="background:var(--s3);color:var(--muted)">Clear All</button>
+        </div>
+        <div id="outsidebd-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
       <div id="section-customers" style="display:none;padding:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
           <div style="font-size:1.1rem;font-weight:700">Customers</div>
@@ -400,6 +409,7 @@ async function loadSlots(){
     const freeSlots=d.freeSlots!==undefined?d.freeSlots:(totalSlots-totalActive);
     const fs=document.getElementById('s-free-slots');if(fs)fs.textContent=freeSlots;
     try{const wlr=await fetch('/api/admin/waitlist',{headers:{'x-admin-token':adminToken}});const wld=await wlr.json();const sbc=document.getElementById('sb-waitlist-count');if(sbc)sbc.textContent=(wld.waitlist||[]).length;}catch(e){}
+    try{const obr=await fetch('/api/admin/netflix-alerts',{headers:{'x-admin-token':adminToken}});const obd=await obr.json();const obc=document.getElementById('sb-outsidebd-count');if(obc)obc.textContent=(obd.alerts||[]).length;}catch(e){}
   }catch(e){}
 }
 
@@ -511,7 +521,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -530,6 +540,11 @@ function showSection(s){
     document.getElementById('section-waitlist').style.display='block';
     if(t)t.textContent='Waitlist';
     loadWaitlist();return;
+  }
+  if(s==='outsidebd'){
+    document.getElementById('section-outsidebd').style.display='block';
+    if(t)t.textContent='Outside BD Login Alerts';
+    loadOutsideBD();return;
   }
   if(s==='settings'){
     document.getElementById('section-settings').style.display='block';
@@ -943,6 +958,66 @@ async function processWaitlist(){
     loadWaitlist();
     loadAll();
   } else showToast('Error: '+(d.error||'?'),true);
+}
+
+async function loadOutsideBD(){
+  const list=document.getElementById('outsidebd-list');
+  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r=await fetch('/api/admin/netflix-alerts',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();
+    const alerts=d.alerts||[];
+    const cnt=document.getElementById('outsidebd-count');
+    const sbcnt=document.getElementById('sb-outsidebd-count');
+    if(cnt)cnt.textContent=alerts.length?`(${alerts.length})`:'';
+    if(sbcnt)sbcnt.textContent=alerts.length;
+    if(!list)return;
+    if(!alerts.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No outside BD login alerts.</div>';return;}
+    list.innerHTML=alerts.map((a,i)=>{
+      const linksHtml=(a.relatedLinks||[]).map(l=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--s2);border-radius:8px;padding:.5rem .7rem;margin-top:.4rem">
+          <div style="font-family:var(--m);font-size:.65rem">
+            <span style="color:var(--blue)">${esc(l.profile||'?')}</span>
+            ${l.customerName?` · ${esc(l.customerName)}`:''}
+            ${l.phone?` · 📞${esc(l.phone)}`:''}
+            <span style="color:var(--muted2)"> · /c/${l.token}</span>
+          </div>
+          <button onclick="revokeToken('${l.token}')" style="background:var(--red);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">🚫 Revoke</button>
+        </div>`).join('');
+      return `
+      <div style="background:var(--s1);border:1px solid rgba(229,9,20,.25);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="flex:1;min-width:0">
+            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;color:var(--red)">🚨 ${esc(a.email)}</div>
+            <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📍 ${esc(a.location||'Unknown')} · 📱 ${esc(a.device||'Unknown')}</div>
+            <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(a.ts)}</div>
+          </div>
+          <button class="icon-btn danger" onclick="deleteOutsideBDAlert(${i})" title="Dismiss"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        ${linksHtml||'<div style="font-family:var(--m);font-size:.65rem;color:var(--muted2);margin-top:.5rem">No active customer links on this account.</div>'}
+      </div>`;
+    }).join('');
+  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading alerts</div>';}
+}
+
+async function deleteOutsideBDAlert(index){
+  await fetch('/api/admin/netflix-alerts/'+index,{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  loadOutsideBD();
+}
+
+async function clearAllOutsideBD(){
+  if(!confirm('Clear all outside BD login alerts?'))return;
+  await fetch('/api/admin/netflix-alerts/clear',{method:'POST',headers:{'x-admin-token':adminToken}});
+  showToast('Cleared!');
+  loadOutsideBD();
+}
+
+async function revokeToken(token){
+  if(!confirm('Revoke this link? Customer will lose access immediately.'))return;
+  await fetch('/api/admin/revoke/'+token,{method:'POST',headers:{'x-admin-token':adminToken}});
+  showToast('✅ Link revoked');
+  loadOutsideBD();
+  loadAll();
 }
 
 async function approveWaitlist(phone){
