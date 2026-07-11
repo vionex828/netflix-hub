@@ -868,6 +868,8 @@ function renderAccounts(accounts){
             <option value="170" ${a.planDays==170?'selected':''}>170 days only</option>
           </select>
           ${a.expiresAt ? `<span style="font-family:var(--m);font-size:.58rem;color:${Math.ceil((a.expiresAt-Date.now())/86400000)<=7?'var(--red)':Math.ceil((a.expiresAt-Date.now())/86400000)<=30?'var(--amber)':'var(--green)'};cursor:pointer" onclick="editAccountExpiry('${esc(a.email)}',${a.expiresAt})">${Math.max(0,Math.ceil((a.expiresAt-Date.now())/86400000))}d left · ${new Date(a.expiresAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</span>` : `<span style="font-family:var(--m);font-size:.58rem;color:var(--muted2);cursor:pointer" onclick="editAccountExpiry('${esc(a.email)}',null)">+ Set expiry</span>`}
+          ${a.pendingRelease>0?`<span style="background:rgba(245,166,35,.12);color:var(--amber);font-family:var(--m);font-size:.56rem;padding:2px 8px;border-radius:100px;cursor:pointer" onclick="showSection('pendingrelease')">⏳ ${a.pendingRelease} pending release</span>`:''}
+          <span style="font-family:var(--m);font-size:.56rem;color:${(8-(a.slotsUsed||0))>0?'var(--green)':'var(--muted2)'}">${8-(a.slotsUsed||0)} free</span>
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${avatars}</div>
@@ -1042,13 +1044,32 @@ async function loadPendingRelease(){
     const r=await fetch('/api/admin/pending-release',{headers:{'x-admin-token':adminToken}});
     const d=await r.json();
     const pending=d.pending||[];
+    const accountSummary=d.accountSummary||[];
     const cnt=document.getElementById('pendingrelease-count');
     const sbcnt=document.getElementById('sb-pendingrelease-count');
     if(cnt)cnt.textContent=pending.length?`(${pending.length})`:'';
     if(sbcnt)sbcnt.textContent=pending.length;
     if(!list)return;
     if(!pending.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No expired links pending release. All slots properly managed!</div>';return;}
-    list.innerHTML=pending.map(p=>{
+
+    // Account-level summary cards
+    const summaryHtml=accountSummary.length?`
+      <div style="margin-bottom:1.2rem">
+        <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.6rem">Accounts With Pending Releases</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+          ${accountSummary.map(s=>`
+            <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem">
+              <div style="font-family:var(--m);font-size:.68rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:.5rem">${esc(s.email)}</div>
+              <div style="display:flex;gap:.8rem;font-family:var(--m);font-size:.62rem">
+                <span style="color:var(--muted)">Slots: <b style="color:var(--text)">${s.totalSlots}</b></span>
+                <span style="color:var(--amber)">Pending: <b>${s.pendingRelease}</b></span>
+                <span style="color:${s.free>0?'var(--green)':'var(--muted2)'}">Free: <b>${s.free}</b></span>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
+    list.innerHTML=summaryHtml+pending.map(p=>{
       const overdue=p.daysOverdue;
       const overdueBadge=overdue>=7
         ?`<span style="background:rgba(229,9,20,.15);color:var(--red);font-family:var(--m);font-size:.6rem;padding:3px 9px;border-radius:100px;font-weight:600">⚠️ ${overdue}d overdue</span>`
