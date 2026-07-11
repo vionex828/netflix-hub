@@ -224,6 +224,9 @@ function saveIPs(data) { ensureDataDir(); fs.writeFileSync(IP_FILE, JSON.stringi
 const GEO_FILE      = DATA_DIR + '/geo.json';
 const ACCOUNTS_FILE = DATA_DIR + '/accounts.json';
 const SETTINGS_FILE  = DATA_DIR + '/settings.json';
+const NETFLIX_ALERTS_FILE = DATA_DIR + '/netflix-alerts.json';
+function loadNetflixAlerts() { try { return JSON.parse(fs.readFileSync(NETFLIX_ALERTS_FILE,'utf8')); } catch(e) { return []; } }
+function saveNetflixAlerts(data) { ensureDataDir(); fs.writeFileSync(NETFLIX_ALERTS_FILE, JSON.stringify(data,null,2)); }
 const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
 function loadWaitlist() { try { return JSON.parse(fs.readFileSync(WAITLIST_FILE,'utf8')); } catch(e) { return []; } }
 function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data,null,2)); }
@@ -671,10 +674,15 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
       const isBD = bodyPlain.toLowerCase().includes('bangladesh') || bodyPlain.toLowerCase().includes('dhaka') || bodyPlain.toLowerCase().includes('chittagong') || bodyPlain.toLowerCase().includes('sylhet');
       if (!isBD) {
         sendTelegram(
-          `🚨 <b>Outside BD Login!</b>\n\n📧 Account: ${toEmail}\n📍 Location: ${location}\n📱 Device: ${device}\n🕐 ${new Date(ts).toLocaleString('en-BD', {timeZone:'Asia/Dhaka'})}\n\n⚠️ Check if this is a legit customer!`
+          `🚨 <b>Outside BD Login!</b>\n\n📧 Account: ${toEmail}\n📍 Location: ${location}\n📱 Device: ${device}\n🕐 ${new Date(ts).toLocaleString('en-BD', {timeZone:'Asia/Dhaka'})}\n\n⚠️ Check admin → Outside BD Alerts to remove the link!`
         );
+        // Store alert for admin panel
+        try {
+          const alerts = loadNetflixAlerts();
+          alerts.unshift({ email: toEmail, location, device, ts, seen: false });
+          saveNetflixAlerts(alerts.slice(0, 100)); // keep last 100
+        } catch(e) { console.error('Save alert error:', e.message); }
       }
-      // Keep Set from growing forever - clean old entries every 500 alerts
       if (alertedSignins.size > 500) {
         const arr = [...alertedSignins];
         alertedSignins.clear();
@@ -1221,6 +1229,38 @@ app.get('/api/admin/geo', (req, res) => {
     const geoData = loadGeo();
     res.json({ success: true, geo: geoData });
   } catch(e) { res.json({ success: true, geo: {} }); }
+});
+
+// Outside BD login alerts
+app.get('/api/admin/netflix-alerts', adminAuth, (req, res) => {
+  try {
+    const alerts = loadNetflixAlerts();
+    // Attach which customer links are on that account (active only)
+    const links = loadLinks();
+    const now = Date.now();
+    const withLinks = alerts.map(a => {
+      const relatedLinks = Object.entries(links)
+        .filter(([token, l]) => l.email === a.email && l.active && l.expiresAt > now)
+        .map(([token, l]) => ({ token, profile: l.profile, phone: l.phone||'', customerName: l.customerName||'' }));
+      return { ...a, relatedLinks };
+    });
+    res.json({ success:true, alerts: withLinks });
+  } catch(e) { res.json({ success:true, alerts: [] }); }
+});
+
+app.delete('/api/admin/netflix-alerts/:index', adminAuth, (req, res) => {
+  try {
+    const alerts = loadNetflixAlerts();
+    const idx = parseInt(req.params.index);
+    if (idx >= 0 && idx < alerts.length) alerts.splice(idx, 1);
+    saveNetflixAlerts(alerts);
+    res.json({ success:true });
+  } catch(e) { res.status(500).json({ success:false }); }
+});
+
+app.post('/api/admin/netflix-alerts/clear', adminAuth, (req, res) => {
+  saveNetflixAlerts([]);
+  res.json({ success:true });
 });
 
 // Waitlist API
