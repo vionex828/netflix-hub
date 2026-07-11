@@ -367,15 +367,24 @@ function getNextAvailableSlot(customerDays) {
     return null;
   }
 
-  // First try: accounts matching customer plan - serial order (oldest addedAt first)
-  const matched = [...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days)
-    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
+  // Sort helper: accounts with a recent slot release get priority (fill freed slots first),
+  // then fall back to serial order (oldest addedAt first)
+  function prioritySort(list) {
+    return [...list].sort((a,b) => {
+      const aReleased = a.lastReleasedAt || 0;
+      const bReleased = b.lastReleasedAt || 0;
+      if (aReleased !== bReleased) return bReleased - aReleased; // most recently released first
+      return (a.addedAt||0) - (b.addedAt||0); // then serial order
+    });
+  }
+
+  // First try: accounts matching customer plan
+  const matched = prioritySort([...accounts].filter(a => a.active && a.planDays && parseInt(a.planDays) === days));
   const result = tryAccounts(matched);
   if (result) return result;
 
-  // Second try: accounts with no plan set - serial order
-  const anyPlan = [...accounts].filter(a => a.active && !a.planDays)
-    .sort((a,b) => (a.addedAt||0) - (b.addedAt||0));
+  // Second try: accounts with no plan set
+  const anyPlan = prioritySort([...accounts].filter(a => a.active && !a.planDays));
   return tryAccounts(anyPlan);
 }
 
@@ -1345,6 +1354,7 @@ app.get('/api/admin/waitlist', adminAuth, (req, res) => {
 app.get('/api/admin/pending-release', adminAuth, (req, res) => {
   try {
     const links = loadLinks();
+    const accounts = loadAccounts();
     const now = Date.now();
     const pending = Object.entries(links)
       .filter(([token, l]) => l.active && !l.released && l.expiresAt <= now)
@@ -1359,17 +1369,45 @@ app.get('/api/admin/pending-release', adminAuth, (req, res) => {
         daysOverdue: Math.floor((now - l.expiresAt) / (24*60*60*1000)),
       }))
       .sort((a,b) => a.expiresAt - b.expiresAt); // oldest expired first
-    res.json({ success:true, pending, count: pending.length });
-  } catch(e) { res.json({ success:true, pending: [], count: 0 }); }
+
+    // Account-level summary (total slots, occupied, pending-release, free)
+    const summaryMap = {};
+    for (const account of accounts.filter(a => a.active)) {
+      const occupyingLinks = Object.values(links).filter(l => l.email===account.email && l.active && !l.released);
+      const pendingCount = pending.filter(p => p.email === account.email).length;
+      const totalSlots = FIXED_PROFILES.reduce((sum,p) => sum+p.slots, 0);
+      const occupied = occupyingLinks.length;
+      summaryMap[account.email] = {
+        email: account.email,
+        totalSlots,
+        occupied,
+        pendingRelease: pendingCount,
+        free: Math.max(0, totalSlots - occupied),
+      };
+    }
+    const accountSummary = Object.values(summaryMap)
+      .filter(s => s.pendingRelease > 0)
+      .sort((a,b) => b.pendingRelease - a.pendingRelease);
+
+    res.json({ success:true, pending, count: pending.length, accountSummary });
+  } catch(e) { res.json({ success:true, pending: [], count: 0, accountSummary: [] }); }
 });
 
 app.post('/api/admin/pending-release/:token/release', adminAuth, (req, res) => {
   try {
     const links = loadLinks();
-    if (!links[req.params.token]) return res.status(404).json({ success:false, error:'Not found' });
-    links[req.params.token].released = true;
-    links[req.params.token].active = false;
+    const link = links[req.params.token];
+    if (!link) return res.status(404).json({ success:false, error:'Not found' });
+    link.released = true;
+    link.active = false;
     saveLinks(links);
+    // Mark account for priority assignment - freed slot fills first
+    const accounts = loadAccounts();
+    const acctIdx = accounts.findIndex(a => a.email === link.email);
+    if (acctIdx >= 0) {
+      accounts[acctIdx].lastReleasedAt = Date.now();
+      saveAccounts(accounts);
+    }
     checkLowStock();
     res.json({ success:true });
   } catch(e) { res.status(500).json({ success:false, error:e.message }); }
@@ -1600,8 +1638,10 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const links = loadLinks();
   const now = Date.now();
   const result = accounts.map(a => {
-    const active = Object.values(links).filter(l => l.email===a.email && l.active && l.expiresAt>now).length;
-    return { ...a, slotsUsed: active, slotsTotal: 8, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
+    // Occupied = link exists and not released (regardless of expiry) - matches slot assignment logic
+    const occupying = Object.values(links).filter(l => l.email===a.email && l.active && !l.released);
+    const pendingRelease = occupying.filter(l => l.expiresAt <= now).length;
+    return { ...a, slotsUsed: occupying.length, slotsTotal: 8, pendingRelease, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
   });
   res.json({ success:true, accounts: result });
 });
