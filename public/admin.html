@@ -249,6 +249,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-item" onclick="showSection('accounts')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Netflix Accounts</div>
       <div class="sb-item" onclick="showSection('waitlist')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Waitlist<span class="sb-badge" id="sb-waitlist-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('outsidebd')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>Outside BD Login<span class="sb-badge" id="sb-outsidebd-count" style="background:var(--red)">0</span></div>
+      <div class="sb-item" onclick="showSection('pendingrelease')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Pending Release<span class="sb-badge" id="sb-pendingrelease-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
@@ -357,6 +358,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="outsidebd-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
+      <div id="section-pendingrelease" style="display:none;padding:1.5rem;min-height:200px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+          <div style="font-size:1.1rem;font-weight:700">Pending Release <span id="pendingrelease-count" style="font-family:var(--m);font-size:.75rem;color:var(--amber);margin-left:.5rem"></span></div>
+        </div>
+        <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Expired links stay here — slot stays occupied until you manually release. This prevents giving the same profile to 2 customers at once.</div>
+        <div id="pendingrelease-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
       <div id="section-customers" style="display:none;padding:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
           <div style="font-size:1.1rem;font-weight:700">Customers</div>
@@ -410,6 +419,7 @@ async function loadSlots(){
     const fs=document.getElementById('s-free-slots');if(fs)fs.textContent=freeSlots;
     try{const wlr=await fetch('/api/admin/waitlist',{headers:{'x-admin-token':adminToken}});const wld=await wlr.json();const sbc=document.getElementById('sb-waitlist-count');if(sbc)sbc.textContent=(wld.waitlist||[]).length;}catch(e){}
     try{const obr=await fetch('/api/admin/netflix-alerts',{headers:{'x-admin-token':adminToken}});const obd=await obr.json();const obc=document.getElementById('sb-outsidebd-count');if(obc)obc.textContent=(obd.alerts||[]).length;}catch(e){}
+    try{const prr=await fetch('/api/admin/pending-release',{headers:{'x-admin-token':adminToken}});const prd=await prr.json();const prc=document.getElementById('sb-pendingrelease-count');if(prc)prc.textContent=(prd.pending||[]).length;}catch(e){}
   }catch(e){}
 }
 
@@ -521,7 +531,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -545,6 +555,11 @@ function showSection(s){
     document.getElementById('section-outsidebd').style.display='block';
     if(t)t.textContent='Outside BD Login Alerts';
     loadOutsideBD();return;
+  }
+  if(s==='pendingrelease'){
+    document.getElementById('section-pendingrelease').style.display='block';
+    if(t)t.textContent='Pending Release';
+    loadPendingRelease();return;
   }
   if(s==='settings'){
     document.getElementById('section-settings').style.display='block';
@@ -1018,6 +1033,65 @@ async function revokeToken(token){
   showToast('✅ Link revoked');
   loadOutsideBD();
   loadAll();
+}
+
+async function loadPendingRelease(){
+  const list=document.getElementById('pendingrelease-list');
+  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r=await fetch('/api/admin/pending-release',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();
+    const pending=d.pending||[];
+    const cnt=document.getElementById('pendingrelease-count');
+    const sbcnt=document.getElementById('sb-pendingrelease-count');
+    if(cnt)cnt.textContent=pending.length?`(${pending.length})`:'';
+    if(sbcnt)sbcnt.textContent=pending.length;
+    if(!list)return;
+    if(!pending.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No expired links pending release. All slots properly managed!</div>';return;}
+    list.innerHTML=pending.map(p=>{
+      const overdue=p.daysOverdue;
+      const overdueBadge=overdue>=7
+        ?`<span style="background:rgba(229,9,20,.15);color:var(--red);font-family:var(--m);font-size:.6rem;padding:3px 9px;border-radius:100px;font-weight:600">⚠️ ${overdue}d overdue</span>`
+        :`<span style="background:rgba(245,166,35,.12);color:var(--amber);font-family:var(--m);font-size:.6rem;padding:3px 9px;border-radius:100px">${overdue}d overdue</span>`;
+      return `
+      <div style="background:var(--s1);border:1px solid ${overdue>=7?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <span style="font-weight:600;font-size:.85rem">${esc(p.customerName||p.phone||'Unknown')}</span>
+              ${overdueBadge}
+            </div>
+            <div style="font-family:var(--m);font-size:.68rem;color:var(--muted)">
+              📧 ${esc(p.email)} · 👤 ${esc(p.profile)} · 🔑 ${esc(p.pin)}
+              ${p.phone?` · 📞${esc(p.phone)}`:''}
+            </div>
+            <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">/c/${p.token}</div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button onclick="extendPendingRelease('${p.token}')" style="background:var(--green);color:#000;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">✅ Extend</button>
+            <button onclick="releaseSlot('${p.token}')" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">🔓 Release Slot</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading</div>';}
+}
+
+async function releaseSlot(token){
+  if(!confirm('Release this slot? This confirms the customer will NOT be given access anymore and frees the slot for a new customer.'))return;
+  const r=await fetch('/api/admin/pending-release/'+token+'/release',{method:'POST',headers:{'x-admin-token':adminToken}});
+  const d=await r.json();
+  if(d.success){showToast('✅ Slot released!');loadPendingRelease();loadAll();}
+  else showToast('❌ '+(d.error||'Failed'),true);
+}
+
+async function extendPendingRelease(token){
+  const days=prompt('Extend by how many days?','30');
+  if(!days)return;
+  const r=await fetch('/api/admin/pending-release/'+token+'/extend',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:parseInt(days)})});
+  const d=await r.json();
+  if(d.success){showToast('✅ Extended!');loadPendingRelease();loadAll();}
+  else showToast('❌ '+(d.error||'Failed'),true);
 }
 
 async function approveWaitlist(phone){
