@@ -311,7 +311,23 @@ async function trackIPGeo(token, ip) {
         }
         const links = loadLinks();
         const link = links[token];
-        sendTelegram(`🌍 <b>Outside BD Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
+        sendTelegram(`🌍 <b>Outside BD Dashboard Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
+        // Save to unified alerts list for admin panel
+        try {
+          const alerts = loadNetflixAlerts();
+          alerts.unshift({
+            source: 'dashboard',
+            email: link?.email || 'unknown',
+            location: `${geo.country} (${geo.countryCode})`,
+            device: ip,
+            token: token,
+            profile: link?.profile || '',
+            phone: link?.phone || '',
+            customerName: link?.customerName || '',
+            ts: Date.now(),
+          });
+          saveNetflixAlerts(alerts.slice(0, 100));
+        } catch(e) { console.error('Save dashboard alert error:', e.message); }
       }
     } catch(e) { console.error('Geo lookup error:', e.message); }
   }
@@ -679,7 +695,7 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
         // Store alert for admin panel
         try {
           const alerts = loadNetflixAlerts();
-          alerts.unshift({ email: toEmail, location, device, ts, seen: false });
+          alerts.unshift({ source: 'netflix', email: toEmail, location, device, ts, seen: false });
           saveNetflixAlerts(alerts.slice(0, 100)); // keep last 100
         } catch(e) { console.error('Save alert error:', e.message); }
       }
@@ -1231,14 +1247,20 @@ app.get('/api/admin/geo', (req, res) => {
   } catch(e) { res.json({ success: true, geo: {} }); }
 });
 
-// Outside BD login alerts
+// Outside BD login alerts (both Netflix login emails + dashboard link access)
 app.get('/api/admin/netflix-alerts', adminAuth, (req, res) => {
   try {
     const alerts = loadNetflixAlerts();
-    // Attach which customer links are on that account (active only)
     const links = loadLinks();
     const now = Date.now();
     const withLinks = alerts.map(a => {
+      if (a.source === 'dashboard' && a.token) {
+        // Dashboard alert already knows the exact customer/link
+        const link = links[a.token];
+        const stillActive = link && link.active && link.expiresAt > now;
+        return { ...a, relatedLinks: stillActive ? [{ token: a.token, profile: a.profile, phone: a.phone, customerName: a.customerName }] : [] };
+      }
+      // Netflix login alert - show all active links sharing that account email
       const relatedLinks = Object.entries(links)
         .filter(([token, l]) => l.email === a.email && l.active && l.expiresAt > now)
         .map(([token, l]) => ({ token, profile: l.profile, phone: l.phone||'', customerName: l.customerName||'' }));
