@@ -658,6 +658,54 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
       if (signinCode) return { type:'signin', label:'Sign-in Code', code:signinCode, to:toEmail, ts, expiresAt:ts+15*60*1000 };
     }
   }
+  // Outside BD login detection
+  const isNewSignin = sl.includes('new sign') || sl.includes('new device') || sl.includes('someone signed') || sl.includes('signed in to your');
+  if (isNewSignin) {
+    const location = (bodyPlain.match(/Location[^a-z]*([A-Za-z ,]+)/i)||[])[1]?.trim() || 'Unknown';
+    const device = (bodyPlain.match(/Windows|Mac|iPhone|iPad|Android|Samsung|Chrome|Firefox|Safari|Smart TV|TV/i)||[])[0] || 'Unknown device';
+    const isBD = bodyPlain.toLowerCase().includes('bangladesh') || bodyPlain.toLowerCase().includes('dhaka') || bodyPlain.toLowerCase().includes('chittagong') || bodyPlain.toLowerCase().includes('sylhet');
+    if (!isBD) {
+      sendTelegram(
+        `🚨 <b>Outside BD Login!</b>\n\n📧 Account: ${toEmail}\n📍 Location: ${location}\n📱 Device: ${device}\n🕐 ${new Date(ts).toLocaleString('en-BD', {timeZone:'Asia/Dhaka'})}\n\n⚠️ Check if this is a legit customer!`
+      );
+    }
+    return null;
+  }
+    // PIN change detection
+  const isPinChange = sl.includes('pin for profile') || sl.includes('new pin for') || sl.includes('pin has changed');
+  if (isPinChange) {
+    // Extract profile letter e.g. 'The PIN for profile C has changed'
+    const profileMatch = sl.match(/profile\s+([a-e])/i) || bodyPlain.match(/Profile\s*[:\n]+\s*([A-E])/i);
+    const profileLetter = profileMatch ? profileMatch[1].toUpperCase() : null;
+    // Extract new PIN - shown as spaced digits '5 6 5 3'
+    const pinMatch = bodyPlain.match(/Profile Lock PIN[^0-9]*(\d)\s+(\d)\s+(\d)\s+(\d)/i)
+      || bodyPlain.match(/new PIN[^0-9]*(\d)\s+(\d)\s+(\d)\s+(\d)/i);
+    const newPin = pinMatch ? pinMatch[1]+pinMatch[2]+pinMatch[3]+pinMatch[4] : null;
+    if (profileLetter && newPin) {
+      // Auto-update PIN in all links for this profile on this account
+      const profileName = 'Profile ' + profileLetter;
+      const links = loadLinks();
+      let updated = 0;
+      for (const token of Object.keys(links)) {
+        if (links[token].email === toEmail && links[token].profile === profileName) {
+          links[token].pin = newPin;
+          updated++;
+        }
+      }
+      if (updated > 0) saveLinks(links);
+      sendTelegram(
+        `🔑 <b>PIN Changed!</b>\n\n`+
+        `📧 ${toEmail}\n`+
+        `👤 ${profileName}\n`+
+        `🔑 New PIN: <code>${newPin}</code>\n`+
+        `📝 ${updated} link(s) auto-updated`
+      );
+    } else {
+      sendTelegram(`🔑 <b>PIN Changed!</b>\n\n📧 ${toEmail}\nCould not auto-detect profile/PIN. Check manually.`);
+    }
+    return null;
+  }
+
   const isRelevant = sl.includes('temporary')||sl.includes('access code')||sl.includes('travel')||sl.includes('household')||sl.includes('update')||sl.includes('verify');
   if (!isRelevant) return null;
   const result = extractLink(bodyHtml) || extractLink(bodyText);
