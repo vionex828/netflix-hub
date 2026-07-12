@@ -317,8 +317,10 @@ function trackIPSync(token, ip) {
 // Geo lookup + outside-BD alert - runs in background, never blocks customer response
 async function checkGeoAndAlert(token, ip) {
   try {
-    const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,countryCode`);
-    const geo = await geoRes.json();
+    const geoRes = await fetch(`https://ipwho.is/${ip}`);
+    const raw = await geoRes.json();
+    if (raw.success === false) return; // lookup failed (private IP, invalid, rate limited, etc.)
+    const geo = { country: raw.country, countryCode: raw.country_code };
     if (geo.countryCode && geo.countryCode !== 'BD') {
       const geoData = loadGeo();
       if (!geoData[token]) geoData[token] = [];
@@ -1631,21 +1633,30 @@ app.get('/api/health', (req, res) => {
   res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
 });
 
-// Debug endpoint - test if Railway can reach ip-api.com for geo lookups
+// Debug endpoint - test if Railway can reach geo-IP APIs
 app.get('/api/admin/test-geo', adminAuth, async (req, res) => {
   const testIp = req.query.ip || '8.8.8.8'; // Google DNS as default test IP
   const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   const result = { testIp, clientIp, timestamp: new Date().toISOString() };
+
+  // Test ipwho.is (the one we now use - HTTPS native)
   try {
-    const geoRes = await fetch(`https://ip-api.com/json/${testIp}?fields=country,countryCode,status,message`);
-    const geo = await geoRes.json();
-    result.success = true;
-    result.geoResponse = geo;
-    result.httpStatus = geoRes.status;
+    const r = await fetch(`https://ipwho.is/${testIp}`);
+    const d = await r.json();
+    result.ipwhois = { success: true, httpStatus: r.status, response: d };
   } catch(e) {
-    result.success = false;
-    result.error = e.message;
+    result.ipwhois = { success: false, error: e.message };
   }
+
+  // Test ip-api.com HTTPS (known broken - free tier has no SSL)
+  try {
+    const r = await fetch(`https://ip-api.com/json/${testIp}?fields=country,countryCode,status,message`);
+    const d = await r.json();
+    result.ipApiHttps = { success: true, httpStatus: r.status, response: d };
+  } catch(e) {
+    result.ipApiHttps = { success: false, error: e.message };
+  }
+
   res.json(result);
 });
 
