@@ -274,6 +274,17 @@ function checkLowStock() {
   return free;
 }
 function loadAccounts() { try { return JSON.parse(fs.readFileSync(ACCOUNTS_FILE,'utf8')); } catch(e) { return []; } }
+
+// Renewal = customer's link was never released, so their slot is still theirs (even if expired late).
+// Just extend it directly - no new slot needed since they never lost their spot.
+function renewCustomerLink(allLinks, token, days) {
+  const link = allLinks[token];
+  link.expiresAt += days * 24 * 60 * 60 * 1000;
+  link.warningSent = false;
+  link.expiredSmsSent = false;
+  link.renewalCount = (link.renewalCount || 0) + 1;
+}
+
 function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
 function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } catch(e) { return { autoLink: false }; } }
 function saveSettings(data) { ensureDataDir(); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data,null,2)); }
@@ -289,61 +300,53 @@ function trackAnalytics(token) {
   saveAnalytics(data);
 }
 
-async function trackIPGeo(token, ip) {
-  if (!ip || ip === '::1' || ip === '127.0.0.1') return false;
+// Tracks IP synchronously (fast), returns count + whether this IP is new.
+// Geo lookup for new IPs should be triggered separately in the background.
+function trackIPSync(token, ip) {
+  if (!ip || ip === '::1' || ip === '127.0.0.1') return { count: 0, isNew: false };
   const data = loadIPs();
   if (!data[token]) data[token] = [];
   const isNew = !data[token].includes(ip);
   if (isNew) {
     data[token].push(ip);
     saveIPs(data);
-    // Geo lookup
-    try {
-      const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,countryCode`);
-      const geo = await geoRes.json();
-      if (geo.countryCode && geo.countryCode !== 'BD') {
-        const geoData = loadGeo();
-        if (!geoData[token]) geoData[token] = [];
-        const already = geoData[token].find(g => g.ip === ip);
-        if (!already) {
-          geoData[token].push({ ip, country: geo.country, code: geo.countryCode });
-          saveGeo(geoData);
-        }
-        const links = loadLinks();
-        const link = links[token];
-        sendTelegram(`🌍 <b>Outside BD Dashboard Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
-        // Save to unified alerts list for admin panel
-        try {
-          const alerts = loadNetflixAlerts();
-          alerts.unshift({
-            source: 'dashboard',
-            email: link?.email || 'unknown',
-            location: `${geo.country} (${geo.countryCode})`,
-            device: ip,
-            token: token,
-            profile: link?.profile || '',
-            phone: link?.phone || '',
-            customerName: link?.customerName || '',
-            ts: Date.now(),
-          });
-          saveNetflixAlerts(alerts.slice(0, 100));
-        } catch(e) { console.error('Save dashboard alert error:', e.message); }
-      }
-    } catch(e) { console.error('Geo lookup error:', e.message); }
   }
-  return data[token].length;
+  return { count: data[token].length, isNew };
 }
 
-function trackIP(token, ip) {
-  if (!ip || ip === '::1' || ip === '127.0.0.1') return false;
-  const data = loadIPs();
-  if (!data[token]) data[token] = [];
-  const isNew = !data[token].includes(ip);
-  if (isNew) {
-    data[token].push(ip);
-    saveIPs(data);
-  }
-  return data[token].length;
+// Geo lookup + outside-BD alert - runs in background, never blocks customer response
+async function checkGeoAndAlert(token, ip) {
+  try {
+    const geoRes = await fetch(`https://ip-api.com/json/${ip}?fields=country,countryCode`);
+    const geo = await geoRes.json();
+    if (geo.countryCode && geo.countryCode !== 'BD') {
+      const geoData = loadGeo();
+      if (!geoData[token]) geoData[token] = [];
+      const already = geoData[token].find(g => g.ip === ip);
+      if (!already) {
+        geoData[token].push({ ip, country: geo.country, code: geo.countryCode });
+        saveGeo(geoData);
+      }
+      const links = loadLinks();
+      const link = links[token];
+      sendTelegram(`🌍 <b>Outside BD Dashboard Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
+      try {
+        const alerts = loadNetflixAlerts();
+        alerts.unshift({
+          source: 'dashboard',
+          email: link?.email || 'unknown',
+          location: `${geo.country} (${geo.countryCode})`,
+          device: ip,
+          token: token,
+          profile: link?.profile || '',
+          phone: link?.phone || '',
+          customerName: link?.customerName || '',
+          ts: Date.now(),
+        });
+        saveNetflixAlerts(alerts.slice(0, 100));
+      } catch(e) { console.error('Save dashboard alert error:', e.message); }
+    }
+  } catch(e) { console.error('Geo lookup error:', e.message); }
 }
 
 function getNextAvailableSlot(customerDays) {
@@ -1182,8 +1185,8 @@ app.get('/api/link/:token', async (req, res) => {
   markActivity();
   const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
   trackVisitor(ip);
-  const ipCount = trackIP(req.params.token, ip);
-  trackIPGeo(req.params.token, ip).catch(()=>{});
+  const { count: ipCount, isNew: isNewIP } = trackIPSync(req.params.token, ip);
+  if (isNewIP) checkGeoAndAlert(req.params.token, ip).catch(()=>{});
   try {
     // Check cache — poller keeps this fresh every 15s
     const cached = getCodesFromCache(link.email);
@@ -1279,6 +1282,51 @@ app.get('/api/admin/netflix-alerts', adminAuth, (req, res) => {
   } catch(e) { res.json({ success:true, alerts: [] }); }
 });
 
+// Full 8-slot breakdown for a Netflix account - who occupies each slot
+app.get('/api/admin/account-links/:email', adminAuth, (req, res) => {
+  try {
+    const email = decodeURIComponent(req.params.email).toLowerCase().trim();
+    const links = loadLinks();
+    const now = Date.now();
+    const accountLinks = Object.entries(links)
+      .filter(([token, l]) => l.email === email)
+      .map(([token, l]) => {
+        let status = 'expired-released';
+        if (l.active && !l.released && l.expiresAt > now) status = 'active';
+        else if (l.active && !l.released && l.expiresAt <= now) status = 'pending-release';
+        else if (!l.active && !l.released) status = 'revoked';
+        return {
+          token,
+          profile: l.profile,
+          pin: l.pin,
+          phone: l.phone || '',
+          customerName: l.customerName || '',
+          expiresAt: l.expiresAt,
+          status,
+          renewalCount: l.renewalCount || 0,
+        };
+      })
+      .sort((a,b) => (b.expiresAt||0) - (a.expiresAt||0));
+
+    // Build 8-slot occupancy view (one row per physical slot instance)
+    const usedTokens = new Set();
+    const slots = [];
+    for (const prof of FIXED_PROFILES) {
+      for (let i = 0; i < prof.slots; i++) {
+        const occupant = accountLinks.find(l =>
+          l.profile === prof.profile &&
+          (l.status === 'active' || l.status === 'pending-release') &&
+          !usedTokens.has(l.token)
+        );
+        if (occupant) usedTokens.add(occupant.token);
+        slots.push({ profile: prof.profile, pin: prof.pin, occupant: occupant || null });
+      }
+    }
+
+    res.json({ success:true, email, slots, allLinks: accountLinks });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
+});
+
 app.delete('/api/admin/netflix-alerts/:index', adminAuth, (req, res) => {
   try {
     const alerts = loadNetflixAlerts();
@@ -1310,14 +1358,11 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
     const now = Date.now();
     const phoneNorm = phone.replace(/\D/g,'');
     const existingActive = Object.values(allLinks).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > now
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
       for (const el of existingActive) {
-        allLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-        allLinks[el.token].warningSent = false;
-        allLinks[el.token].expiredSmsSent = false;
-        allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
+        renewCustomerLink(allLinks, el.token, d);
       }
       saveLinks(allLinks);
       waitlist.splice(idx, 1);
@@ -1514,22 +1559,16 @@ app.post('/uddoktapay-ipn', async (req, res) => {
 
     // Renewal check
     const existingActive = Object.values(allLinks).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && l.expiresAt > now
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
-      let renewed = 0;
       for (const el of existingActive) {
-        allLinks[el.token].expiresAt += days * 24 * 60 * 60 * 1000;
-        allLinks[el.token].warningSent = false;
-        allLinks[el.token].expiredSmsSent = false;
-        allLinks[el.token].renewalCount = (allLinks[el.token].renewalCount || 0) + 1;
-        renewed++;
+        renewCustomerLink(allLinks, el.token, days);
       }
       saveLinks(allLinks);
-      const first = existingActive[0];
       sendTelegram(`🔄 <b>Renewal via UddoktaPay!</b>
 👤 ${customerName} | 📱 ${sender_number}
-🔗 Extended ${renewed} link(s) +${days} days`);
+🔗 Extended ${existingActive.length} link(s) +${days} days`);
       return;
     }
 
@@ -1590,6 +1629,24 @@ app.get('/api/link/:token/refresh', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ ok:true, user:GMAIL_USER?GMAIL_USER.replace(/(.{3}).*(@.*)/,'$1***$2'):'NOT SET' });
+});
+
+// Debug endpoint - test if Railway can reach ip-api.com for geo lookups
+app.get('/api/admin/test-geo', adminAuth, async (req, res) => {
+  const testIp = req.query.ip || '8.8.8.8'; // Google DNS as default test IP
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress;
+  const result = { testIp, clientIp, timestamp: new Date().toISOString() };
+  try {
+    const geoRes = await fetch(`https://ip-api.com/json/${testIp}?fields=country,countryCode,status,message`);
+    const geo = await geoRes.json();
+    result.success = true;
+    result.geoResponse = geo;
+    result.httpStatus = geoRes.status;
+  } catch(e) {
+    result.success = false;
+    result.error = e.message;
+  }
+  res.json(result);
 });
 
 // One-time cleanup — removes malformed account entries (spaces, typos in email)
