@@ -290,6 +290,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div class="stat-card" style="cursor:pointer" onclick="filterByStatus('month')"><div class="stat-card-top"><div><div class="stat-num" id="exp-month" style="color:var(--green)">-</div><div class="stat-lbl">Expiring This Month</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
       </div>
 
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1.2rem;min-width:0">
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="rev-today" style="color:var(--green)">-</div><div class="stat-lbl">Revenue Today</div></div><div class="stat-icon green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div><div class="stat-link" id="rev-today-count" style="cursor:default">0 orders</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="rev-month" style="color:var(--blue)">-</div><div class="stat-lbl">Revenue This Month</div></div><div class="stat-icon blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4da6ff" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div><div class="stat-link" id="rev-month-count" style="cursor:default">0 orders</div></div>
+        <div class="stat-card"><div class="stat-card-top"><div><div class="stat-num" id="rev-alltime" style="color:var(--amber)">-</div><div class="stat-lbl">All-Time Revenue</div></div><div class="stat-icon amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="18"/></svg></div></div><div class="stat-link" id="rev-alltime-count" style="cursor:default">0 orders</div></div>
+      </div>
+
       <div class="create-card" id="create-section">
         <div class="card-header" style="margin-bottom:.8rem"><div class="card-title"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Create Customer Link</div></div>
         <div class="form-row">
@@ -405,6 +411,25 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
 </div>
 
+<div id="revoke-reason-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1001;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeRevokeReasonModal()">
+  <div style="background:var(--s1);border:1px solid var(--border);border-radius:16px;max-width:400px;width:100%;padding:1.4rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+      <div style="font-size:1rem;font-weight:700">Revoke Reason</div>
+      <button onclick="closeRevokeReasonModal()" style="background:var(--s3);border:1px solid var(--s4);color:var(--muted);width:26px;height:26px;border-radius:50%;cursor:pointer">✕</button>
+    </div>
+    <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);margin-bottom:1rem">This will be shown to the customer on their dashboard.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem">
+      <button onclick="submitRevoke('pin_change')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:.6rem .8rem;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.7rem">🔑 Unauthorized PIN/profile change</button>
+      <button onclick="submitRevoke('multi_device')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:.6rem .8rem;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.7rem">📱 Multiple device sharing</button>
+      <button onclick="submitRevoke('security')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:.6rem .8rem;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.7rem">⚠️ Netflix account security issue</button>
+      <button onclick="submitRevoke('payment')" style="text-align:left;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:.6rem .8rem;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.7rem">💳 Payment issue</button>
+    </div>
+    <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);margin-bottom:.4rem">Or write a custom reason:</div>
+    <textarea id="revoke-custom-text" rows="2" placeholder="Type custom reason..." style="width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:.6rem;font-family:var(--m);font-size:.7rem;resize:none;margin-bottom:.7rem"></textarea>
+    <button onclick="submitRevoke('other')" style="width:100%;background:var(--red);color:#fff;border:none;padding:.7rem;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.72rem;font-weight:600">🚫 Confirm Revoke</button>
+  </div>
+</div>
+
 <script>
 const SITE=window.location.origin;
 const PROFILE_COLORS={A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
@@ -434,6 +459,19 @@ async function loadSlots(){
     try{const wlr=await fetch('/api/admin/waitlist',{headers:{'x-admin-token':adminToken}});const wld=await wlr.json();const sbc=document.getElementById('sb-waitlist-count');if(sbc)sbc.textContent=(wld.waitlist||[]).length;}catch(e){}
     try{const obr=await fetch('/api/admin/netflix-alerts',{headers:{'x-admin-token':adminToken}});const obd=await obr.json();const obc=document.getElementById('sb-outsidebd-count');if(obc)obc.textContent=(obd.alerts||[]).length;}catch(e){}
     try{const prr=await fetch('/api/admin/pending-release',{headers:{'x-admin-token':adminToken}});const prd=await prr.json();const prc=document.getElementById('sb-pendingrelease-count');if(prc)prc.textContent=(prd.pending||[]).length;}catch(e){}
+    try{
+      const rr=await fetch('/api/admin/revenue',{headers:{'x-admin-token':adminToken}});
+      const rd=await rr.json();
+      if(rd.success){
+        const fmt=n=>'৳'+Math.round(n).toLocaleString();
+        const rt=document.getElementById('rev-today');if(rt)rt.textContent=fmt(rd.today.total);
+        const rtc=document.getElementById('rev-today-count');if(rtc)rtc.textContent=rd.today.count+' order'+(rd.today.count===1?'':'s');
+        const rm=document.getElementById('rev-month');if(rm)rm.textContent=fmt(rd.month.total);
+        const rmc=document.getElementById('rev-month-count');if(rmc)rmc.textContent=rd.month.count+' order'+(rd.month.count===1?'':'s');
+        const ra=document.getElementById('rev-alltime');if(ra)ra.textContent=fmt(rd.allTime.total);
+        const rac=document.getElementById('rev-alltime-count');if(rac)rac.textContent=rd.allTime.count+' order'+(rd.allTime.count===1?'':'s');
+      }
+    }catch(e){}
   }catch(e){}
 }
 
@@ -692,7 +730,7 @@ async function doCreate(){
   else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-async function revokeLink(token){if(!confirm('Revoke this link?'))return;await fetch(`/api/admin/revoke/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link revoked');loadAll();}
+
 async function activateLink(token){await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link activated');loadAll();}
 function editEmail(token, btn) {
   const l = allLinks[token];
@@ -898,6 +936,12 @@ function renderAccounts(accounts){
           ${a.pendingRelease>0?`<span style="background:rgba(245,166,35,.12);color:var(--amber);font-family:var(--m);font-size:.56rem;padding:2px 8px;border-radius:100px;cursor:pointer" onclick="showSection('pendingrelease')">⏳ ${a.pendingRelease} pending release</span>`:''}
           <span style="font-family:var(--m);font-size:.56rem;color:${(8-(a.slotsUsed||0))>0?'var(--green)':'var(--muted2)'}">${8-(a.slotsUsed||0)} free</span>
         </div>
+        ${a.activeDaysLeft&&a.activeDaysLeft.length?`<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem" title="Days left for each active customer">
+          ${a.activeDaysLeft.map(d=>{
+            const dc=d<=3?'var(--red)':d<=7?'var(--amber)':'var(--muted)';
+            return `<span style="font-family:var(--m);font-size:.55rem;color:${dc};background:var(--s3);padding:2px 6px;border-radius:5px">${d}d</span>`;
+          }).join('')}
+        </div>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">${avatars}</div>
       <div style="position:relative;width:44px;height:44px;flex-shrink:0">
@@ -1115,13 +1159,29 @@ function closeAccountLinksModal(){
   document.getElementById('account-links-modal').style.display='none';
 }
 
-async function revokeToken(token){
-  if(!confirm('Revoke this link? Customer will lose access immediately.'))return;
-  await fetch('/api/admin/revoke/'+token,{method:'POST',headers:{'x-admin-token':adminToken}});
-  showToast('✅ Link revoked');
-  loadOutsideBD();
-  loadAll();
+let _revokeTargetToken=null;
+function openRevokeReasonModal(token){
+  _revokeTargetToken=token;
+  const ta=document.getElementById('revoke-custom-text');if(ta)ta.value='';
+  document.getElementById('revoke-reason-modal').style.display='flex';
 }
+function closeRevokeReasonModal(){
+  document.getElementById('revoke-reason-modal').style.display='none';
+  _revokeTargetToken=null;
+}
+async function submitRevoke(reason){
+  if(!_revokeTargetToken)return;
+  const reasonText=reason==='other'?(document.getElementById('revoke-custom-text')?.value.trim()||'Access revoked by admin.'):'';
+  const token=_revokeTargetToken;
+  closeRevokeReasonModal();
+  await fetch(`/api/admin/revoke/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({reason,reasonText})});
+  showToast('✅ Link revoked');
+  loadAll();
+  if(document.getElementById('section-outsidebd').style.display!=='none')loadOutsideBD();
+  if(document.getElementById('account-links-modal').style.display!=='none')closeAccountLinksModal();
+}
+async function revokeLink(token){openRevokeReasonModal(token);}
+async function revokeToken(token){openRevokeReasonModal(token);}
 
 async function loadPendingRelease(){
   const list=document.getElementById('pendingrelease-list');
@@ -1142,15 +1202,23 @@ async function loadPendingRelease(){
     const summaryHtml=accountSummary.length?`
       <div style="margin-bottom:1.2rem">
         <div style="font-family:var(--m);font-size:.65rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.6rem">Accounts With Pending Releases</div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+        <div style="display:flex;flex-direction:column;gap:.6rem">
           ${accountSummary.map(s=>`
             <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem">
-              <div style="font-family:var(--m);font-size:.68rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:.5rem">${esc(s.email)}</div>
-              <div style="display:flex;gap:.8rem;font-family:var(--m);font-size:.62rem">
-                <span style="color:var(--muted)">Slots: <b style="color:var(--text)">${s.totalSlots}</b></span>
-                <span style="color:var(--amber)">Pending: <b>${s.pendingRelease}</b></span>
-                <span style="color:${s.free>0?'var(--green)':'var(--muted2)'}">Free: <b>${s.free}</b></span>
+              <div style="font-family:var(--m);font-size:.68rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:.6rem">${esc(s.email)}</div>
+              <div style="display:flex;gap:1rem;font-family:var(--m);font-size:.62rem;flex-wrap:wrap;margin-bottom:.5rem">
+                <span style="color:var(--muted)">Total: <b style="color:var(--text)">${s.totalSlots}</b></span>
+                <span style="color:var(--green)">Active (paying): <b>${s.activeCount}</b></span>
+                <span style="color:var(--amber)">⏳ Waiting for release: <b>${s.pendingReleaseCount}</b></span>
+                <span style="color:${s.freeSlots>0?'var(--green)':'var(--muted2)'}">⬜ Free now: <b>${s.freeSlots}</b></span>
               </div>
+              ${s.activeCustomers&&s.activeCustomers.length?`
+                <div style="display:flex;flex-wrap:wrap;gap:.4rem;padding-top:.5rem;border-top:1px solid var(--border)">
+                  ${s.activeCustomers.map(c=>{
+                    const dc=c.daysLeft<=3?'var(--red)':c.daysLeft<=7?'var(--amber)':'var(--green)';
+                    return `<span style="background:var(--s3);border-radius:6px;padding:3px 8px;font-family:var(--m);font-size:.6rem;color:${dc}">${esc(c.profile)} · ${c.daysLeft}d${c.renewalCount?' · 🔄'+c.renewalCount:''}</span>`;
+                  }).join('')}
+                </div>`:''}
             </div>`).join('')}
         </div>
       </div>` : '';
