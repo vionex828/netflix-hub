@@ -79,6 +79,8 @@ function _scheduleReconnect() {
   _reconnTimer = setTimeout(() => { _reconnTimer = null; _connectIMAP(); }, 20000);
 }
 
+const _processedUids = new Set(); // tracks emails already classified, prevents skipping due to volume
+
 async function _pollAll() {
   if (!_imapReady || !_imap || _imapPolling) return;
   _imapPolling = true;
@@ -87,15 +89,27 @@ async function _pollAll() {
       const since = new Date(Date.now() - 20*60*1000);
       _imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], async (err, uids) => {
         if (err || !uids || !uids.length) { resolve(); return; }
-        const recentUids = uids.slice(-10);
-        const fetch = _imap.fetch(recentUids, { bodies: '' });
+        // Process every UID not yet seen - never skip emails due to volume
+        const newUids = uids.filter(uid => !_processedUids.has(uid));
+        if (!newUids.length) { resolve(); return; }
+        const fetch = _imap.fetch(newUids, { bodies: '' });
         const promises = [];
-        fetch.on('message', (msg) => {
+        fetch.on('message', (msg, seqno) => {
+          let uid = null;
+          msg.once('attributes', (attrs) => { uid = attrs.uid; });
           const p = new Promise((res) => {
             msg.on('body', (stream) => {
               simpleParser(stream, async (err, mail) => {
                 if (err) { res(); return; }
                 await _updateCacheFromMail(mail);
+                if (uid) {
+                  _processedUids.add(uid);
+                  if (_processedUids.size > 2000) {
+                    const arr = [..._processedUids];
+                    _processedUids.clear();
+                    arr.slice(-1000).forEach(u => _processedUids.add(u));
+                  }
+                }
                 res();
               });
             });
@@ -331,7 +345,18 @@ async function checkGeoAndAlert(token, ip) {
       }
       const links = loadLinks();
       const link = links[token];
-      sendTelegram(`🌍 <b>Outside BD Dashboard Access!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}`);
+
+      // Instant auto-block - customer can be reactivated later from admin if it was a mistake
+      if (link && link.active) {
+        link.active = false;
+        link.revokedReason = 'outside_bd';
+        link.revokedCountry = geo.country;
+        link.revokedIp = ip;
+        link.revokedAt = Date.now();
+        saveLinks(links);
+      }
+
+      sendTelegram(`🚨 <b>Outside BD Login — Auto-Blocked!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n⛔ Dashboard access blocked instantly. Reactivate from admin if this is a mistake.`);
       try {
         const alerts = loadNetflixAlerts();
         alerts.unshift({
@@ -1049,13 +1074,24 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
 app.post('/api/admin/revoke/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  links[req.params.token].active = false; saveLinks(links); res.json({ success:true });
+  const { reason, reasonText } = req.body || {};
+  links[req.params.token].active = false;
+  links[req.params.token].revokedReason = reason || 'other';
+  links[req.params.token].revokedReasonText = reasonText || '';
+  links[req.params.token].revokedAt = Date.now();
+  saveLinks(links); res.json({ success:true });
 });
 
 app.post('/api/admin/activate/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  links[req.params.token].active = true; saveLinks(links); res.json({ success:true });
+  links[req.params.token].active = true;
+  delete links[req.params.token].revokedReason;
+  delete links[req.params.token].revokedReasonText;
+  delete links[req.params.token].revokedCountry;
+  delete links[req.params.token].revokedIp;
+  delete links[req.params.token].revokedAt;
+  saveLinks(links); res.json({ success:true });
 });
 
 app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
@@ -1160,11 +1196,25 @@ app.get('/api/admin/slots', adminAuth, (req, res) => {
   res.json({ success:true, slots:byEmail, maxSlots:MAX_SLOTS, freeSlots });
 });
 
+const REVOKE_REASON_TEXT = {
+  outside_bd: 'Netflix login detected from outside Bangladesh',
+  pin_change: 'Unauthorized PIN or profile change',
+  multi_device: 'Account shared across multiple devices, violating single-device policy',
+  security: 'Unusual activity detected on this Netflix account',
+  payment: 'Payment dispute or issue on this order',
+  other: null, // uses custom text stored on link.revokedReasonText
+};
+function getRevokeReasonText(link) {
+  if (!link.revokedReason) return 'Access revoked. Contact FanFlix BD.';
+  if (link.revokedReason === 'other' && link.revokedReasonText) return link.revokedReasonText;
+  return REVOKE_REASON_TEXT[link.revokedReason] || 'Access revoked. Contact FanFlix BD.';
+}
+
 app.get('/api/link/:token/info', (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
-  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:getRevokeReasonText(link), reason:link.revokedReason||null, country:link.revokedCountry||null, ip:link.revokedIp||null });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
@@ -1177,7 +1227,7 @@ app.get('/api/link/:token', async (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
-  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:'Access revoked. Contact FanFlix BD.' });
+  if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:getRevokeReasonText(link), reason:link.revokedReason||null, country:link.revokedCountry||null, ip:link.revokedIp||null });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 28;
@@ -1251,6 +1301,41 @@ app.get('/api/stats', (req, res) => {
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
   res.json({ live:getLiveVisitors(), today:totalToday });
+});
+
+app.get('/api/admin/revenue', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const monthStr = todayStr.slice(0, 7); // YYYY-MM
+
+    let todayTotal = 0, todayCount = 0;
+    let monthTotal = 0, monthCount = 0;
+    let allTimeTotal = 0, allTimeCount = 0;
+    const byProduct = {};
+
+    for (const link of Object.values(links)) {
+      const amount = parseFloat(link.amount) || 0;
+      if (!amount || !link.createdAt) continue;
+      const createdStr = new Date(link.createdAt).toISOString().split('T')[0];
+      allTimeTotal += amount; allTimeCount++;
+      if (createdStr === todayStr) { todayTotal += amount; todayCount++; }
+      if (createdStr.slice(0,7) === monthStr) { monthTotal += amount; monthCount++; }
+      const prod = link.plan || 'Unknown';
+      if (!byProduct[prod]) byProduct[prod] = { total: 0, count: 0 };
+      byProduct[prod].total += amount;
+      byProduct[prod].count++;
+    }
+
+    res.json({
+      success: true,
+      today: { total: todayTotal, count: todayCount },
+      month: { total: monthTotal, count: monthCount },
+      allTime: { total: allTimeTotal, count: allTimeCount },
+      byProduct,
+    });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
 });
 
 app.get('/api/admin/geo', (req, res) => {
@@ -1417,24 +1502,38 @@ app.get('/api/admin/pending-release', adminAuth, (req, res) => {
       }))
       .sort((a,b) => a.expiresAt - b.expiresAt); // oldest expired first
 
-    // Account-level summary (total slots, occupied, pending-release, free)
+    // Account-level summary with FULL visibility:
+    // - activeCustomers: currently paying, not expired - shown with days-left + renewal count
+    // - pendingRelease: expired but not yet released by admin (still occupying a slot)
+    // - freeSlots: genuinely empty slots available for new customers right now
     const summaryMap = {};
     for (const account of accounts.filter(a => a.active)) {
       const occupyingLinks = Object.values(links).filter(l => l.email===account.email && l.active && !l.released);
-      const pendingCount = pending.filter(p => p.email === account.email).length;
+      const activeCustomers = occupyingLinks
+        .filter(l => l.expiresAt > now)
+        .map(l => ({
+          profile: l.profile,
+          customerName: l.customerName || '',
+          phone: l.phone || '',
+          daysLeft: Math.ceil((l.expiresAt - now) / (24*60*60*1000)),
+          renewalCount: l.renewalCount || 0,
+        }))
+        .sort((a,b) => a.daysLeft - b.daysLeft);
+      const pendingForAccount = pending.filter(p => p.email === account.email);
       const totalSlots = FIXED_PROFILES.reduce((sum,p) => sum+p.slots, 0);
       const occupied = occupyingLinks.length;
       summaryMap[account.email] = {
         email: account.email,
         totalSlots,
-        occupied,
-        pendingRelease: pendingCount,
-        free: Math.max(0, totalSlots - occupied),
+        activeCount: activeCustomers.length,
+        activeCustomers,
+        pendingReleaseCount: pendingForAccount.length,
+        freeSlots: Math.max(0, totalSlots - occupied),
       };
     }
     const accountSummary = Object.values(summaryMap)
-      .filter(s => s.pendingRelease > 0)
-      .sort((a,b) => b.pendingRelease - a.pendingRelease);
+      .filter(s => s.pendingReleaseCount > 0)
+      .sort((a,b) => b.pendingReleaseCount - a.pendingReleaseCount);
 
     res.json({ success:true, pending, count: pending.length, accountSummary });
   } catch(e) { res.json({ success:true, pending: [], count: 0, accountSummary: [] }); }
@@ -1709,7 +1808,12 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
     // Occupied = link exists and not released (regardless of expiry) - matches slot assignment logic
     const occupying = Object.values(links).filter(l => l.email===a.email && l.active && !l.released);
     const pendingRelease = occupying.filter(l => l.expiresAt <= now).length;
-    return { ...a, slotsUsed: occupying.length, slotsTotal: 8, pendingRelease, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
+    // Days-left for each currently active (paying, not expired) customer - for compact display
+    const activeDaysLeft = occupying
+      .filter(l => l.expiresAt > now)
+      .map(l => Math.ceil((l.expiresAt - now) / (24*60*60*1000)))
+      .sort((x,y) => x - y);
+    return { ...a, slotsUsed: occupying.length, slotsTotal: 8, pendingRelease, activeDaysLeft, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
   });
   res.json({ success:true, accounts: result });
 });
