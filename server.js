@@ -493,19 +493,6 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
-// BulkSMS
-const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
-const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
-async function sendBulkSMS(phone, message) {
-  try {
-    const num = String(phone).replace(/\D/g,'');
-    if (!num || num.length < 7) return;
-    const url = `http://bulksmsbd.net/api/smsapi?api_key=${BULKSMS_API_KEY}&type=text&number=${num}&senderid=${BULKSMS_SENDER}&message=${encodeURIComponent(message)}`;
-    const res = await fetch(url);
-    console.log('SMS sent to', num, ':', await res.text());
-  } catch(e) { console.error('SMS error:', e.message); }
-}
-
 function checkExpiringLinks() {
   const links = loadLinks();
   const now = Date.now();
@@ -519,13 +506,6 @@ function checkExpiringLinks() {
       const days = Math.ceil(remaining/(24*60*60*1000));
       sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
       links[link.token].warningSent = true;
-      changed = true;
-    }
-    // SMS once when expired
-    if (remaining <= 0 && !link.expiredSmsSent && link.phone) {
-      const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ শেষ হয়ে গেছে। রিনিউ করতে WhatsApp করুন: wa.me/${WA_NUMBER} আপনার ড্যাশবোর্ড: ${SITE_URL}/c/${link.token}`;
-      sendBulkSMS(link.phone, msg);
-      links[link.token].expiredSmsSent = true;
       changed = true;
     }
   }
@@ -1354,15 +1334,28 @@ app.get('/api/admin/netflix-alerts', adminAuth, (req, res) => {
     const now = Date.now();
     const withLinks = alerts.map(a => {
       if (a.source === 'dashboard' && a.token) {
-        // Dashboard alert already knows the exact customer/link
+        // Dashboard alert already knows the exact customer/link.
+        // Show it regardless of active status — auto-block sets active:false
+        // immediately, but we still need to show WHO was blocked and let
+        // admin revoke/reactivate. Only hide if the link was fully released.
         const link = links[a.token];
-        const stillActive = link && link.active && link.expiresAt > now;
-        return { ...a, relatedLinks: stillActive ? [{ token: a.token, profile: a.profile, phone: a.phone, customerName: a.customerName }] : [] };
+        const stillExists = link && !link.released;
+        return {
+          ...a,
+          relatedLinks: stillExists ? [{
+            token: a.token,
+            profile: a.profile,
+            phone: a.phone,
+            customerName: a.customerName,
+            blocked: !link.active,
+          }] : []
+        };
       }
-      // Netflix login alert - show all active links sharing that account email
+      // Netflix login alert - show all links sharing that account email
+      // (active OR currently blocked, but not released)
       const relatedLinks = Object.entries(links)
-        .filter(([token, l]) => l.email === a.email && l.active && l.expiresAt > now)
-        .map(([token, l]) => ({ token, profile: l.profile, phone: l.phone||'', customerName: l.customerName||'' }));
+        .filter(([token, l]) => l.email === a.email && !l.released && l.expiresAt > now)
+        .map(([token, l]) => ({ token, profile: l.profile, phone: l.phone||'', customerName: l.customerName||'', blocked: !l.active }));
       return { ...a, relatedLinks };
     });
     res.json({ success:true, alerts: withLinks });
@@ -1916,16 +1909,35 @@ app.get('/api/track/:phone', (req, res) => {
   const links = loadLinks();
   const now = Date.now();
   const found = Object.values(links).filter(l =>
-    l.phone && l.phone.replace(/\D/g,'').includes(phone) && l.active && l.expiresAt > now
+    l.phone && l.phone.replace(/\D/g,'').includes(phone) && l.active && !l.released && l.expiresAt > now
   );
-  if (!found.length) return res.status(404).json({ success:false, error:'No active links found for this number' });
-  res.json({ success:true, links: found.map(l => ({
-    token: l.token,
-    profile: l.profile,
-    pin: l.pin,
-    daysLeft: Math.ceil((l.expiresAt-now)/(24*60*60*1000)),
-    link: SITE_URL+'/c/'+l.token
-  }))});
+  if (found.length) {
+    return res.json({ success:true, links: found.map(l => ({
+      token: l.token,
+      profile: l.profile,
+      pin: l.pin,
+      daysLeft: Math.ceil((l.expiresAt-now)/(24*60*60*1000)),
+      link: SITE_URL+'/c/'+l.token
+    }))});
+  }
+  // No active links — check if they have a BLOCKED link so we can explain why,
+  // instead of a blank "no account found" that leaves the customer confused.
+  const blocked = Object.values(links).filter(l =>
+    l.phone && l.phone.replace(/\D/g,'').includes(phone) && !l.active && !l.released
+  );
+  if (blocked.length) {
+    const b = blocked[0];
+    return res.status(403).json({
+      success:false,
+      error:'blocked',
+      message: getRevokeReasonText(b),
+      reason: b.revokedReason || null,
+      country: b.revokedCountry || null,
+      ip: b.revokedIp || null,
+      token: b.token,
+    });
+  }
+  return res.status(404).json({ success:false, error:'not_found', message:'No account found for this number' });
 });
 
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
