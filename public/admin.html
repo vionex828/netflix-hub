@@ -582,7 +582,7 @@ function filterByStatus(status){const secs=['sec-dashboard','section-accounts','
   const now=Date.now();const oneDay=24*60*60*1000;const threeDays=3*oneDay;const sevenDays=7*oneDay;const thirtyDays=30*oneDay;const filtered={};
   for(const[k,v]of Object.entries(allLinks)){
     if(status==='active'&&v.active&&v.expiresAt>now)filtered[k]=v;
-    else if(status==='expired'&&v.expiresAt<=now)filtered[k]=v;
+    else if(status==='expired'&&v.expiresAt<=now&&!v.released)filtered[k]=v;
     else if(status==='expiring'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=threeDays)filtered[k]=v;
     else if(status==='today'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=oneDay)filtered[k]=v;
     else if(status==='week'&&v.active&&v.expiresAt>now&&(v.expiresAt-now)<=sevenDays)filtered[k]=v;
@@ -731,7 +731,7 @@ async function doCreate(){
 }
 
 
-async function activateLink(token){await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link activated');loadAll();}
+async function activateLink(token){await fetch(`/api/admin/activate/${token}`,{method:'POST',headers:{'x-admin-token':adminToken}});showToast('Link activated');loadAll();if(document.getElementById('section-outsidebd').style.display!=='none')loadOutsideBD();}
 function editEmail(token, btn) {
   const l = allLinks[token];
   if (!l) return;
@@ -1069,8 +1069,12 @@ async function loadOutsideBD(){
             ${l.customerName?` · ${esc(l.customerName)}`:''}
             ${l.phone?` · 📞${esc(l.phone)}`:''}
             <span style="color:var(--muted2)"> · /c/${l.token}</span>
+            ${l.blocked?' · <span style="color:var(--red)">⛔ Blocked</span>':' · <span style="color:var(--green)">✅ Active</span>'}
           </div>
-          <button onclick="revokeToken('${l.token}')" style="background:var(--red);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">🚫 Revoke</button>
+          ${l.blocked
+            ?`<button onclick="activateLink('${l.token}')" style="background:var(--green);color:#000;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">✅ Reactivate</button>`
+            :`<button onclick="revokeToken('${l.token}')" style="background:var(--red);color:#fff;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">🚫 Revoke</button>`
+          }
         </div>`).join('');
       return `
       <div style="background:var(--s1);border:1px solid rgba(229,9,20,.25);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.8rem">
@@ -1125,13 +1129,19 @@ async function showAccountLinksModal(email){
           const o=s.occupant;
           const sc=o.status==='active'?'var(--green)':o.status==='pending-release'?'var(--amber)':'var(--muted2)';
           const sl=o.status==='active'?'✅ Active':o.status==='pending-release'?'⏳ Pending Release':'🚫 '+o.status;
+          const daysLeft=o.expiresAt?Math.ceil((o.expiresAt-Date.now())/86400000):null;
+          const dlText=daysLeft===null?'':daysLeft>0?daysLeft+'d left':Math.abs(daysLeft)+'d overdue';
+          const dlColor=daysLeft===null?'var(--muted2)':daysLeft<=3&&daysLeft>0?'var(--amber)':daysLeft<=0?'var(--red)':'var(--green)';
           return `<div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:.7rem .9rem">
             <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem">
               <div style="font-family:var(--m);font-size:.72rem">
                 <span style="color:var(--blue);font-weight:600">${esc(s.profile)}</span>
                 <span style="color:var(--muted2)"> · 🔑 ${esc(s.pin)}</span>
               </div>
-              <span style="color:${sc};font-family:var(--m);font-size:.6rem">${sl}</span>
+              <div style="display:flex;align-items:center;gap:.5rem">
+                ${dlText?`<span style="color:${dlColor};font-family:var(--m);font-size:.6rem">${dlText}</span>`:''}
+                <span style="color:${sc};font-family:var(--m);font-size:.6rem">${sl}</span>
+              </div>
             </div>
             <div style="font-family:var(--m);font-size:.68rem;margin-top:4px">
               ${esc(o.customerName||'Unknown')} ${o.phone?' · 📞'+esc(o.phone):''}
@@ -1320,18 +1330,28 @@ async function loadCustomers(){
     allCustomers = Object.values(byPhone).sort((a,b)=>b.links[0].createdAt-a.links[0].createdAt);
     const cnt = document.getElementById('sb-customers-count');
     if(cnt) cnt.textContent = allCustomers.length;
-    renderCustomers(allCustomers);
+    renderCustomers(sortCustomersExpiredFirst(allCustomers));
   }catch(e){ if(list) list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error</div>'; }
+}
+
+function sortCustomersExpiredFirst(customers){
+  const now=Date.now();
+  return [...customers].sort((a,b)=>{
+    const aActive=a.links.some(l=>l.active&&!l.released&&l.expiresAt>now);
+    const bActive=b.links.some(l=>l.active&&!l.released&&l.expiresAt>now);
+    if(aActive!==bActive)return aActive?1:-1; // expired/inactive customers first
+    return b.links[0].createdAt-a.links[0].createdAt;
+  });
 }
 
 function filterCustomers(){
   const q = document.getElementById('cust-search')?.value.toLowerCase().trim()||'';
-  if(!q){ renderCustomers(allCustomers); return; }
-  renderCustomers(allCustomers.filter(c => c.phone.includes(q) || c.name.toLowerCase().includes(q)));
+  const base = q ? allCustomers.filter(c => c.phone.includes(q) || c.name.toLowerCase().includes(q)) : allCustomers;
+  renderCustomers(sortCustomersExpiredFirst(base));
 }
 
 async function cleanAllExpired(){
-  const expired=Object.values(allLinks).filter(l=>l.expiresAt<=Date.now());
+  const expired=Object.values(allLinks).filter(l=>l.expiresAt<=Date.now()&&!l.released);
   if(!expired.length){showToast('No expired links!');return;}
   if(!confirm(`Delete ${expired.length} expired links permanently?`))return;
   let done=0;
@@ -1349,7 +1369,19 @@ function renderCustomers(customers){
   if(!list)return;
   if(!customers.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No customers found.</div>';return;}
   const now=Date.now();
-  list.innerHTML=customers.map(c=>{
+  const activeCount=customers.filter(c=>c.links.some(l=>l.active&&!l.released&&l.expiresAt>now)).length;
+  const expiredCount=customers.length-activeCount;
+  const summaryHtml='<div style="display:flex;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap">'+
+    '<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.6rem 1rem;flex:1;min-width:120px">'+
+      '<div style="font-family:var(--m);font-size:1.1rem;font-weight:700;color:#46d369">'+activeCount+'</div>'+
+      '<div style="font-family:var(--m);font-size:.6rem;color:var(--muted)">Active Now</div>'+
+    '</div>'+
+    '<div style="background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.6rem 1rem;flex:1;min-width:120px">'+
+      '<div style="font-family:var(--m);font-size:1.1rem;font-weight:700;color:#E50914">'+expiredCount+'</div>'+
+      '<div style="font-family:var(--m);font-size:.6rem;color:var(--muted)">Expired / Inactive</div>'+
+    '</div>'+
+  '</div>';
+  list.innerHTML=summaryHtml+customers.map(c=>{
     const al=c.links.filter(l=>l.active&&l.expiresAt>now);
     const ne=al.length?Math.min(...al.map(l=>l.expiresAt)):null;
     const dl=ne?Math.ceil((ne-now)/86400000):0;
