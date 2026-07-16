@@ -1801,6 +1801,7 @@ app.post('/api/renew/create-payment', async (req, res) => {
         redirect_url: `${SITE_URL}/c/${token}?renewed=1&plan=${encodeURIComponent(matchedPlan.name)}&days=${days}`,
         return_type: 'GET',
         cancel_url: `${SITE_URL}/c/${token}?renew_cancelled=1`,
+        webhook_url: `${SITE_URL}/uddoktapay-ipn`,
       }),
     });
 
