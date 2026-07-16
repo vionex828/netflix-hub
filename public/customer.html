@@ -375,7 +375,7 @@ function doRefresh(){
 
 function buildPage(data){
   const days=data.daysLeft||0;
-  const totalDays=data.totalDays||28;
+  const totalDays=data.totalDays||30;
   const sc=days<=0?'danger':days<=3?'warning':'active';
   const stitle=days<=0?'Account Expired':days<=3?'Expiring Soon':'Account Active';
   const ssub=days<=0?'Please renew your subscription.':days<=3?`Only ${days} days remaining — renew now!`:'Your account is in good standing.';
@@ -632,8 +632,10 @@ function selectPlan(planId){
   const priceEl=document.getElementById('selected-price');if(priceEl)priceEl.textContent=selectedPlan?'৳'+selectedPlan.price:'—';
   const btn=document.getElementById('renew-pay-btn');if(btn)btn.disabled=!selectedPlan;
 }
+let _renewPaymentInProgress=false;
 async function startPayment(){
-  if(!selectedPlan||!window._tok)return;
+  if(!selectedPlan||!window._tok||_renewPaymentInProgress)return;
+  _renewPaymentInProgress=true;
   const btn=document.getElementById('renew-pay-btn');
   const originalText=btn?btn.textContent:'';
   if(btn){btn.disabled=true;btn.textContent='Creating payment...';}
@@ -649,10 +651,12 @@ async function startPayment(){
     }else{
       showToast(d.error||'Could not start payment. Try WhatsApp instead.');
       if(btn){btn.disabled=false;btn.textContent=originalText;}
+      _renewPaymentInProgress=false;
     }
   }catch(e){
     showToast('Connection error. Try WhatsApp instead.');
     if(btn){btn.disabled=false;btn.textContent=originalText;}
+    _renewPaymentInProgress=false;
   }
 }
 function payViaWhatsApp(){
@@ -666,6 +670,7 @@ function closeRenewModal(){const modal=document.getElementById('renew-modal');if
 function checkRenewalSuccess(){
   const params=new URLSearchParams(window.location.search);
   if(params.get('renewed')==='1'){const days=params.get('days')||'';setTimeout(()=>{showToast('Renewed! '+days+' days added');window.history.replaceState({},'',window.location.pathname);},1000);}
+  if(params.get('renew_cancelled')==='1'){setTimeout(()=>{showToast('Payment cancelled. You can try again anytime.');window.history.replaceState({},'',window.location.pathname);},1000);}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
