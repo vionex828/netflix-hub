@@ -245,7 +245,7 @@ const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
 function loadWaitlist() { try { return JSON.parse(fs.readFileSync(WAITLIST_FILE,'utf8')); } catch(e) { return []; } }
 function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, JSON.stringify(data,null,2)); }
 
-// Normalize customer days to match account plan types (28/85/170)
+// Normalize customer days to match account plan types (30/90/170)
 function normalizeDays(d) {
   const n = parseInt(d) || 30;
   if (n <= 30) return 30;
@@ -296,6 +296,7 @@ function renewCustomerLink(allLinks, token, days) {
   link.expiresAt += days * 24 * 60 * 60 * 1000;
   link.warningSent = false;
   link.expiredSmsSent = false;
+  link.renewalSmsSent = false;
   link.renewalCount = (link.renewalCount || 0) + 1;
 }
 
@@ -493,6 +494,21 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
+// BulkSMS - 1-click self-renew reminder
+const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
+const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
+async function sendBulkSMS(phone, message) {
+  try {
+    const num = String(phone).replace(/\D/g,'');
+    if (!num || num.length < 7) return false;
+    const url = `http://bulksmsbd.net/api/smsapi?api_key=${BULKSMS_API_KEY}&type=text&number=${num}&senderid=${BULKSMS_SENDER}&message=${encodeURIComponent(message)}`;
+    const res = await fetch(url);
+    const result = await res.text();
+    console.log('SMS sent to', num, ':', result);
+    return true;
+  } catch(e) { console.error('SMS error:', e.message); return false; }
+}
+
 function checkExpiringLinks() {
   const links = loadLinks();
   const now = Date.now();
@@ -512,6 +528,42 @@ function checkExpiringLinks() {
   if (changed) saveLinks(links);
 }
 setInterval(checkExpiringLinks, 60*60*1000);
+
+// SMS reminder - once daily at 9:30 PM BD time, for links expiring within the next 24h
+async function sendRenewalSmsReminders() {
+  const links = loadLinks();
+  const now = Date.now();
+  const oneDay = 24*60*60*1000;
+  let changed = false;
+  for (const link of Object.values(links)) {
+    if (!link.active || link.released) continue;
+    const remaining = link.expiresAt - now;
+    if (remaining > 0 && remaining <= oneDay && !link.renewalSmsSent) {
+      if (link.phone) {
+        const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ আগামীকাল শেষ হবে। মাত্র ১ ক্লিকে রিনিউ করুন, সাপোর্টে যোগাযোগের প্রয়োজন নেই: ${SITE_URL}/c/${link.token}`;
+        await sendBulkSMS(link.phone, msg);
+      }
+      link.renewalSmsSent = true;
+      changed = true;
+    }
+  }
+  if (changed) saveLinks(links);
+}
+function scheduleRenewalSms() {
+  const now = new Date();
+  const bd = new Date(now.getTime() + 6*60*60*1000);
+  const next930pm = new Date(bd);
+  next930pm.setUTCHours(15, 30, 0, 0); // 21:30 BD = 15:30 UTC
+  if (bd.getUTCHours() > 15 || (bd.getUTCHours() === 15 && bd.getUTCMinutes() >= 30)) {
+    next930pm.setUTCDate(next930pm.getUTCDate() + 1);
+  }
+  const msUntil = next930pm.getTime() - now.getTime();
+  setTimeout(() => {
+    sendRenewalSmsReminders();
+    setInterval(sendRenewalSmsReminders, 24*60*60*1000);
+  }, msUntil);
+}
+try { scheduleRenewalSms(); } catch(e) { console.error('Renewal SMS schedule error:', e.message); }
 
 // Netflix account expiry alert
 function checkAccountExpiry() {
@@ -868,9 +920,9 @@ app.post('/tg-webhook', async (req, res) => {
   if (text.startsWith('/create')) {
     const parts = text.replace('/create','').trim().split('|').map(s=>s.trim());
     const emailRaw = parts[0];
-    if (!emailRaw||!emailRaw.includes('@')) return sendTelegram('❌ Format: /create email@gmail.com\nOptional: /create email@gmail.com | 85', chatId);
+    if (!emailRaw||!emailRaw.includes('@')) return sendTelegram('❌ Format: /create email@gmail.com\nOptional: /create email@gmail.com | 90', chatId);
     const email = emailRaw.toLowerCase();
-    const days = parts[1] ? parseInt(parts[1]) : 28;
+    const days = parts[1] ? parseInt(parts[1]) : 30;
     const links = loadLinks();
     const now = Date.now();
     const existing = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
@@ -944,7 +996,7 @@ app.post('/tg-webhook', async (req, res) => {
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt = Date.now()+days*24*60*60*1000;
-    links[token].warningSent = false; links[token].expiredSmsSent = false; links[token].active = true;
+    links[token].warningSent = false; links[token].expiredSmsSent = false; links[token].renewalSmsSent = false; links[token].active = true;
     saveLinks(links);
     return sendTelegram(`✅ Renewed /c/${token} for ${days} days`, chatId);
   }
@@ -956,7 +1008,7 @@ app.post('/tg-webhook', async (req, res) => {
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt += days*24*60*60*1000;
-    links[token].warningSent = false; links[token].expiredSmsSent = false;
+    links[token].warningSent = false; links[token].expiredSmsSent = false; links[token].renewalSmsSent = false;
     saveLinks(links);
     return sendTelegram(`✅ Extended /c/${token} by ${days} days`, chatId);
   }
@@ -1097,6 +1149,7 @@ app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
   links[req.params.token].expiresAt += parseInt(days)*24*60*60*1000;
   links[req.params.token].warningSent = false;
   links[req.params.token].expiredSmsSent = false;
+  links[req.params.token].renewalSmsSent = false;
   saveLinks(links); res.json({ success:true });
 });
 
@@ -1107,6 +1160,7 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
   links[req.params.token].warningSent = false;
   links[req.params.token].expiredSmsSent = false;
+  links[req.params.token].renewalSmsSent = false;
   links[req.params.token].active = true;
   saveLinks(links); res.json({ success:true });
 });
@@ -1671,6 +1725,7 @@ app.post('/api/admin/pending-release/:token/extend', adminAuth, (req, res) => {
     link.expiresAt = Date.now() + days*24*60*60*1000;
     link.warningSent = false;
     link.expiredSmsSent = false;
+    link.renewalSmsSent = false;
     link.renewalCount = (link.renewalCount || 0) + 1;
     saveLinks(links);
     sendTelegram(`✅ <b>Extended from Pending Release!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ +${days} days`);
@@ -1745,7 +1800,7 @@ app.post('/api/renew/create-payment', async (req, res) => {
         metadata: { token, phone: link.phone || '', plan: matchedPlan.id, days: String(days) },
         redirect_url: `${SITE_URL}/c/${token}?renewed=1&plan=${encodeURIComponent(matchedPlan.name)}&days=${days}`,
         return_type: 'GET',
-        cancel_url: `${SITE_URL}/c/${token}`,
+        cancel_url: `${SITE_URL}/c/${token}?renew_cancelled=1`,
       }),
     });
 
@@ -1754,12 +1809,14 @@ app.post('/api/renew/create-payment', async (req, res) => {
 
     if (!paymentUrl) {
       console.error('UddoktaPay charge creation failed:', chargeData);
+      sendTelegram(`⚠️ <b>Self-Renew Payment Failed!</b>\n\n📱 ${link.phone || 'unknown'}\n👤 ${link.profile}\n🔗 /c/${token}\n\nUddoktaPay response: <code>${JSON.stringify(chargeData).slice(0,300)}</code>\n\nCustomer saw an error trying to renew. Check UddoktaPay integration.`);
       return res.status(502).json({ success:false, error:'Could not create payment session' });
     }
 
     res.json({ success:true, paymentUrl, plan: matchedPlan.name, amount, days });
   } catch(e) {
     console.error('create-payment error:', e.message);
+    sendTelegram(`⚠️ <b>Self-Renew Payment Error!</b>\n\n📱 ${req.body?.token || 'unknown token'}\n\nError: ${e.message}\n\nCustomer could not start renewal payment.`);
     res.status(500).json({ success:false, error:e.message });
   }
 });
@@ -1789,10 +1846,10 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     const amountNum = parseFloat(amount) || 0;
 
     // Detect plan from amount
-    let days = 28;
+    let days = 30;
     let product = 'Netflix';
-    if (amountNum >= 1200) { days = 85; product = 'Netflix 3 Month'; }
-    else if (amountNum >= 390) { days = 28; product = 'Netflix 1 Month'; }
+    if (amountNum >= 1200) { days = 90; product = 'Netflix 3 Month'; }
+    else if (amountNum >= 390) { days = 30; product = 'Netflix 1 Month'; }
 
     // Check metadata for order info
     const orderName = metadata?.order_id || metadata?.order_name || invoice_id || '';
@@ -1824,7 +1881,14 @@ app.post('/uddoktapay-ipn', async (req, res) => {
         const renewDays = parseInt(metadata.days) || normalizeDays(days);
         renewCustomerLink(allLinksForToken, metadata.token, renewDays);
         saveLinks(allLinksForToken);
-        sendTelegram(`🔄 <b>Self-Renewal via Dashboard!</b>\n👤 ${customerName || targetLink.customerName || 'Customer'} | 📱 ${sender_number}\n👤 ${targetLink.profile}\n🔗 Extended +${renewDays} days`);
+        sendTelegram(
+          `🔄 <b>Auto-Renewed by Customer!</b>\n\n` +
+          `👤 ${customerName || targetLink.customerName || 'Customer'} | 📱 ${sender_number}\n` +
+          `👤 ${targetLink.profile}\n` +
+          `💰 ৳${amount} via ${payment_method || 'UddoktaPay'}\n` +
+          `🔗 Extended +${renewDays} days\n\n` +
+          `✅ Self-service — no manual work needed`
+        );
         return;
       }
       // Token given but link missing (deleted?) - fall through to phone-based matching below
