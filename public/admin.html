@@ -250,6 +250,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-item" onclick="showSection('waitlist')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>Waitlist<span class="sb-badge" id="sb-waitlist-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('outsidebd')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>Outside BD Login<span class="sb-badge" id="sb-outsidebd-count" style="background:var(--red)">0</span></div>
       <div class="sb-item" onclick="showSection('pendingrelease')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Pending Release<span class="sb-badge" id="sb-pendingrelease-count" style="background:var(--amber)">0</span></div>
+      <div class="sb-item" onclick="showSection('accountperf')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Account Performance</div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
@@ -263,6 +264,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="main">
     <div class="topbar">
       <div class="topbar-left"><h1 id="topbar-title">Dashboard</h1><p>Welcome back, <span>Admin</span></p></div>
+      <div style="position:relative;flex:1;max-width:340px;margin:0 1.5rem">
+        <input id="universal-search-inp" placeholder="🔍 Search any customer (phone, name, email)..." oninput="doUniversalSearch(this.value)" style="width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:8px 14px;border-radius:9px;font-family:var(--m);font-size:.72rem;outline:none"/>
+        <div id="universal-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;margin-top:6px;background:var(--s2);border:1px solid var(--s4);border-radius:10px;max-height:360px;overflow-y:auto;z-index:500;box-shadow:0 12px 30px rgba(0,0,0,.4)"></div>
+      </div>
       <div class="topbar-right">
         <div class="tb-stat"><div class="tb-dot"></div><b id="tb-live">-</b> online</div>
         <div class="tb-stat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><b id="tb-today">-</b> today</div>
@@ -373,11 +378,18 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="pendingrelease-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
+      <div id="section-accountperf" style="display:none;padding:1.5rem">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Netflix Account Performance</div>
+        <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Accounts ranked by risk — outside-BD incidents, PIN changes, and non-renewal rate. Highest risk shows first.</div>
+        <div id="accountperf-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
       <div id="section-customers" style="display:none;padding:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
           <div style="font-size:1.1rem;font-weight:700">Customers</div>
           <div style="display:flex;gap:.5rem">
             <input id="cust-search" class="field-inp" placeholder="Search name or phone..." oninput="filterCustomers()" style="width:220px;font-size:.75rem"/>
+            <button onclick="exportCustomersCSV()" style="background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem;white-space:nowrap">⬇ Export CSV</button>
           </div>
         </div>
         <div id="customers-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
@@ -443,6 +455,50 @@ async function doLogin(){const pass=document.getElementById('pass-inp').value;co
 function doLogout(){sessionStorage.removeItem('fanflix_admin');location.reload();}
 function showDashboard(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='flex';document.getElementById('dashboard').style.width='100%';loadAll();setInterval(loadStats,30000);setInterval(loadAll,60000);}
 async function loadAll(){await Promise.all([loadLinks(),loadStats(),loadSlots(),loadGeoFlags()]);}
+
+let _universalSearchTimer=null;
+function doUniversalSearch(q){
+  clearTimeout(_universalSearchTimer);
+  const box=document.getElementById('universal-search-results');
+  if(!q||q.trim().length<2){if(box)box.style.display='none';return;}
+  _universalSearchTimer=setTimeout(async ()=>{
+    try{
+      const r=await fetch('/api/admin/universal-search?q='+encodeURIComponent(q),{headers:{'x-admin-token':adminToken}});
+      const d=await r.json();
+      const results=d.results||[];
+      if(!box)return;
+      if(!results.length){box.innerHTML='<div style="padding:1rem;font-family:var(--m);font-size:.68rem;color:var(--muted)">No matches found.</div>';box.style.display='block';return;}
+      box.innerHTML=results.map(res=>{
+        return `<div style="padding:.7rem 1rem;border-bottom:1px solid var(--s4);cursor:pointer" onclick="jumpToUniversalResult('${esc(res.phone||'')}')">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+            <span style="font-family:var(--m);font-size:.68rem;font-weight:600;color:var(--text)">${esc(res.name||res.phone||'Unknown')}</span>
+            <span style="font-family:var(--m);font-size:.55rem;color:var(--blue);background:rgba(77,166,255,.1);padding:2px 7px;border-radius:100px">${esc(res.section)}</span>
+          </div>
+          <div style="font-family:var(--m);font-size:.62rem;color:var(--muted)">${res.phone?'📞'+esc(res.phone)+' · ':''}${esc(res.detail)}</div>
+        </div>`;
+      }).join('');
+      box.style.display='block';
+    }catch(e){}
+  }, 300);
+}
+function jumpToUniversalResult(phone){
+  document.getElementById('universal-search-results').style.display='none';
+  document.getElementById('universal-search-inp').value='';
+  const secs=['section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease'];
+  secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const dash=document.getElementById('sec-dashboard');if(dash)dash.style.display='block';
+  const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
+  setTimeout(()=>{
+    const si=document.getElementById('search-inp');
+    if(si){si.value=phone;filterLinks(true);}
+  }, 100);
+}
+document.addEventListener('click',(e)=>{
+  const box=document.getElementById('universal-search-results');
+  const inp=document.getElementById('universal-search-inp');
+  if(box&&inp&&!box.contains(e.target)&&e.target!==inp)box.style.display='none';
+});
+
 async function loadStats(){try{const r=await fetch('/api/stats');const d=await r.json();const el=document.getElementById('tb-live');const et=document.getElementById('tb-today');if(el)el.textContent=d.live;if(et)et.textContent=d.today;}catch(e){}}
 async function loadGeoFlags(){try{const r=await fetch('/api/admin/geo',{headers:{'x-admin-token':adminToken}});const d=await r.json();geoFlags=d.geo||{};}catch(e){}}
 
@@ -479,10 +535,63 @@ async function loadLinks(){
   try{
     const r=await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
     const d=await r.json();allLinks=d.links||{};
+    try{
+      const ir=await fetch('/api/admin/customer-incidents',{headers:{'x-admin-token':adminToken}});
+      const id=await ir.json();window._incidents=id.incidents||{};
+    }catch(e){window._incidents={};}
     renderLinks(allLinks,0);updateStats(allLinks);
     const active=Object.values(allLinks).filter(l=>l.active&&l.expiresAt>Date.now()).length;
     const sbb=document.getElementById('sb-active-count');if(sbb)sbb.textContent=active;
   }catch(e){}
+}
+async function loadAccountPerformance(){
+  const list=document.getElementById('accountperf-list');
+  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r=await fetch('/api/admin/account-performance',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();
+    const accounts=d.accounts||[];
+    if(!list)return;
+    if(!accounts.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No accounts found.</div>';return;}
+    list.innerHTML=accounts.map((a,i)=>{
+      const riskColor=a.riskScore>=8?'var(--red)':a.riskScore>=3?'var(--amber)':'var(--green)';
+      const riskLabel=a.riskScore>=8?'⚠️ High Risk':a.riskScore>=3?'⚡ Moderate':'✅ Healthy';
+      return `<div style="background:var(--s1);border:1px solid ${a.riskScore>=8?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
+          <div style="flex:1;min-width:200px">
+            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;cursor:pointer" onclick="showAccountLinksModal('${esc(a.email)}')">${i+1}. ${esc(a.email)}</div>
+            <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);margin-top:3px">
+              🌍 ${a.outsideBdCount} outside-BD · 🔑 ${a.pinChangeCount} PIN changes · 📉 ${a.nonRenewalRate}% non-renewal
+            </div>
+          </div>
+          <span style="color:${riskColor};font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">${riskLabel}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading</div>';}
+}
+
+async function exportCustomersCSV(){
+  try{
+    const r=await fetch('/api/admin/export-customers',{headers:{'x-admin-token':adminToken}});
+    if(!r.ok){showToast('Export failed',true);return;}
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='fanflix-customers-'+new Date().toISOString().split('T')[0]+'.csv';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('✅ CSV downloaded');
+  }catch(e){showToast('Export error',true);}
+}
+function getRiskBadge(phone){
+  if(!phone||!window._incidents)return '';
+  const p=String(phone).replace(/\D/g,'');
+  const inc=window._incidents[p];
+  if(!inc||!inc.total)return '';
+  const color=inc.total>=3?'var(--red)':'var(--amber)';
+  return `<span title="${inc.outsideBd} outside-BD, ${inc.pinChange} PIN changes, ${inc.revoked} revoked" style="background:${inc.total>=3?'rgba(229,9,20,.15)':'rgba(245,166,35,.12)'};color:${color};font-family:var(--m);font-size:.55rem;padding:2px 7px;border-radius:100px;margin-left:4px">⚠️ ${inc.total}</span>`;
 }
 
 function updateStats(links){
@@ -493,7 +602,7 @@ function updateStats(links){
   safe('exp-month',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=30*oneDay).length);
   safe('s-active',arr.filter(l=>l.active&&l.expiresAt>now).length);
   safe('s-expiring',arr.filter(l=>l.active&&l.expiresAt>now&&(l.expiresAt-now)<=threeDays).length);
-  safe('s-expired',arr.filter(l=>l.expiresAt<=now).length);
+  safe('s-expired',arr.filter(l=>l.expiresAt<=now&&!l.released).length);
   safe('s-uses',arr.reduce((s,l)=>s+l.uses,0));
   const nu=document.getElementById('s-never-used');if(nu)nu.textContent=arr.filter(l=>l.uses===0&&l.active&&l.expiresAt>now).length;
   const active=arr.filter(l=>l.active&&l.expiresAt>now).length;
@@ -596,7 +705,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -625,6 +734,11 @@ function showSection(s){
     document.getElementById('section-pendingrelease').style.display='block';
     if(t)t.textContent='Pending Release';
     loadPendingRelease();return;
+  }
+  if(s==='accountperf'){
+    document.getElementById('section-accountperf').style.display='block';
+    if(t)t.textContent='Netflix Account Performance';
+    loadAccountPerformance();return;
   }
   if(s==='settings'){
     document.getElementById('section-settings').style.display='block';
@@ -1025,16 +1139,23 @@ async function loadWaitlist(){
     if(sbcnt)sbcnt.textContent=wl.length;
     if(!list)return;
     if(!wl.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Waitlist is empty.</div>';return;}
-    list.innerHTML=wl.map(w=>`
-      <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
+    list.innerHTML=wl.map(w=>{
+      const dupBadge=w.hasExistingLink
+        ? (w.existingExpired
+            ? `<span style="background:rgba(70,211,105,.12);color:var(--green);font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px">🔄 Likely renewal</span>`
+            : `<span style="background:rgba(229,9,20,.15);color:var(--red);font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px">⚠️ Already has active link</span>`)
+        : '';
+      return `
+      <div style="background:var(--s1);border:1px solid ${w.hasExistingLink&&!w.existingExpired?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
         <div style="flex:1;min-width:0">
-          <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}</div>
+          <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}${dupBadge}</div>
           <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||28}d · ৳${w.amount||0}</div>
           <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(w.addedAt)}</div>
         </div>
         <button onclick="approveWaitlist('${esc(w.phone)}')" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">✅ Approve</button>
         <button class="icon-btn danger" onclick="removeWaitlist('${esc(w.phone)}')" title="Remove"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading waitlist</div>';}
 }
 
@@ -1312,6 +1433,9 @@ async function loadCustomers(){
   const list = document.getElementById('customers-list');
   if(list) list.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
   try{
+    if(!window._incidents){
+      try{const ir=await fetch('/api/admin/customer-incidents',{headers:{'x-admin-token':adminToken}});const id=await ir.json();window._incidents=id.incidents||{};}catch(e){window._incidents={};}
+    }
     const r = await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
     const d = await r.json();
     const now = Date.now();
@@ -1385,14 +1509,16 @@ function renderCustomers(customers){
     const al=c.links.filter(l=>l.active&&l.expiresAt>now);
     const ne=al.length?Math.min(...al.map(l=>l.expiresAt)):null;
     const dl=ne?Math.ceil((ne-now)/86400000):0;
-    const sc=al.length?'#46d369':'#E50914';
-    const st=al.length?dl+'d left':'Expired';
+    const allReleased=c.links.length>0&&c.links.every(l=>l.released);
+    const sc=al.length?'#46d369':allReleased?'#888':'#E50914';
+    const st=al.length?dl+'d left':allReleased?'Released':'Expired';
     const ph=encodeURIComponent(c.phone);
     const renewBadge=c.renewals>0?`<span style="background:rgba(77,166,255,.15);color:#4da6ff;font-family:var(--m);font-size:.55rem;padding:2px 7px;border-radius:100px;margin-left:4px">🔄 ${c.renewals}x</span>`:'';
+    const riskBadge=getRiskBadge(c.phone);
     const rows=c.links.map(l=>{
       const d2=Math.max(0,Math.ceil((l.expiresAt-now)/86400000));
-      const s2=!l.active?'revoked':l.expiresAt<=now?'expired':'active';
-      const c2=s2==='active'?'#46d369':s2==='expired'?'#E50914':'#7a7f8a';
+      const s2=l.released?'released':!l.active?'revoked':l.expiresAt<=now?'expired':'active';
+      const c2=s2==='active'?'#46d369':s2==='expired'?'#E50914':s2==='released'?'#7a7f8a':'#f5a623';
       return '<div style="display:flex;align-items:center;gap:.8rem;padding:.4rem 0;font-family:var(--m);font-size:.68rem;color:#7a7f8a">'+
         '<span style="color:#f0f1f3">'+esc(l.profile)+'</span>'+
         '<span>PIN: '+esc(l.pin)+'</span>'+
@@ -1404,7 +1530,7 @@ function renderCustomers(customers){
       '<div class="cust-row" data-ph="'+ph+'" style="display:flex;align-items:center;gap:1rem;cursor:pointer">'+
         '<div style="width:36px;height:36px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#f0f1f3;flex-shrink:0">'+(c.name||'?').charAt(0).toUpperCase()+'</div>'+
         '<div style="flex:1;min-width:0">'+
-          '<div style="font-weight:600;font-size:.85rem">'+esc(c.name||'Unknown')+renewBadge+'</div>'+
+          '<div style="font-weight:600;font-size:.85rem">'+esc(c.name||'Unknown')+renewBadge+riskBadge+'</div>'+
           '<div style="font-family:var(--m);font-size:.65rem;color:#7a7f8a;margin-top:2px">'+esc(c.phone)+' · '+c.links.length+' link(s) · '+c.renewals+' renewal(s)</div>'+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0">'+
