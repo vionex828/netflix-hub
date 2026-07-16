@@ -250,6 +250,7 @@ nav{background:rgba(10,10,10,.97);backdrop-filter:blur(20px);padding:0 1.2rem;he
         <span id="selected-price" style="font-family:var(--h);font-size:1.4rem;color:var(--text)">—</span>
       </div>
       <button class="renew-pay-btn" id="renew-pay-btn" disabled onclick="startPayment()">Renew Now</button>
+      <div style="text-align:center;margin-top:.7rem"><a href="#" onclick="payViaWhatsApp();return false;" style="font-family:var(--m);font-size:.68rem;color:var(--muted);text-decoration:underline">or renew via WhatsApp instead</a></div>
     </div>
   </div>
 </div>
@@ -616,7 +617,7 @@ function playBeep(){try{const ctx=new(window.AudioContext||window.webkitAudioCon
 let selectedPlan=null,renewPlans=[];
 async function openRenewModal(){
   const modal=document.getElementById('renew-modal');if(!modal)return;
-  const PLANS=[{id:'netflix-mobile-1m',name:'Netflix Mobile 1M',price:350,days:28},{id:'netflix-tv-1m',name:'Netflix TV 1M',price:450,days:28},{id:'netflix-tv-3m',name:'Netflix TV 3M',price:1350,days:85},{id:'combo-mobile-1m',name:'Combo Mobile 1M',price:389,days:28},{id:'combo-tv-1m',name:'Combo TV 1M',price:489,days:28},{id:'combo-tv-3m',name:'Combo TV 3M',price:1500,days:85}];
+  const PLANS=[{id:'netflix-mobile-1m',name:'Netflix Mobile 1M',price:350,days:30},{id:'netflix-tv-1m',name:'Netflix TV 1M',price:450,days:30},{id:'netflix-tv-3m',name:'Netflix TV 3M',price:1350,days:90},{id:'combo-mobile-1m',name:'Combo Mobile 1M',price:389,days:30},{id:'combo-tv-1m',name:'Combo TV 1M',price:489,days:30},{id:'combo-tv-3m',name:'Combo TV 3M',price:1500,days:90}];
   try{const r=await fetch('/api/renew/plans');const d=await r.json();renewPlans=d.plans&&d.plans.length?d.plans:PLANS;}catch(e){renewPlans=PLANS;}
   renderPlans();modal.classList.add('show');
 }
@@ -631,7 +632,30 @@ function selectPlan(planId){
   const priceEl=document.getElementById('selected-price');if(priceEl)priceEl.textContent=selectedPlan?'৳'+selectedPlan.price:'—';
   const btn=document.getElementById('renew-pay-btn');if(btn)btn.disabled=!selectedPlan;
 }
-function startPayment(){
+async function startPayment(){
+  if(!selectedPlan||!window._tok)return;
+  const btn=document.getElementById('renew-pay-btn');
+  const originalText=btn?btn.textContent:'';
+  if(btn){btn.disabled=true;btn.textContent='Creating payment...';}
+  try{
+    const r=await fetch('/api/renew/create-payment',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token:window._tok})
+    });
+    const d=await r.json();
+    if(d.success&&d.paymentUrl){
+      window.location.href=d.paymentUrl;
+    }else{
+      showToast(d.error||'Could not start payment. Try WhatsApp instead.');
+      if(btn){btn.disabled=false;btn.textContent=originalText;}
+    }
+  }catch(e){
+    showToast('Connection error. Try WhatsApp instead.');
+    if(btn){btn.disabled=false;btn.textContent=originalText;}
+  }
+}
+function payViaWhatsApp(){
   if(!selectedPlan||!window._tok)return;
   const profile=window._ld?.profile||'';
   const msg='Hi FanFlix BD! I want to renew my subscription.\n\nProfile: '+profile+'\nLink: /c/'+window._tok+'\nPlan: '+selectedPlan.name+' - ৳'+selectedPlan.price+'\n\nPlease confirm payment details. 🙏';
