@@ -210,12 +210,12 @@ const WA_NUMBER = '8801928382918';
 const EPS_BOT_URL = process.env.EPS_BOT_URL || 'https://eps-fanflix-ipn-production.up.railway.app';
 
 const PLANS = [
-  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:28, product:'Netflix Subscription' },
-  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:28, product:'Netflix TV Subscription' },
-  { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:85, product:'Netflix TV Subscription 3M' },
-  { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:28, product:'Netflix+Prime Mobile 1M' },
-  { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:28, product:'Netflix+Prime TV 1M' },
-  { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:85, product:'Netflix+Prime TV 3M' },
+  { id:'netflix-mobile-1m', name:'Netflix Mobile 1M', price:350, days:30, product:'Netflix Subscription' },
+  { id:'netflix-tv-1m',     name:'Netflix TV 1M',     price:450, days:30, product:'Netflix TV Subscription' },
+  { id:'netflix-tv-3m',     name:'Netflix TV 3M',     price:1350,days:90, product:'Netflix TV Subscription 3M' },
+  { id:'combo-mobile-1m',   name:'Combo Mobile 1M',   price:389, days:30, product:'Netflix+Prime Mobile 1M' },
+  { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:30, product:'Netflix+Prime TV 1M' },
+  { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:90, product:'Netflix+Prime TV 3M' },
 ];
 const MAX_SLOTS = 8;
 const BLOCKED_CODES = ['2023','2024','2025','2026','2027','2028','0000'];
@@ -247,9 +247,9 @@ function saveWaitlist(data) { ensureDataDir(); fs.writeFileSync(WAITLIST_FILE, J
 
 // Normalize customer days to match account plan types (28/85/170)
 function normalizeDays(d) {
-  const n = parseInt(d) || 28;
-  if (n <= 30) return 28;
-  if (n <= 90) return 85;
+  const n = parseInt(d) || 30;
+  if (n <= 30) return 30;
+  if (n <= 90) return 90;
   return 170;
 }
 
@@ -478,7 +478,7 @@ async function sendMorningReport() {
     msg += `<b>Expiring in 3 days — Renew now:</b>\n`;
     for (const l of expiring3) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 28\n`;
+      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 30\n`;
     }
     msg += '\n';
   }
@@ -504,7 +504,7 @@ function checkExpiringLinks() {
     // Telegram 3 days before
     if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
       const days = Math.ceil(remaining/(24*60*60*1000));
-      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 28`);
+      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 30`);
       links[link.token].warningSent = true;
       changed = true;
     }
@@ -940,7 +940,7 @@ app.post('/tg-webhook', async (req, res) => {
 
   if (text.startsWith('/renew')) {
     const parts = text.replace('/renew','').trim().split(' ');
-    const token = parts[0]; const days = parseInt(parts[1])||28;
+    const token = parts[0]; const days = parseInt(parts[1])||30;
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt = Date.now()+days*24*60*60*1000;
@@ -952,7 +952,7 @@ app.post('/tg-webhook', async (req, res) => {
   if (text.startsWith('/extend')) {
     const parts = text.replace('/extend','').trim().split(' ');
     if (parts.length < 2) return sendTelegram('❌ Format: /extend TOKEN days', chatId);
-    const [token, daysStr] = parts; const days = parseInt(daysStr)||28;
+    const [token, daysStr] = parts; const days = parseInt(daysStr)||30;
     const links = loadLinks();
     if (!links[token]) return sendTelegram('❌ Link not found', chatId);
     links[token].expiresAt += days*24*60*60*1000;
@@ -985,7 +985,7 @@ app.post('/tg-webhook', async (req, res) => {
     let msg2 = `📅 <b>Expiring This Week</b>\n\n`;
     for (const l of expiring) {
       const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 28\n\n`;
+      msg2 += `${days}d | ${l.profile} | ${l.email}\n/renew ${l.token} 30\n\n`;
     }
     return sendTelegram(msg2, chatId);
   }
@@ -1103,7 +1103,7 @@ app.post('/api/admin/extend/:token', adminAuth, (req, res) => {
 app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  const { days } = req.body; const d = parseInt(days)||28;
+  const { days } = req.body; const d = parseInt(days)||30;
   links[req.params.token].expiresAt = Date.now()+d*24*60*60*1000;
   links[req.params.token].warningSent = false;
   links[req.params.token].expiredSmsSent = false;
@@ -1213,7 +1213,7 @@ app.get('/api/link/:token/info', (req, res) => {
   if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:getRevokeReasonText(link), reason:link.revokedReason||null, country:link.revokedCountry||null, ip:link.revokedIp||null });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
-  const totalDays = link.days || 28;
+  const totalDays = link.days || 30;
   if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   res.json({ success:true, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays });
 });
@@ -1226,7 +1226,7 @@ app.get('/api/link/:token', async (req, res) => {
   if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:getRevokeReasonText(link), reason:link.revokedReason||null, country:link.revokedCountry||null, ip:link.revokedIp||null });
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
-  const totalDays = link.days || 28;
+  const totalDays = link.days || 30;
   if (now > link.expiresAt) return res.status(403).json({ success:false, error:'expired', message:'Subscription expired!', daysLeft:0, expiresAt:link.expiresAt, profile:link.profile, token:req.params.token });
   link.uses += 1; link.lastUsed = now; saveLinks(links);
   trackAnalytics(req.params.token);
@@ -1684,7 +1684,7 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
-    const slot = getNextAvailableSlot(w.days || 28);
+    const slot = getNextAvailableSlot(w.days || 30);
     if (!slot) { remaining.push(w); continue; }
     const links = loadLinks();
     const now = Date.now();
@@ -1709,6 +1709,61 @@ app.delete('/api/admin/waitlist/:phone', adminAuth, (req, res) => {
 
 
 // ── UDDOKTAPAY WEBHOOK ────────────────────────────────────────────────────────
+// Self-renewal - customer taps "Renew Now" on their dashboard, this creates
+// a UddoktaPay checkout session pre-filled with their exact renewal amount.
+// The customer picks whatever payment method they like on Uddoktapay's page
+// (bKash/Nagad/EPS - all configured there already). Webhook below auto-extends.
+app.post('/api/renew/create-payment', async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ success:false, error:'Missing token' });
+    const links = loadLinks();
+    const link = links[token];
+    if (!link) return res.status(404).json({ success:false, error:'Link not found' });
+
+    // Figure out the correct renewal amount from their current plan.
+    // Match by stored plan name first, fall back to matching by their current day-length.
+    let matchedPlan = PLANS.find(p => p.product === link.plan || p.name === link.plan);
+    if (!matchedPlan) {
+      const days = normalizeDays(link.days || 30);
+      matchedPlan = PLANS.find(p => p.days === days) || PLANS[0];
+    }
+
+    const amount = matchedPlan.price;
+    const days = matchedPlan.days;
+
+    const chargeRes = await fetch(`${UDDOKTAPAY_BASE_URL}/checkout-v2`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'RT-UDDOKTAPAY-API-KEY': UDDOKTAPAY_API_KEY,
+      },
+      body: JSON.stringify({
+        full_name: link.customerName || 'FanFlix Customer',
+        email: 'customer@fanflixbd.com',
+        amount: String(amount),
+        metadata: { token, phone: link.phone || '', plan: matchedPlan.id, days: String(days) },
+        redirect_url: `${SITE_URL}/c/${token}?renewed=1&plan=${encodeURIComponent(matchedPlan.name)}&days=${days}`,
+        return_type: 'GET',
+        cancel_url: `${SITE_URL}/c/${token}`,
+      }),
+    });
+
+    const chargeData = await chargeRes.json();
+    const paymentUrl = chargeData.payment_url || chargeData.checkout_url || chargeData.url;
+
+    if (!paymentUrl) {
+      console.error('UddoktaPay charge creation failed:', chargeData);
+      return res.status(502).json({ success:false, error:'Could not create payment session' });
+    }
+
+    res.json({ success:true, paymentUrl, plan: matchedPlan.name, amount, days });
+  } catch(e) {
+    console.error('create-payment error:', e.message);
+    res.status(500).json({ success:false, error:e.message });
+  }
+});
+
 app.post('/uddoktapay-ipn', async (req, res) => {
   try {
     // Verify API key
@@ -1721,7 +1776,11 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     res.status(200).json({ success: true }); // Respond immediately
 
     const data = req.body;
-    const { full_name, sender_number, amount, payment_method, invoice_id, metadata } = data;
+    const { full_name, sender_number, amount, payment_method, invoice_id } = data;
+    let metadata = data.metadata;
+    if (typeof metadata === 'string') {
+      try { metadata = JSON.parse(metadata); } catch(e) { metadata = null; }
+    }
 
     if (!sender_number || !amount) return;
 
@@ -1754,6 +1813,23 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     );
 
     const settings = loadSettings();
+
+    // Self-renewal via "Renew Now" button - metadata.token identifies the exact
+    // link to extend. This always works regardless of autoLink setting, since
+    // it's a renewal of an existing customer, not creation of a new one.
+    if (metadata && metadata.token) {
+      const allLinksForToken = loadLinks();
+      const targetLink = allLinksForToken[metadata.token];
+      if (targetLink) {
+        const renewDays = parseInt(metadata.days) || normalizeDays(days);
+        renewCustomerLink(allLinksForToken, metadata.token, renewDays);
+        saveLinks(allLinksForToken);
+        sendTelegram(`🔄 <b>Self-Renewal via Dashboard!</b>\n👤 ${customerName || targetLink.customerName || 'Customer'} | 📱 ${sender_number}\n👤 ${targetLink.profile}\n🔗 Extended +${renewDays} days`);
+        return;
+      }
+      // Token given but link missing (deleted?) - fall through to phone-based matching below
+    }
+
     if (!settings.autoLink) return;
 
     // Auto-create link (reuse same logic as /api/auto-create)
