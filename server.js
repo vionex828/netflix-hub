@@ -744,10 +744,12 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
         const profileName = 'Profile ' + profileLetter;
         const links = loadLinks();
         let updated = 0;
+        let affectedCustomer = null;
         for (const token of Object.keys(links)) {
           if (links[token].email === toEmail && links[token].profile === profileName) {
             links[token].pin = newPin;
             updated++;
+            if (!affectedCustomer) affectedCustomer = links[token];
           }
         }
         if (updated > 0) saveLinks(links);
@@ -758,6 +760,20 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
           `🔑 New PIN: <code>${newPin}</code>\n`+
           `📝 ${updated} link(s) auto-updated`
         );
+        // Persist for risk scoring
+        try {
+          const alerts = loadNetflixAlerts();
+          alerts.unshift({
+            source: 'pin_change',
+            email: toEmail,
+            profile: profileName,
+            phone: affectedCustomer?.phone || '',
+            customerName: affectedCustomer?.customerName || '',
+            location: '', device: '',
+            ts: Date.now(),
+          });
+          saveNetflixAlerts(alerts.slice(0, 200));
+        } catch(e) { console.error('Save pin-change alert error:', e.message); }
       } else {
         sendTelegram(`🔑 <b>PIN Changed!</b>\n\n📧 ${toEmail}\nCould not auto-detect profile/PIN. Check manually.`);
       }
@@ -1318,6 +1334,47 @@ app.get('/api/admin/revenue', adminAuth, (req, res) => {
   } catch(e) { res.status(500).json({ success:false, error:e.message }); }
 });
 
+// Export full customer list as CSV
+app.get('/api/admin/export-customers', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    const now = Date.now();
+    const byPhone = {};
+    for (const l of Object.values(links)) {
+      if (!l.phone) continue;
+      const p = l.phone;
+      if (!byPhone[p]) byPhone[p] = { phone: p, name: l.customerName||'', totalRevenue:0, renewalCount:0, plans:new Set(), status:'expired', daysLeft:0, expiresAt:0 };
+      const c = byPhone[p];
+      c.totalRevenue += parseFloat(l.amount) || 0;
+      c.renewalCount = Math.max(c.renewalCount, l.renewalCount||0);
+      if (l.plan) c.plans.add(l.plan);
+      if (!c.name && l.customerName) c.name = l.customerName;
+      const active = l.active && !l.released && l.expiresAt > now;
+      if (active && l.expiresAt > c.expiresAt) {
+        c.expiresAt = l.expiresAt;
+        c.daysLeft = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
+        c.status = 'active';
+      }
+    }
+
+    const rows = Object.values(byPhone);
+    const esc = (v) => `"${String(v??'').replace(/"/g,'""')}"`;
+    const header = ['Phone','Name','Status','Days Left','Plans','Renewal Count','Total Revenue (BDT)'];
+    const lines = [header.join(',')];
+    for (const c of rows) {
+      lines.push([
+        esc(c.phone), esc(c.name), esc(c.status),
+        c.status==='active' ? c.daysLeft : '',
+        esc([...c.plans].join('; ')), c.renewalCount, c.totalRevenue
+      ].join(','));
+    }
+    const csv = lines.join('\n');
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="fanflix-customers-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csv);
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
+});
+
 app.get('/api/admin/geo', (req, res) => {
   try {
     if (req.headers['x-admin-token'] !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
@@ -1360,6 +1417,44 @@ app.get('/api/admin/netflix-alerts', adminAuth, (req, res) => {
     });
     res.json({ success:true, alerts: withLinks });
   } catch(e) { res.json({ success:true, alerts: [] }); }
+});
+
+// Risk score - incident counts per phone number (outside-BD, PIN changes, revokes)
+app.get('/api/admin/customer-incidents', adminAuth, (req, res) => {
+  try {
+    const alerts = loadNetflixAlerts();
+    const links = loadLinks();
+    const byPhone = {};
+
+    const bump = (phone, type) => {
+      if (!phone) return;
+      const p = String(phone).replace(/\D/g,'');
+      if (!p) return;
+      if (!byPhone[p]) byPhone[p] = { total:0, outsideBd:0, pinChange:0, revoked:0 };
+      byPhone[p].total++;
+      if (type==='outside_bd') byPhone[p].outsideBd++;
+      if (type==='pin_change') byPhone[p].pinChange++;
+      if (type==='revoked') byPhone[p].revoked++;
+    };
+
+    for (const a of alerts) {
+      if (a.source === 'dashboard') bump(a.phone, 'outside_bd');
+      else if (a.source === 'pin_change') bump(a.phone, 'pin_change');
+      else if (a.source === 'netflix') {
+        // Netflix-login alert - attribute to all customers on that account
+        Object.values(links).filter(l => l.email === a.email && l.phone)
+          .forEach(l => bump(l.phone, 'outside_bd'));
+      }
+    }
+    // Manually revoked links (reason set, not outside_bd/pin_change which are already counted above)
+    for (const l of Object.values(links)) {
+      if (l.revokedReason && !['outside_bd'].includes(l.revokedReason) && l.phone) {
+        bump(l.phone, 'revoked');
+      }
+    }
+
+    res.json({ success:true, incidents: byPhone });
+  } catch(e) { res.json({ success:true, incidents: {} }); }
 });
 
 // Full 8-slot breakdown for a Netflix account - who occupies each slot
@@ -1472,7 +1567,22 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
 
 app.get('/api/admin/waitlist', adminAuth, (req, res) => {
   const waitlist = loadWaitlist();
-  res.json({ success:true, waitlist, count: waitlist.length });
+  const links = loadLinks();
+  const now = Date.now();
+  // Flag entries whose phone already has an active (or pending-release) link -
+  // these are likely renewals or accidental duplicates, not fresh new customers.
+  const flagged = waitlist.map(w => {
+    const phoneNorm = String(w.phone||'').replace(/\D/g,'');
+    const existing = Object.values(links).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
+    );
+    return {
+      ...w,
+      hasExistingLink: existing.length > 0,
+      existingExpired: existing.length > 0 && existing.every(l => l.expiresAt <= now),
+    };
+  });
+  res.json({ success:true, waitlist: flagged, count: flagged.length });
 });
 
 // Pending Release — expired links waiting for manual slot release
@@ -1809,6 +1919,76 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
     return { ...a, slotsUsed: occupying.length, slotsTotal: 8, pendingRelease, activeDaysLeft, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
   });
   res.json({ success:true, accounts: result });
+});
+
+// Netflix account performance - ranks accounts by incidents & non-renewal rate to spot problem accounts
+app.get('/api/admin/account-performance', adminAuth, (req, res) => {
+  try {
+    const accounts = loadAccounts();
+    const links = loadLinks();
+    const alerts = loadNetflixAlerts();
+    const now = Date.now();
+
+    const result = accounts.map(a => {
+      const accountLinks = Object.values(links).filter(l => l.email === a.email);
+      const everCount = accountLinks.length;
+      const renewedCount = accountLinks.filter(l => (l.renewalCount||0) > 0).length;
+      const neverRenewedExpired = accountLinks.filter(l => !l.active && !l.released && l.expiresAt <= now && !(l.renewalCount>0)).length;
+      const outsideBdCount = alerts.filter(al => al.email === a.email && al.source !== 'pin_change').length;
+      const pinChangeCount = alerts.filter(al => al.email === a.email && al.source === 'pin_change').length;
+      const nonRenewalRate = everCount > 0 ? Math.round((1 - renewedCount/everCount) * 100) : 0;
+      const riskScore = outsideBdCount*3 + pinChangeCount*2 + neverRenewedExpired;
+
+      return {
+        email: a.email,
+        active: a.active !== false,
+        everCount,
+        outsideBdCount,
+        pinChangeCount,
+        nonRenewalRate,
+        riskScore,
+      };
+    }).sort((a,b) => b.riskScore - a.riskScore);
+
+    res.json({ success:true, accounts: result });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
+});
+
+// Universal search - finds a customer across Customer Links, Waitlist, Pending Release, Outside BD alerts
+app.get('/api/admin/universal-search', adminAuth, (req, res) => {
+  try {
+    const q = String(req.query.q||'').toLowerCase().trim();
+    const qDigits = q.replace(/\D/g,'');
+    if (!q) return res.json({ success:true, results: [] });
+
+    const links = loadLinks();
+    const waitlist = loadWaitlist();
+    const alerts = loadNetflixAlerts();
+    const now = Date.now();
+    const results = [];
+
+    const matches = (str) => String(str||'').toLowerCase().includes(q) || (qDigits && String(str||'').replace(/\D/g,'').includes(qDigits));
+
+    for (const [token, l] of Object.entries(links)) {
+      if (matches(l.phone) || matches(l.customerName) || matches(l.email) || token===q) {
+        const status = l.released ? 'released' : !l.active ? 'blocked' : l.expiresAt<=now ? 'pending-release' : 'active';
+        results.push({ section:'Customer Links', token, phone:l.phone||'', name:l.customerName||'', detail:`${l.email} · ${l.profile} · ${status}` });
+      }
+    }
+    for (const w of waitlist) {
+      if (matches(w.phone) || matches(w.customerName)) {
+        results.push({ section:'Waitlist', phone:w.phone||'', name:w.customerName||'', detail:`${w.product||'Netflix'} · ৳${w.amount||0} · waiting approval` });
+      }
+    }
+    for (const a of alerts) {
+      if (matches(a.phone) || matches(a.customerName) || matches(a.email)) {
+        const label = a.source==='pin_change' ? 'PIN Change' : a.source==='dashboard' ? 'Outside BD (Dashboard)' : 'Outside BD (Netflix Login)';
+        results.push({ section:'Alerts', phone:a.phone||'', name:a.customerName||'', detail:`${label} · ${a.email} · ${new Date(a.ts).toLocaleDateString()}` });
+      }
+    }
+
+    res.json({ success:true, results: results.slice(0, 50) });
+  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
 });
 
 app.post('/api/admin/accounts', adminAuth, (req, res) => {
