@@ -667,9 +667,31 @@ function payViaWhatsApp(){
   window.open('https://wa.me/8801928382918?text='+encodeURIComponent(msg),'_blank');
 }
 function closeRenewModal(){const modal=document.getElementById('renew-modal');if(modal)modal.classList.remove('show');selectedPlan=null;}
-function checkRenewalSuccess(){
+async function checkRenewalSuccess(){
   const params=new URLSearchParams(window.location.search);
-  if(params.get('renewed')==='1'){const days=params.get('days')||'';setTimeout(()=>{showToast('Renewed! '+days+' days added');window.history.replaceState({},'',window.location.pathname);},1000);}
+  const invoiceId=params.get('invoice_id');
+  if(invoiceId&&window._tok){
+    // Customer just came back from UddoktaPay checkout - verify the payment directly
+    // (checkout-v2 is redirect-verified, not webhook-verified - see server comment)
+    showToast('Verifying your payment...');
+    try{
+      const r=await fetch('/api/renew/verify-payment',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({token:window._tok,invoice_id:invoiceId})
+      });
+      const d=await r.json();
+      if(d.success){
+        const days=d.days||params.get('renew_days')||'';
+        setTimeout(()=>{showToast('✅ Renewed! '+days+' days added');window.history.replaceState({},'',window.location.pathname);fetchCodes(window._tok);},800);
+      }else{
+        setTimeout(()=>{showToast('Payment not confirmed yet. Contact support if you paid.');window.history.replaceState({},'',window.location.pathname);},800);
+      }
+    }catch(e){
+      setTimeout(()=>{showToast('Could not verify payment. Contact support if you paid.');window.history.replaceState({},'',window.location.pathname);},800);
+    }
+    return;
+  }
   if(params.get('renew_cancelled')==='1'){setTimeout(()=>{showToast('Payment cancelled. You can try again anytime.');window.history.replaceState({},'',window.location.pathname);},1000);}
 }
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
