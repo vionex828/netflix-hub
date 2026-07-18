@@ -217,16 +217,40 @@ const PLANS = [
   { id:'combo-tv-1m',       name:'Combo TV 1M',       price:489, days:30, product:'Netflix+Prime TV 1M' },
   { id:'combo-tv-3m',       name:'Combo TV 3M',       price:1500,days:90, product:'Netflix+Prime TV 3M' },
 ];
-const MAX_SLOTS = 8;
+const MAX_SLOTS = 8; // default (mobile accounts) - use getSlotConfig(account) for actual per-account total
 const BLOCKED_CODES = ['2023','2024','2025','2026','2027','2028','0000'];
 
-const FIXED_PROFILES = [
+// Mobile accounts (default/unchanged): 8 slots total
+const MOBILE_PROFILES = [
   { profile: 'Profile A', pin: '5651', slots: 2 },
   { profile: 'Profile B', pin: '5652', slots: 2 },
   { profile: 'Profile C', pin: '5653', slots: 2 },
   { profile: 'Profile D', pin: '5654', slots: 1 },
   { profile: 'Profile E', pin: '5655', slots: 1 },
 ];
+// TV accounts: 7 slots total - Profile C reduced to 1 slot (TV usage causes more household churn)
+const TV_PROFILES = [
+  { profile: 'Profile A', pin: '5651', slots: 2 },
+  { profile: 'Profile B', pin: '5652', slots: 2 },
+  { profile: 'Profile C', pin: '5653', slots: 1 },
+  { profile: 'Profile D', pin: '5654', slots: 1 },
+  { profile: 'Profile E', pin: '5655', slots: 1 },
+];
+// Backward-compat alias - existing code that references FIXED_PROFILES keeps working (mobile behavior)
+const FIXED_PROFILES = MOBILE_PROFILES;
+
+// Returns the correct profile/slot layout for an account based on its tagged device type.
+// Untagged accounts (deviceType missing) default to mobile behavior for backward compatibility.
+function getSlotConfig(account) {
+  return (account && account.deviceType === 'tv') ? TV_PROFILES : MOBILE_PROFILES;
+}
+function getMaxSlotsForAccount(account) {
+  return getSlotConfig(account).reduce((sum,p) => sum+p.slots, 0);
+}
+// Determines mobile vs tv from a product/plan name string. Defaults to 'mobile' if unclear.
+function detectDeviceType(productName) {
+  return String(productName||'').toLowerCase().includes('tv') ? 'tv' : 'mobile';
+}
 
 function ensureDataDir() { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {} }
 function loadLinks() { try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); } catch(e) { return {}; } }
@@ -268,7 +292,8 @@ function getFreeSlots() {
     // Occupied = link exists and NOT released (regardless of expiry - manual release required)
     const occupyingLinks = Object.values(links).filter(l=>l.email===account.email&&l.active&&!l.released);
     const usedProfiles = occupyingLinks.map(l=>normalizeProfile(l.profile));
-    for (const prof of FIXED_PROFILES) {
+    const profileConfig = getSlotConfig(account);
+    for (const prof of profileConfig) {
       const used = usedProfiles.filter(p=>p===prof.profile).length;
       free += Math.max(0, prof.slots - used);
     }
@@ -377,18 +402,23 @@ async function checkGeoAndAlert(token, ip) {
   } catch(e) { console.error('Geo lookup error:', e.message); }
 }
 
-function getNextAvailableSlot(customerDays) {
+function getNextAvailableSlot(customerDays, deviceType) {
   const accounts = loadAccounts();
   const links = loadLinks();
   const days = normalizeDays(customerDays);
+  const wantType = deviceType === 'tv' ? 'tv' : 'mobile';
 
   function tryAccounts(accountList) {
     for (const account of accountList) {
       const email = account.email;
+      // Untagged accounts default to mobile for backward compatibility
+      const accountType = account.deviceType === 'tv' ? 'tv' : 'mobile';
+      if (accountType !== wantType) continue;
       // Occupied = link exists and NOT released (regardless of expiry)
       const occupyingLinks = Object.values(links).filter(l => l.email===email && l.active && !l.released);
       const usedProfiles = occupyingLinks.map(l => normalizeProfile(l.profile));
-      for (const prof of FIXED_PROFILES) {
+      const profileConfig = getSlotConfig(account);
+      for (const prof of profileConfig) {
         const used = usedProfiles.filter(p => p === prof.profile).length;
         if (used < prof.slots) {
           return { email, profile: prof.profile, pin: prof.pin };
@@ -785,11 +815,12 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     if (!alertedPinChanges.has(pinAlertKey)) {
       alertedPinChanges.add(pinAlertKey);
       // Extract profile letter e.g. 'The PIN for profile C has changed'
-      const profileMatch = sl.match(/profile\s+([a-e])/i) || bodyPlain.match(/Profile\s*[:\n]+\s*([A-E])/i);
+      const profileMatch = sl.match(/profile\s+([a-e])/i) || bodyPlain.match(/Profile\s+([A-E])\b/i);
       const profileLetter = profileMatch ? profileMatch[1].toUpperCase() : null;
       // Extract new PIN - shown as spaced digits '5 6 5 3'
       const pinMatch = bodyPlain.match(/Profile Lock PIN[^0-9]*(\d)\s+(\d)\s+(\d)\s+(\d)/i)
-        || bodyPlain.match(/new PIN[^0-9]*(\d)\s+(\d)\s+(\d)\s+(\d)/i);
+        || bodyPlain.match(/new PIN[^0-9]*(\d)\s+(\d)\s+(\d)\s+(\d)/i)
+        || bodyPlain.match(/PIN\s*[:\s]*(\d)\s+(\d)\s+(\d)\s+(\d)(?!\s*\d)/i);
       const newPin = pinMatch ? pinMatch[1]+pinMatch[2]+pinMatch[3]+pinMatch[4] : null;
       if (profileLetter && newPin) {
         // Auto-update PIN in all links for this profile on this account
@@ -827,7 +858,7 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
           saveNetflixAlerts(alerts.slice(0, 200));
         } catch(e) { console.error('Save pin-change alert error:', e.message); }
       } else {
-        sendTelegram(`🔑 <b>PIN Changed!</b>\n\n📧 ${toEmail}\nCould not auto-detect profile/PIN. Check manually.`);
+        sendTelegram(`🔑 <b>PIN Changed!</b>\n\n📧 ${toEmail}\nCould not auto-detect profile/PIN. Check manually.\n\n<b>Subject:</b> ${subject}\n<b>Body snippet:</b> <code>${bodyPlain.slice(0,200)}</code>`);
       }
       if (alertedPinChanges.size > 500) {
         const arr = [...alertedPinChanges];
@@ -925,10 +956,14 @@ app.post('/tg-webhook', async (req, res) => {
     const days = parts[1] ? parseInt(parts[1]) : 30;
     const links = loadLinks();
     const now = Date.now();
+    const accountsForCreate = loadAccounts();
+    const matchedAccount = accountsForCreate.find(a => a.email === email);
+    const profileConfig = getSlotConfig(matchedAccount);
+    const maxSlotsHere = getMaxSlotsForAccount(matchedAccount);
     const existing = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
-    if (existing.length >= MAX_SLOTS) return sendTelegram(`❌ Account Full! ${email} has ${MAX_SLOTS}/${MAX_SLOTS} active links.\nUse /list ${email}`, chatId);
+    if (existing.length >= maxSlotsHere) return sendTelegram(`❌ Account Full! ${email} has ${maxSlotsHere}/${maxSlotsHere} active links.\nUse /list ${email}`, chatId);
     const created = [];
-    for (const prof of FIXED_PROFILES) {
+    for (const prof of profileConfig) {
       for (let i=0; i<prof.slots; i++) {
         const token = generateToken();
         links[token] = { token, email, profile:prof.profile, pin:prof.pin, days, createdAt:now, expiresAt:now+days*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
@@ -936,7 +971,7 @@ app.post('/tg-webhook', async (req, res) => {
       }
     }
     saveLinks(links);
-    let msg2 = `✅ <b>8 Links Created!</b>\n📧 ${email}\n⏳ ${days} days\n\n`;
+    let msg2 = `✅ <b>${maxSlotsHere} Links Created!</b>\n📧 ${email}\n⏳ ${days} days\n\n`;
     let lastProf = '';
     for (const l of created) {
       if (l.profile !== lastProf) { msg2 += `\n👤 <b>${l.profile}</b> | PIN: <code>${l.pin}</code>\n`; lastProf = l.profile; }
@@ -1044,6 +1079,7 @@ app.post('/tg-webhook', async (req, res) => {
 
   if (text === '/slots') {
     const links = loadLinks(); const now = Date.now();
+    const accountsForSlots = loadAccounts();
     const byEmail = {};
     for (const l of Object.values(links)) {
       if (!byEmail[l.email]) byEmail[l.email] = { active:0, total:0 };
@@ -1052,8 +1088,10 @@ app.post('/tg-webhook', async (req, res) => {
     }
     let msg2 = '📊 <b>Slot Usage</b>\n\n';
     for (const [email, info] of Object.entries(byEmail)) {
-      const bar = '█'.repeat(info.active)+'░'.repeat(Math.max(0,MAX_SLOTS-info.active));
-      msg2 += `📧 ${email}\n${bar} ${info.active}/${MAX_SLOTS}\n\n`;
+      const acctForEmail = accountsForSlots.find(a => a.email === email);
+      const maxForEmail = getMaxSlotsForAccount(acctForEmail);
+      const bar = '█'.repeat(info.active)+'░'.repeat(Math.max(0,maxForEmail-info.active));
+      msg2 += `📧 ${email} ${acctForEmail?.deviceType==='tv'?'📺':'📱'}\n${bar} ${info.active}/${maxForEmail}\n\n`;
     }
     return sendTelegram(msg2||'No active links.', chatId);
   }
@@ -1111,7 +1149,9 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&normalizeProfile(l.profile)===normalizedProfile&&l.active&&l.expiresAt>now);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
   const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
-  if (activeCount >= MAX_SLOTS) return res.status(400).json({ error:`Account full (${MAX_SLOTS}/${MAX_SLOTS})` });
+  const acctForCreate = loadAccounts().find(a => a.email === email.toLowerCase());
+  const maxForCreate = getMaxSlotsForAccount(acctForCreate);
+  if (activeCount >= maxForCreate) return res.status(400).json({ error:`Account full (${maxForCreate}/${maxForCreate})` });
   const token = generateToken();
   const d = parseInt(days);
   links[token] = { token, email:email.toLowerCase(), profile:normalizedProfile, pin:normalizedPin, phone:phone||'', days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
@@ -1231,7 +1271,58 @@ app.post('/api/admin/update-phone/:token', adminAuth, (req, res) => {
 app.delete('/api/admin/delete/:token', adminAuth, (req, res) => {
   const links = loadLinks();
   if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  delete links[req.params.token]; saveLinks(links); res.json({ success:true });
+  // Soft-delete: move to Recycle Bin instead of permanent removal.
+  // Admin can restore or permanently delete later from the Recycle Bin section.
+  links[req.params.token].recycled = true;
+  links[req.params.token].recycledAt = Date.now();
+  links[req.params.token].active = false;
+  saveLinks(links);
+  res.json({ success:true, recycled:true });
+});
+
+app.get('/api/admin/recycle-bin', adminAuth, (req, res) => {
+  try {
+    const links = loadLinks();
+    const items = Object.entries(links)
+      .filter(([token, l]) => l.recycled)
+      .map(([token, l]) => ({
+        token, email: l.email, profile: l.profile, pin: l.pin,
+        phone: l.phone||'', customerName: l.customerName||'',
+        recycledAt: l.recycledAt||0, revokedReason: l.revokedReason||null,
+      }))
+      .sort((a,b) => (b.recycledAt||0) - (a.recycledAt||0));
+    res.json({ success:true, items, count: items.length });
+  } catch(e) { res.json({ success:true, items:[], count:0 }); }
+});
+
+app.post('/api/admin/recycle-bin/:token/restore', adminAuth, (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false, error:'Not found' });
+  link.recycled = false;
+  delete link.recycledAt;
+  // Restored links come back inactive by default - admin can manually reactivate/extend if needed
+  saveLinks(links);
+  res.json({ success:true });
+});
+
+app.delete('/api/admin/recycle-bin/:token/permanent', adminAuth, (req, res) => {
+  const links = loadLinks();
+  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
+  if (!links[req.params.token].recycled) return res.status(400).json({ success:false, error:'Link must be in recycle bin first' });
+  delete links[req.params.token];
+  saveLinks(links);
+  res.json({ success:true });
+});
+
+app.post('/api/admin/recycle-bin/empty', adminAuth, (req, res) => {
+  const links = loadLinks();
+  let count = 0;
+  for (const token of Object.keys(links)) {
+    if (links[token].recycled) { delete links[token]; count++; }
+  }
+  saveLinks(links);
+  res.json({ success:true, deleted:count });
 });
 
 app.get('/api/admin/slots', adminAuth, (req, res) => {
@@ -1517,6 +1608,8 @@ app.get('/api/admin/account-links/:email', adminAuth, (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase().trim();
     const links = loadLinks();
     const now = Date.now();
+    const accounts = loadAccounts();
+    const accountObj = accounts.find(a => a.email === email);
     const accountLinks = Object.entries(links)
       .filter(([token, l]) => l.email === email)
       .map(([token, l]) => {
@@ -1537,10 +1630,11 @@ app.get('/api/admin/account-links/:email', adminAuth, (req, res) => {
       })
       .sort((a,b) => (b.expiresAt||0) - (a.expiresAt||0));
 
-    // Build 8-slot occupancy view (one row per physical slot instance)
+    // Build slot occupancy view (one row per physical slot instance) - respects account's mobile/tv type
     const usedTokens = new Set();
     const slots = [];
-    for (const prof of FIXED_PROFILES) {
+    const profileConfig = getSlotConfig(accountObj);
+    for (const prof of profileConfig) {
       for (let i = 0; i < prof.slots; i++) {
         const occupant = accountLinks.find(l =>
           l.profile === prof.profile &&
@@ -1552,7 +1646,7 @@ app.get('/api/admin/account-links/:email', adminAuth, (req, res) => {
       }
     }
 
-    res.json({ success:true, email, slots, allLinks: accountLinks });
+    res.json({ success:true, email, deviceType: accountObj?.deviceType||'mobile', slots, allLinks: accountLinks });
   } catch(e) { res.status(500).json({ success:false, error:e.message }); }
 });
 
@@ -1602,7 +1696,7 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
     }
 
     // New customer — get slot
-    const slot = getNextAvailableSlot(d);
+    const slot = getNextAvailableSlot(d, detectDeviceType(w.product));
     if (!slot) return res.status(503).json({ success:false, error:'No slots available for ' + d + ' day plan' });
 
     const token = generateToken();
@@ -1677,7 +1771,7 @@ app.get('/api/admin/pending-release', adminAuth, (req, res) => {
         }))
         .sort((a,b) => a.daysLeft - b.daysLeft);
       const pendingForAccount = pending.filter(p => p.email === account.email);
-      const totalSlots = FIXED_PROFILES.reduce((sum,p) => sum+p.slots, 0);
+      const totalSlots = getMaxSlotsForAccount(account);
       const occupied = occupyingLinks.length;
       summaryMap[account.email] = {
         email: account.email,
@@ -1739,7 +1833,7 @@ app.post('/api/admin/waitlist/process', adminAuth, async (req, res) => {
   let processed = 0;
   const remaining = [];
   for (const w of waitlist) {
-    const slot = getNextAvailableSlot(w.days || 30);
+    const slot = getNextAvailableSlot(w.days || 30, detectDeviceType(w.product));
     if (!slot) { remaining.push(w); continue; }
     const links = loadLinks();
     const now = Date.now();
@@ -1918,7 +2012,7 @@ app.post('/uddoktapay-ipn', async (req, res) => {
     }
 
     // New customer
-    const slot = getNextAvailableSlot(days);
+    const slot = getNextAvailableSlot(days, detectDeviceType(product));
     if (!slot) {
       const waitlist = loadWaitlist();
       if (!waitlist.find(w => w.phone === phone)) {
@@ -2057,7 +2151,7 @@ app.get('/api/admin/accounts', adminAuth, (req, res) => {
       .filter(l => l.expiresAt > now)
       .map(l => Math.ceil((l.expiresAt - now) / (24*60*60*1000)))
       .sort((x,y) => x - y);
-    return { ...a, slotsUsed: occupying.length, slotsTotal: 8, pendingRelease, activeDaysLeft, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
+    return { ...a, deviceType: a.deviceType||'mobile', slotsUsed: occupying.length, slotsTotal: getMaxSlotsForAccount(a), pendingRelease, activeDaysLeft, planDays: a.planDays||null, expiresAt: a.expiresAt||null };
   });
   res.json({ success:true, accounts: result });
 });
@@ -2141,9 +2235,20 @@ app.post('/api/admin/accounts', adminAuth, (req, res) => {
   }
   const planDays = req.body.planDays ? parseInt(req.body.planDays) : null;
   const expiresAt = req.body.expiresAt || null;
-  accounts.push({ email:email.toLowerCase().trim(), notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now(), planDays, expiresAt });
+  const deviceType = req.body.deviceType === 'tv' ? 'tv' : 'mobile';
+  accounts.push({ email:email.toLowerCase().trim(), deviceType, notes:notes||'', priority:priority||accounts.length+1, active:true, addedAt:Date.now(), planDays, expiresAt });
   saveAccounts(accounts);
   res.json({ success:true });
+});
+
+app.post('/api/admin/accounts/:email/devicetype', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const target = decodeURIComponent(req.params.email).trim().toLowerCase();
+  const idx = accounts.findIndex(a => a.email === target);
+  if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
+  accounts[idx].deviceType = req.body.deviceType === 'tv' ? 'tv' : 'mobile';
+  saveAccounts(accounts);
+  res.json({ success:true, deviceType: accounts[idx].deviceType });
 });
 
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
