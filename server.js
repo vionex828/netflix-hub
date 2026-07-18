@@ -1892,10 +1892,13 @@ app.post('/api/renew/create-payment', async (req, res) => {
         email: 'customer@fanflixbd.com',
         amount: String(amount),
         metadata: { token, phone: link.phone || '', plan: matchedPlan.id, days: String(days) },
-        redirect_url: `${SITE_URL}/c/${token}?renewed=1&plan=${encodeURIComponent(matchedPlan.name)}&days=${days}`,
+        // checkout-v2 appends its own invoice_id param to this URL on completion -
+        // that's how we verify the payment (see /api/renew/verify-payment below).
+        // Per UddoktaPay's own docs, checkout-v2 is "Success Page notification only" -
+        // webhook_url is NOT reliably honored for this API type, so we don't depend on it.
+        redirect_url: `${SITE_URL}/c/${token}?renew_plan=${encodeURIComponent(matchedPlan.name)}&renew_days=${days}`,
         return_type: 'GET',
         cancel_url: `${SITE_URL}/c/${token}?renew_cancelled=1`,
-        webhook_url: `${SITE_URL}/uddoktapay-ipn`,
       }),
     });
 
@@ -1912,6 +1915,68 @@ app.post('/api/renew/create-payment', async (req, res) => {
   } catch(e) {
     console.error('create-payment error:', e.message);
     sendTelegram(`⚠️ <b>Self-Renew Payment Error!</b>\n\n📱 ${req.body?.token || 'unknown token'}\n\nError: ${e.message}\n\nCustomer could not start renewal payment.`);
+    res.status(500).json({ success:false, error:e.message });
+  }
+});
+
+// Verifies a self-renew payment directly with UddoktaPay's Verify Payment API,
+// triggered by the customer's browser right after they're redirected back from
+// checkout. This is the officially correct method for checkout-v2 (per UddoktaPay's
+// own docs, checkout-v2 is "Success Page notification only" - it does not reliably
+// fire the webhook_url override), so we don't wait on a webhook at all here.
+const _verifiedInvoices = new Set(); // dedup - prevents double-extending on page refresh
+app.post('/api/renew/verify-payment', async (req, res) => {
+  try {
+    const { token, invoice_id } = req.body;
+    if (!token || !invoice_id) return res.status(400).json({ success:false, error:'Missing token or invoice_id' });
+
+    if (_verifiedInvoices.has(invoice_id)) {
+      return res.json({ success:true, alreadyProcessed:true });
+    }
+
+    const links = loadLinks();
+    const link = links[token];
+    if (!link) return res.status(404).json({ success:false, error:'Link not found' });
+
+    const verifyRes = await fetch(`${UDDOKTAPAY_BASE_URL}/verify-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'RT-UDDOKTAPAY-API-KEY': UDDOKTAPAY_API_KEY,
+      },
+      body: JSON.stringify({ invoice_id }),
+    });
+    const verifyData = await verifyRes.json();
+
+    if (verifyData.status !== 'COMPLETED') {
+      return res.json({ success:false, error:'Payment not completed', status: verifyData.status||'unknown' });
+    }
+
+    _verifiedInvoices.add(invoice_id);
+    if (_verifiedInvoices.size > 500) {
+      const arr = [..._verifiedInvoices];
+      _verifiedInvoices.clear();
+      arr.slice(-200).forEach(i => _verifiedInvoices.add(i));
+    }
+
+    const meta = verifyData.metadata || {};
+    const renewDays = parseInt(meta.days) || normalizeDays(link.days || 30);
+    renewCustomerLink(links, token, renewDays);
+    saveLinks(links);
+
+    sendTelegram(
+      `🔄 <b>Auto-Renewed by Customer!</b>\n\n` +
+      `👤 ${link.customerName || 'Customer'} | 📱 ${link.phone || 'unknown'}\n` +
+      `👤 ${link.profile}\n` +
+      `💰 ৳${verifyData.amount||'?'} via ${verifyData.payment_method || 'UddoktaPay'}\n` +
+      `🔗 Extended +${renewDays} days\n\n` +
+      `✅ Self-service — no manual work needed`
+    );
+
+    res.json({ success:true, days: renewDays });
+  } catch(e) {
+    console.error('verify-payment error:', e.message);
+    sendTelegram(`⚠️ <b>Self-Renew Verification Error!</b>\n\nToken: ${req.body?.token||'unknown'}\nError: ${e.message}\n\nCustomer paid but verification failed - check manually.`);
     res.status(500).json({ success:false, error:e.message });
   }
 });
