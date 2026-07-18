@@ -251,6 +251,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-item" onclick="showSection('outsidebd')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>Outside BD Login<span class="sb-badge" id="sb-outsidebd-count" style="background:var(--red)">0</span></div>
       <div class="sb-item" onclick="showSection('pendingrelease')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Pending Release<span class="sb-badge" id="sb-pendingrelease-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('accountperf')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Account Performance</div>
+      <div class="sb-item" onclick="showSection('recyclebin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Recycle Bin<span class="sb-badge" id="sb-recyclebin-count" style="background:var(--muted2)">0</span></div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
@@ -308,7 +309,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <div><label class="field-label">Profile</label><input class="field-inp" id="c-profile" placeholder="Profile A"/></div>
           <div><label class="field-label">PIN</label><input class="field-inp" id="c-pin" placeholder="5651"/></div>
           <div><label class="field-label">Phone</label><input class="field-inp" id="c-phone" placeholder="01XXXXXXXXX" type="tel"/></div>
-          <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="28">1 Month (28d)</option><option value="85">3 Months (85d)</option></select></div>
+          <div><label class="field-label">Expiry</label><select class="field-select" id="c-days"><option value="30">1 Month (30d)</option><option value="90">3 Months (90d)</option></select></div>
           <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:.4rem">
             <button class="create-btn" onclick="doCreate()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Create</button>
             <button class="create-btn" onclick="bulkCreate()" style="background:var(--green);color:#000;font-size:.72rem"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Bulk (8 Links)</button>
@@ -343,10 +344,11 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem"><div style="font-size:1.1rem;font-weight:700">Netflix Accounts</div><button class="create-btn" onclick="showAddAccountForm()">+ Add Account</button></div>
         <input class="form-inp" id="acct-search" placeholder="🔍 Search by email..." oninput="filterAccounts(this.value)" style="width:100%;margin-bottom:1rem"/>
         <div id="add-account-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.8rem;align-items:end">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:.8rem;align-items:end">
             <div><label class="form-label">Netflix Email</label><input class="form-inp" id="acc-email" placeholder="email@icloud.com"/></div>
+            <div><label class="form-label">Device Type</label><select class="form-inp" id="acc-devicetype" style="cursor:pointer"><option value="mobile">📱 Mobile (8 slots)</option><option value="tv">📺 TV (7 slots)</option></select></div>
             <div><label class="form-label">Notes (optional)</label><input class="form-inp" id="acc-notes" placeholder="e.g. Main account"/></div>
-            <div><label class="form-label">Plan</label><select class="form-inp" id="acc-plan" style="cursor:pointer"><option value="">Any plan</option><option value="28">28 days only</option><option value="85">85 days only</option><option value="170">170 days only</option></select></div>
+            <div><label class="form-label">Plan</label><select class="form-inp" id="acc-plan" style="cursor:pointer"><option value="">Any plan</option><option value="30">30 days only</option><option value="90">90 days only</option><option value="170">170 days only</option></select></div>
             <div><label class="form-label">Expires On</label><input class="form-inp" id="acc-expires" type="date" style="cursor:pointer"/></div>
             <button class="create-btn" onclick="addAccount()">Add</button>
           </div>
@@ -382,6 +384,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Netflix Account Performance</div>
         <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Accounts ranked by risk — outside-BD incidents, PIN changes, and non-renewal rate. Highest risk shows first.</div>
         <div id="accountperf-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
+      <div id="section-recyclebin" style="display:none;padding:1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+          <div style="font-size:1.1rem;font-weight:700">Recycle Bin <span id="recyclebin-count" style="font-family:var(--m);font-size:.75rem;color:var(--muted);margin-left:.5rem"></span></div>
+          <button onclick="emptyRecycleBin()" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem">🗑 Empty Bin</button>
+        </div>
+        <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Deleted links land here instead of disappearing forever. Restore by mistake, or permanently remove when you're sure.</div>
+        <div id="recyclebin-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
       <div id="section-customers" style="display:none;padding:1.5rem">
@@ -445,14 +456,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <script>
 const SITE=window.location.origin;
 const PROFILE_COLORS={A:'#E50914',B:'#f5a623',C:'#46d369',D:'#4da6ff',E:'#a78bfa'};
-let adminToken=sessionStorage.getItem('fanflix_admin');
+let adminToken=localStorage.getItem('fanflix_admin');
 let allLinks={},curFilter='',currentPage=0,currentFiltered={},selectedLinks=new Set(),geoFlags={};
 const PAGE_SIZE=50;
 
 window.onload=()=>{updateDate();setInterval(updateDate,60000);if(adminToken)showDashboard();};
 function updateDate(){const now=new Date();document.getElementById('tb-date').textContent=now.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
-async function doLogin(){const pass=document.getElementById('pass-inp').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});const d=await r.json();if(d.success){adminToken=d.token;sessionStorage.setItem('fanflix_admin',adminToken);showDashboard();}else document.getElementById('login-err').style.display='block';}
-function doLogout(){sessionStorage.removeItem('fanflix_admin');location.reload();}
+async function doLogin(){const pass=document.getElementById('pass-inp').value;const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pass})});const d=await r.json();if(d.success){adminToken=d.token;localStorage.setItem('fanflix_admin',adminToken);showDashboard();}else document.getElementById('login-err').style.display='block';}
+function doLogout(){localStorage.removeItem('fanflix_admin');location.reload();}
 function showDashboard(){document.getElementById('login-screen').style.display='none';document.getElementById('dashboard').style.display='flex';document.getElementById('dashboard').style.width='100%';loadAll();setInterval(loadStats,30000);setInterval(loadAll,60000);}
 async function loadAll(){await Promise.all([loadLinks(),loadStats(),loadSlots(),loadGeoFlags()]);}
 
@@ -534,7 +545,11 @@ async function loadSlots(){
 async function loadLinks(){
   try{
     const r=await fetch('/api/admin/links',{headers:{'x-admin-token':adminToken}});
-    const d=await r.json();allLinks=d.links||{};
+    const d=await r.json();
+    // Exclude recycled links from every normal view - they live only in the Recycle Bin section
+    const rawLinks=d.links||{};
+    allLinks={};
+    for(const[k,v]of Object.entries(rawLinks)){if(!v.recycled)allLinks[k]=v;}
     try{
       const ir=await fetch('/api/admin/customer-incidents',{headers:{'x-admin-token':adminToken}});
       const id=await ir.json();window._incidents=id.incidents||{};
@@ -544,6 +559,51 @@ async function loadLinks(){
     const sbb=document.getElementById('sb-active-count');if(sbb)sbb.textContent=active;
   }catch(e){}
 }
+async function loadRecycleBin(){
+  const list=document.getElementById('recyclebin-list');
+  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r=await fetch('/api/admin/recycle-bin',{headers:{'x-admin-token':adminToken}});
+    const d=await r.json();
+    const items=d.items||[];
+    const cnt=document.getElementById('recyclebin-count');if(cnt)cnt.textContent=items.length?`(${items.length})`:'';
+    const sbc=document.getElementById('sb-recyclebin-count');if(sbc)sbc.textContent=items.length;
+    if(!list)return;
+    if(!items.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Recycle Bin is empty.</div>';return;}
+    list.innerHTML=items.map(it=>{
+      const reasonLabel=it.revokedReason?(REVOKE_REASON_LABELS[it.revokedReason]||it.revokedReason):'';
+      return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(it.customerName||it.phone||'Unknown')}</div>
+          <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📧 ${esc(it.email)} · 👤 ${esc(it.profile)} ${it.phone?' · 📞'+esc(it.phone):''}</div>
+          ${reasonLabel?`<div style="font-family:var(--m);font-size:.6rem;color:var(--amber);margin-top:2px">${esc(reasonLabel)}</div>`:''}
+          <div style="font-family:var(--m);font-size:.58rem;color:var(--muted2);margin-top:2px">Recycled ${timeAgo(it.recycledAt)}</div>
+        </div>
+        <button onclick="restoreFromRecycleBin('${it.token}')" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">♻️ Restore</button>
+        <button onclick="permanentDelete('${it.token}')" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">🗑 Delete Forever</button>
+      </div>`;
+    }).join('');
+  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading</div>';}
+}
+async function restoreFromRecycleBin(token){
+  await fetch('/api/admin/recycle-bin/'+token+'/restore',{method:'POST',headers:{'x-admin-token':adminToken}});
+  showToast('✅ Restored — reactivate/extend manually if needed');
+  loadRecycleBin();loadAll();
+}
+async function permanentDelete(token){
+  if(!confirm('Permanently delete this? This cannot be undone.'))return;
+  await fetch('/api/admin/recycle-bin/'+token+'/permanent',{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  showToast('Deleted forever');
+  loadRecycleBin();
+}
+async function emptyRecycleBin(){
+  if(!confirm('Permanently delete EVERYTHING in the Recycle Bin? This cannot be undone.'))return;
+  const r=await fetch('/api/admin/recycle-bin/empty',{method:'POST',headers:{'x-admin-token':adminToken}});
+  const d=await r.json();
+  showToast(`Deleted ${d.deleted||0} items forever`);
+  loadRecycleBin();
+}
+
 async function loadAccountPerformance(){
   const list=document.getElementById('accountperf-list');
   if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
@@ -656,7 +716,21 @@ async function replaceAllLinks(){
 }
 
 function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
-function showRevoked(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(!v.active)filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} revoked links`);}
+const REVOKE_REASON_LABELS={outside_bd:'🌍 Outside Bangladesh login',pin_change:'🔑 Unauthorized PIN/profile change',multi_device:'📱 Multiple device sharing',security:'⚠️ Netflix account security issue',payment:'💳 Payment issue',other:null};
+function showRevoked(){
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers'];
+  secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  document.getElementById('sec-dashboard').style.display='block';
+  const t=document.getElementById('topbar-title');if(t)t.textContent='Revoked Links';
+  // Only genuinely revoked links (a specific reason was recorded) - NOT released or merely-expired links
+  const filtered={};
+  for(const[k,v]of Object.entries(allLinks)){
+    if(v.revokedReason&&!v.released)filtered[k]=v;
+  }
+  renderLinks(filtered,0);
+  document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});
+  showToast(`${Object.keys(filtered).length} revoked links`);
+}
 
 function filterLinks(resetAcctFilter){
   // If user is typing in the main search box, clear any leftover account-filter
@@ -705,7 +779,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -739,6 +813,11 @@ function showSection(s){
     document.getElementById('section-accountperf').style.display='block';
     if(t)t.textContent='Netflix Account Performance';
     loadAccountPerformance();return;
+  }
+  if(s==='recyclebin'){
+    document.getElementById('section-recyclebin').style.display='block';
+    if(t)t.textContent='Recycle Bin';
+    loadRecycleBin();return;
   }
   if(s==='settings'){
     document.getElementById('section-settings').style.display='block';
@@ -806,7 +885,7 @@ function renderLinks(links,page){
       <td class="days-cell ${daysCls}">${expired?'Expired':`${daysLeft}d left`}${expiryBadge}<div style="font-family:var(--m);font-size:.58rem;color:var(--muted2);margin-top:2px">${expiryDate}</div></td>
       <td class="uses-cell">${l.uses}<div class="uses-today">today: ${todayUses}</div><div style="font-family:var(--m);font-size:.58rem;color:${ipCount>=4?'var(--red)':ipCount>=2?'var(--amber)':'var(--muted2)'}">${ipCount} IP${ipCount!==1?'s':''}</div></td>
       <td class="time-cell">${lastUsed}</td>
-      <td><span class="status-badge ${status}">${status}</span></td>
+      <td><span class="status-badge ${status}">${status}</span>${status==='revoked'&&l.revokedReason?`<div style="font-family:var(--m);font-size:.56rem;color:var(--muted);margin-top:3px">${esc(REVOKE_REASON_LABELS[l.revokedReason]||l.revokedReasonText||l.revokedReason)}</div>`:''}</td>
       <td><div class="action-btns">
         ${l.active&&!expired?`<button class="icon-btn danger" onclick="revokeLink('${l.token}')" title="Revoke"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>`:`<button class="icon-btn success" onclick="activateLink('${l.token}')" title="Activate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></button>`}
         <button class="icon-btn" onclick="editEmail('${l.token}',this)" data-email="${esc(l.email)}" title="Edit email" style="color:var(--amber)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -829,8 +908,8 @@ function updatePagination(total,totalPages){
 function toggleSelect(token){if(selectedLinks.has(token))selectedLinks.delete(token);else selectedLinks.add(token);updateBulkBar();}
 function toggleSelectAll(){const arr=Object.values(currentFiltered);if(selectedLinks.size===arr.length)selectedLinks.clear();else arr.forEach(l=>selectedLinks.add(l.token));renderLinks(currentFiltered,currentPage);updateBulkBar();}
 function updateBulkBar(){let b=document.getElementById('bulk-bar');if(!b){b=document.createElement('div');b.id='bulk-bar';b.style='position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--border2);border-radius:12px;padding:.7rem 1.2rem;display:flex;align-items:center;gap:1rem;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.4)';document.body.appendChild(b);}if(selectedLinks.size===0){b.style.display='none';return;}b.style.display='flex';b.innerHTML=`<span style="font-family:var(--m);font-size:.72rem;color:var(--text)">${selectedLinks.size} selected</span><button onclick="bulkRenew()" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Renew All</button><button onclick="bulkDelete()" style="background:var(--red);color:#fff;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600">Delete All</button><button onclick="selectedLinks.clear();renderLinks(currentFiltered,currentPage);updateBulkBar();" style="background:var(--s4);color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem">Cancel</button>`;}
-async function bulkRenew(){if(!confirm('Renew '+selectedLinks.size+' links for 28 days?'))return;for(const token of selectedLinks)await fetch('/api/admin/renew/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:28})});selectedLinks.clear();showToast('Renewed!');loadAll();}
-async function bulkDelete(){if(!confirm('Permanently delete '+selectedLinks.size+' links?'))return;for(const token of selectedLinks)await fetch('/api/admin/delete/'+token,{method:'DELETE',headers:{'x-admin-token':adminToken}});selectedLinks.clear();showToast('Deleted!');loadAll();}
+async function bulkRenew(){if(!confirm('Renew '+selectedLinks.size+' links for 30 days?'))return;for(const token of selectedLinks)await fetch('/api/admin/renew/'+token,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days:30})});selectedLinks.clear();showToast('Renewed!');loadAll();}
+async function bulkDelete(){if(!confirm('Move '+selectedLinks.size+' links to Recycle Bin?'))return;for(const token of selectedLinks)await fetch('/api/admin/delete/'+token,{method:'DELETE',headers:{'x-admin-token':adminToken}});selectedLinks.clear();showToast('Moved to Recycle Bin');loadAll();}
 
 async function doCreate(){
   const email=document.getElementById('c-email').value.trim();const profile=document.getElementById('c-profile').value.trim();const pin=document.getElementById('c-pin').value.trim();const days=document.getElementById('c-days').value;
@@ -930,7 +1009,7 @@ async function saveInlineEdit(token) {
   const newPhone = document.getElementById('ei-phone').value.trim();
   const newProfile = document.getElementById('ei-profile').value;
   const newPin = document.getElementById('ei-pin').value;
-  const newDays = parseInt(document.getElementById('ei-days').value) || 28;
+  const newDays = parseInt(document.getElementById('ei-days').value) || 30;
   const newName = document.getElementById('ei-name').value.trim();
 
   const updates = [];
@@ -979,15 +1058,15 @@ async function saveInlineEdit(token) {
   loadAll();
 }
 async function renewLink(token){
-  const choice=confirm('Click OK for 28 days (1 month)\nClick Cancel for 85 days (3 months)');
-  const days=choice?28:85;
+  const choice=confirm('Click OK for 30 days (1 month)\nClick Cancel for 90 days (3 months)');
+  const days=choice?30:90;
   if(!confirm(`Confirm renew for ${days} days?`))return;
   const r=await fetch(`/api/admin/renew/${token}`,{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({days})});
   const d=await r.json();
   if(d.success){showToast(`Renewed for ${days} days!`);loadAll();}
   else showToast('Error renewing',true);
 }
-async function deleteLink(token){if(!confirm('Delete permanently?'))return;await fetch(`/api/admin/delete/${token}`,{method:'DELETE',headers:{'x-admin-token':adminToken}});showToast('Deleted');loadAll();}
+async function deleteLink(token){if(!confirm('Move to Recycle Bin?'))return;await fetch(`/api/admin/delete/${token}`,{method:'DELETE',headers:{'x-admin-token':adminToken}});showToast('Moved to Recycle Bin');loadAll();}
 function copyText(text,btn){navigator.clipboard.writeText(text).then(()=>{if(btn){const orig=btn.innerHTML;btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#46d369" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';setTimeout(()=>btn.innerHTML=orig,2000);}showToast('Copied!');});}
 
 async function loadAccounts(){
@@ -1025,30 +1104,37 @@ function renderAccounts(accounts){
   const pc=['#E50914','#f5a623','#46d369','#4da6ff','#a78bfa','#ec4899','#14b8a6','#f97316'];
   list.innerHTML=accounts.map(a=>{
     const used=a.slotsUsed||0;
-    const circ=2*Math.PI*18,off=circ-(used/8)*circ;
-    const rc=used>=8?'#E50914':used>=6?'#f5a623':'#46d369';
-    const hc=used>=8?'#E50914':'#46d369';
-    const avatars=Array.from({length:8},(_,i)=>{
+    const total=a.slotsTotal||8;
+    const isTv=a.deviceType==='tv';
+    const circ=2*Math.PI*18,off=circ-(used/total)*circ;
+    const rc=used>=total?'#E50914':used>=total-2?'#f5a623':'#46d369';
+    const hc=used>=total?'#E50914':'#46d369';
+    const avatars=Array.from({length:total},(_,i)=>{
       const col=pc[i]||'#888';const letter=String.fromCharCode(65+i);
       return i<used
         ?`<div style="width:26px;height:26px;border-radius:50%;background:${col};display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;color:#fff;border:2px solid var(--bg);flex-shrink:0;position:relative">${letter}<div style="position:absolute;bottom:-1px;right:-1px;width:7px;height:7px;border-radius:50%;background:var(--green);border:1.5px solid var(--bg)"></div></div>`
         :`<div style="width:26px;height:26px;border-radius:50%;background:var(--s4);display:flex;align-items:center;justify-content:center;font-size:.55rem;color:var(--muted2);border:2px solid var(--s5);flex-shrink:0">${letter}</div>`;
     }).join('');
+    const deviceBadge=`<select onchange="updateAccountDeviceType('${esc(a.email)}',this.value)" style="background:${isTv?'rgba(245,166,35,.12)':'rgba(70,211,105,.12)'};border:1px solid ${isTv?'rgba(245,166,35,.3)':'rgba(70,211,105,.3)'};color:${isTv?'var(--amber)':'var(--green)'};font-family:var(--m);font-size:.58rem;padding:3px 8px;border-radius:5px;cursor:pointer;font-weight:600">
+      <option value="mobile" ${!isTv?'selected':''}>📱 Mobile (8)</option>
+      <option value="tv" ${isTv?'selected':''}>📺 TV (7)</option>
+    </select>`;
     return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
       <div style="width:8px;height:8px;border-radius:50%;background:${hc};flex-shrink:0"></div>
       <div style="flex:1;min-width:150px">
-        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="showAccountLinksModal('${esc(a.email)}')" title="Click to view all 8 slots">${esc(a.email)} <span style="color:var(--muted2);font-size:.6rem">👁</span></div>
+        <div style="font-family:var(--m);font-size:.78rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="showAccountLinksModal('${esc(a.email)}')" title="Click to view all slots">${esc(a.email)} <span style="color:var(--muted2);font-size:.6rem">👁</span></div>
         <div style="font-size:.65rem;color:var(--muted);margin-top:2px">${a.notes||'No notes'}</div>
         <div style="display:flex;align-items:center;gap:.5rem;margin-top:5px;flex-wrap:wrap">
+          ${deviceBadge}
           <select onchange="updateAccountPlan('${esc(a.email)}',this.value)" style="background:var(--s3);border:1px solid var(--s4);color:${a.planDays?'var(--amber)':'var(--muted2)'};font-family:var(--m);font-size:.58rem;padding:3px 8px;border-radius:5px;cursor:pointer">
             <option value="" ${!a.planDays?'selected':''}>Any plan</option>
-            <option value="28" ${a.planDays==28?'selected':''}>28 days only</option>
-            <option value="85" ${a.planDays==85?'selected':''}>85 days only</option>
+            <option value="30" ${a.planDays==30?'selected':''}>30 days only</option>
+            <option value="90" ${a.planDays==90?'selected':''}>90 days only</option>
             <option value="170" ${a.planDays==170?'selected':''}>170 days only</option>
           </select>
           ${a.expiresAt ? `<span style="font-family:var(--m);font-size:.58rem;color:${Math.ceil((a.expiresAt-Date.now())/86400000)<=7?'var(--red)':Math.ceil((a.expiresAt-Date.now())/86400000)<=30?'var(--amber)':'var(--green)'};cursor:pointer" onclick="editAccountExpiry('${esc(a.email)}',${a.expiresAt})">${Math.max(0,Math.ceil((a.expiresAt-Date.now())/86400000))}d left · ${new Date(a.expiresAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</span>` : `<span style="font-family:var(--m);font-size:.58rem;color:var(--muted2);cursor:pointer" onclick="editAccountExpiry('${esc(a.email)}',null)">+ Set expiry</span>`}
           ${a.pendingRelease>0?`<span style="background:rgba(245,166,35,.12);color:var(--amber);font-family:var(--m);font-size:.56rem;padding:2px 8px;border-radius:100px;cursor:pointer" onclick="showSection('pendingrelease')">⏳ ${a.pendingRelease} pending release</span>`:''}
-          <span style="font-family:var(--m);font-size:.56rem;color:${(8-(a.slotsUsed||0))>0?'var(--green)':'var(--muted2)'}">${8-(a.slotsUsed||0)} free</span>
+          <span style="font-family:var(--m);font-size:.56rem;color:${(total-used)>0?'var(--green)':'var(--muted2)'}">${total-used} free / ${total}</span>
         </div>
         ${a.activeDaysLeft&&a.activeDaysLeft.length?`<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem" title="Days left for each active customer">
           ${a.activeDaysLeft.map(d=>{
@@ -1096,6 +1182,18 @@ async function updateAccountPlan(email, planDays){
   else showToast('Error updating plan', true);
   loadAccounts();
 }
+async function updateAccountDeviceType(email, deviceType){
+  if(!confirm(`Change ${email} to ${deviceType==='tv'?'TV (7 slots)':'Mobile (8 slots)'}?\n\nThis affects how many customers can be assigned to this account going forward.`)){loadAccounts();return;}
+  const r = await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/devicetype',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':adminToken},
+    body: JSON.stringify({deviceType})
+  });
+  const d = await r.json();
+  if(d.success) showToast(`Set to ${deviceType==='tv'?'📺 TV (7 slots)':'📱 Mobile (8 slots)'}`);
+  else showToast('Error updating device type', true);
+  loadAccounts();
+}
 async function editAccountNotes(email){
   const newNotes=prompt('Edit notes for:\n'+email+'\n\nNew notes:');
   if(newNotes===null)return;
@@ -1114,7 +1212,7 @@ async function replaceAccEmail(oldEmail){
   else showToast('Error: '+(d.error||'?'),true);
 }
 function showAddAccountForm(){const f=document.getElementById('add-account-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
-async function addAccount(){const email=document.getElementById('acc-email').value.trim();const notes=document.getElementById('acc-notes').value.trim();const planDays=document.getElementById('acc-plan')?.value||null;const expiresStr=document.getElementById('acc-expires')?.value||'';const expiresAt=expiresStr?new Date(expiresStr).getTime():null;if(!email||!email.includes('@'))return showToast('Enter valid email',true);const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,notes,planDays:planDays?parseInt(planDays):null,expiresAt})});const d=await r.json();if(d.success){showToast('Account added!');document.getElementById('acc-email').value='';document.getElementById('acc-notes').value='';loadAccounts();}else showToast('Error: '+(d.error||'Unknown'),true);}
+async function addAccount(){const email=document.getElementById('acc-email').value.trim();const deviceType=document.getElementById('acc-devicetype')?.value||'mobile';const notes=document.getElementById('acc-notes').value.trim();const planDays=document.getElementById('acc-plan')?.value||null;const expiresStr=document.getElementById('acc-expires')?.value||'';const expiresAt=expiresStr?new Date(expiresStr).getTime():null;if(!email||!email.includes('@'))return showToast('Enter valid email',true);const r=await fetch('/api/admin/accounts',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({email,deviceType,notes,planDays:planDays?parseInt(planDays):null,expiresAt})});const d=await r.json();if(d.success){showToast('Account added!');document.getElementById('acc-email').value='';document.getElementById('acc-notes').value='';loadAccounts();}else showToast('Error: '+(d.error||'Unknown'),true);}
 async function toggleAccount(email){const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/toggle',{method:'POST',headers:{'x-admin-token':adminToken}});const d=await r.json();if(d.success)loadAccounts();else showToast('Error',true);}
 async function deleteAccount(email){
   if(!confirm('Delete account: '+email+'?\n\nThis also removes it from the accounts list.'))return;
@@ -1149,7 +1247,7 @@ async function loadWaitlist(){
       <div style="background:var(--s1);border:1px solid ${w.hasExistingLink&&!w.existingExpired?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
         <div style="flex:1;min-width:0">
           <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}${dupBadge}</div>
-          <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||28}d · ৳${w.amount||0}</div>
+          <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||30}d · ৳${w.amount||0}</div>
           <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(w.addedAt)}</div>
         </div>
         <button onclick="approveWaitlist('${esc(w.phone)}')" style="background:var(--green);color:#000;border:none;padding:6px 14px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">✅ Approve</button>
@@ -1237,7 +1335,7 @@ async function showAccountLinksModal(email){
     const d=await r.json();
     if(!d.success){body.innerHTML='<div style="color:var(--red);font-family:var(--m);font-size:.75rem">Error loading account.</div>';return;}
     body.innerHTML=`
-      <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.7rem">8 Profile Slots</div>
+      <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:.7rem">${d.slots.length} Profile Slots ${d.deviceType==='tv'?'📺 TV':'📱 Mobile'}</div>
       <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.3rem">
         ${d.slots.map(s=>{
           if(!s.occupant){
@@ -1477,13 +1575,13 @@ function filterCustomers(){
 async function cleanAllExpired(){
   const expired=Object.values(allLinks).filter(l=>l.expiresAt<=Date.now()&&!l.released);
   if(!expired.length){showToast('No expired links!');return;}
-  if(!confirm(`Delete ${expired.length} expired links permanently?`))return;
+  if(!confirm(`Move ${expired.length} expired links to Recycle Bin?`))return;
   let done=0;
   for(const l of expired){
     await fetch('/api/admin/delete/'+l.token,{method:'DELETE',headers:{'x-admin-token':adminToken}});
     done++;
   }
-  showToast(`✅ Deleted ${done} expired links`);
+  showToast(`✅ Moved ${done} links to Recycle Bin`);
   await loadAll();
   filterByStatus('expired');
 }
