@@ -1,7 +1,6 @@
 const express = require('express');
 const Imap = require('imap');
 const { simpleParser } = require('mailparser');
-const easyYopmail = require('easy-yopmail');
 
 // ── EMAIL CODE CACHE + PERSISTENT IMAP POLLER ───────────────────────────────
 const emailCodeCache = new Map(); // email → { codes: [], fetchedAt: timestamp }
@@ -24,103 +23,6 @@ function clearEmailCache(email) {
 function setCodesInCache(email, codes) {
   emailCodeCache.set(email.toLowerCase(), { codes, fetchedAt: Date.now() });
 }
-
-// ── YOPMAIL ACCOUNT CHECKER ──────────────────────────────────────────────────
-// Supplier delivers some Netflix accounts via yopmail forwarding instead of Gmail.
-// Three patterns:
-//  - 'shared': multiple Netflix accounts forward into ONE yopmail inbox - we
-//     figure out which account a code belongs to by scanning the email body
-//     for that account's outlook address (same principle as Gmail matching).
-//  - 'individual': one Netflix account, yopmail username auto-derived from
-//     the outlook username (e.g. gdxom9933@outlook.com -> gdxom9933@yopmail.com)
-function loadYopmailGroups() { try { return JSON.parse(fs.readFileSync(YOPMAIL_GROUPS_FILE,'utf8')); } catch(e) { return []; } }
-function saveYopmailGroups(data) { ensureDataDir(); fs.writeFileSync(YOPMAIL_GROUPS_FILE, JSON.stringify(data,null,2)); }
-
-const _processedYopmailIds = new Set(); // dedup - token "username|messageId"
-let _yopmailPolling = false;
-
-// Extracts a Netflix household/temporary-access code from plain-text email body.
-// Reuses the same 4-digit pattern + blocklist used for Gmail-sourced codes.
-function extractYopmailCode(bodyText) {
-  const matches = [...bodyText.matchAll(/\b(\d{4})\b/g)].map(m => m[1]);
-  for (const code of matches) {
-    if (!BLOCKED_CODES.includes(code)) return code;
-  }
-  return null;
-}
-
-async function checkYopmailGroup(group) {
-  try {
-    const result = await easyYopmail.getInbox(group.yopmailUsername, { from: '%netflix%' }, { LIMIT_MAIL: 5, ORDER: 'desc' });
-    if (!result || !result.inbox || !result.inbox.length) return;
-
-    for (const msg of result.inbox) {
-      const dedupKey = `${group.yopmailUsername}|${msg.id}`;
-      if (_processedYopmailIds.has(dedupKey)) continue;
-      _processedYopmailIds.add(dedupKey);
-      if (_processedYopmailIds.size > 2000) {
-        const arr = [..._processedYopmailIds];
-        _processedYopmailIds.clear();
-        arr.slice(-1000).forEach(k => _processedYopmailIds.add(k));
-      }
-
-      // Skip obvious non-code emails (newsletters etc.) before spending a request on them
-      const subjLower = (msg.subject||'').toLowerCase();
-      if (!subjLower.includes('code') && !subjLower.includes('household') && !subjLower.includes('sign')) continue;
-
-      let detail;
-      try {
-        detail = await easyYopmail.readMessage(group.yopmailUsername, msg.id, { format: 'txt' });
-      } catch(e) {
-        console.error(`Yopmail readMessage failed for ${group.yopmailUsername}:`, e.message);
-        continue;
-      }
-      const bodyText = (detail && detail.content) || '';
-      const code = extractYopmailCode(bodyText);
-      if (!code) continue;
-
-      // Figure out which linked Netflix account this code belongs to
-      let targetEmail = null;
-      if (group.type === 'individual') {
-        targetEmail = group.linkedEmails[0];
-      } else {
-        targetEmail = group.linkedEmails.find(e => bodyText.toLowerCase().includes(e.toLowerCase()));
-      }
-      if (!targetEmail) continue; // shared inbox, couldn't tell which account - skip rather than guess wrong
-
-      const now = Date.now();
-      const codeObj = { type:'household', label:'Temporary Access Code', code, to: targetEmail, ts: now, expiresAt: now + 15*60*1000 };
-      const existing = getCodesFromCache(targetEmail) || [];
-      const deduped = [codeObj, ...existing.filter(c => c.code !== code)].slice(0, 10);
-      setCodesInCache(targetEmail, deduped);
-    }
-  } catch(e) {
-    // Likely a CAPTCHA block page or yopmail structure change - we can't solve
-    // it blind without knowing yopmail's exact challenge format, so alert instead
-    // of silently failing. See CAPSOLVER_API_KEY note in code comments.
-    console.error(`Yopmail check failed for ${group.label||group.yopmailUsername}:`, e.message);
-    if (!group._lastErrorAlertAt || (Date.now() - group._lastErrorAlertAt) > 30*60*1000) {
-      group._lastErrorAlertAt = Date.now();
-      sendTelegram(`⚠️ <b>Yopmail Check Failed!</b>\n\n📧 ${group.label||group.yopmailUsername}\nError: ${e.message}\n\nMay be a CAPTCHA block or yopmail change - check manually if this keeps happening.`);
-    }
-  }
-}
-
-async function pollAllYopmailGroups() {
-  if (_yopmailPolling) return;
-  _yopmailPolling = true;
-  try {
-    const groups = loadYopmailGroups();
-    for (const group of groups) {
-      await checkYopmailGroup(group);
-      await new Promise(r => setTimeout(r, 2000)); // small gap between inboxes, avoid hammering yopmail
-    }
-  } catch(e) {
-    console.error('pollAllYopmailGroups error:', e.message);
-  }
-  _yopmailPolling = false;
-}
-setInterval(pollAllYopmailGroups, 45*1000); // check every 45s
 
 // ── PERSISTENT IMAP CONNECTION ───────────────────────────────────────────────
 let _imap = null;
@@ -298,14 +200,12 @@ const DATA_DIR = (() => {
 const LINKS_FILE = `${DATA_DIR}/links.json`;
 const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
 const IP_FILE = `${DATA_DIR}/ips.json`;
-const YOPMAIL_GROUPS_FILE = `${DATA_DIR}/yopmail-groups.json`;
 const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
 const UDDOKTAPAY_API_KEY = process.env.UDDOKTAPAY_API_KEY || 'WCHHkn251WojpUh2zKc8UKSVe5UXCRR0sOLkS6tL';
 const RESPONDIO_API_KEY = process.env.RESPONDIO_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzMzNjQsInNwYWNlSWQiOjM1MjU5OCwib3JnSWQiOjM0NzU3MywidHlwZSI6ImFwaSIsImlhdCI6MTc4NTQxMTk5M30.K1MNnRwqq2kZDdW8lg-EXH1vLEc8p_yTYNKr_uEWVF4';
 const RESPONDIO_CHANNEL_ID = 442671;
-const CAPSOLVER_API_KEY = process.env.CAPSOLVER_API_KEY || 'CAP-A6089C3C6476CFBB860064B24564A29CA024EDA1EB9BDBC7F5F400AD9CDA6294';
 
 // Sends the netflix_delivery WhatsApp template via Respond.io's Messages API.
 // Respond.io requires the contact to already exist before you can message them -
@@ -2418,71 +2318,6 @@ app.get('/api/codes', async (req, res) => {
 app.get('/admin-manifest.json', (req, res) => res.sendFile(path.join(__dirname,'public','admin-manifest.json')));
 app.get('/admin-sw.js', (req, res) => res.sendFile(path.join(__dirname,'public','admin-sw.js')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
-
-// Yopmail-linked Netflix accounts - admin management
-app.get('/api/admin/yopmail-groups', adminAuth, (req, res) => {
-  try {
-    const groups = loadYopmailGroups();
-    const withStatus = groups.map(g => ({
-      ...g,
-      lastCode: (() => {
-        // Show the most recent code across this group's linked accounts, if any
-        for (const email of g.linkedEmails) {
-          const cached = emailCodeCache.get(email.toLowerCase());
-          if (cached && cached.codes && cached.codes.length) {
-            return { email, code: cached.codes[0].code, ts: cached.codes[0].ts };
-          }
-        }
-        return null;
-      })(),
-    }));
-    res.json({ success:true, groups: withStatus });
-  } catch(e) { res.json({ success:true, groups: [] }); }
-});
-
-app.post('/api/admin/yopmail-groups', adminAuth, (req, res) => {
-  try {
-    const { type, label, yopmailUsername, linkedEmails } = req.body;
-    if (!type || !Array.isArray(linkedEmails) || !linkedEmails.length) {
-      return res.status(400).json({ success:false, error:'Missing type or linkedEmails' });
-    }
-    const groups = loadYopmailGroups();
-    const derivedUsername = type === 'individual'
-      ? linkedEmails[0].split('@')[0].toLowerCase()
-      : (yopmailUsername||'').replace(/@yopmail\.com$/i,'').toLowerCase();
-    if (!derivedUsername) return res.status(400).json({ success:false, error:'Missing yopmail username for shared group' });
-
-    groups.push({
-      id: crypto.randomBytes(4).toString('hex'),
-      type,
-      label: label || derivedUsername,
-      yopmailUsername: derivedUsername,
-      linkedEmails: linkedEmails.map(e => e.toLowerCase().trim()),
-      addedAt: Date.now(),
-    });
-    saveYopmailGroups(groups);
-    res.json({ success:true });
-  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
-});
-
-app.delete('/api/admin/yopmail-groups/:id', adminAuth, (req, res) => {
-  try {
-    const groups = loadYopmailGroups();
-    const filtered = groups.filter(g => g.id !== req.params.id);
-    saveYopmailGroups(filtered);
-    res.json({ success:true });
-  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
-});
-
-app.post('/api/admin/yopmail-groups/:id/check-now', adminAuth, async (req, res) => {
-  try {
-    const groups = loadYopmailGroups();
-    const group = groups.find(g => g.id === req.params.id);
-    if (!group) return res.status(404).json({ success:false, error:'Not found' });
-    await checkYopmailGroup(group);
-    res.json({ success:true });
-  } catch(e) { res.status(500).json({ success:false, error:e.message }); }
-});
 
 app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const accounts = loadAccounts();
