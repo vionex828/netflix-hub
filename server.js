@@ -204,6 +204,64 @@ const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
 const UDDOKTAPAY_API_KEY = process.env.UDDOKTAPAY_API_KEY || 'WCHHkn251WojpUh2zKc8UKSVe5UXCRR0sOLkS6tL';
+const RESPONDIO_API_KEY = process.env.RESPONDIO_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzMzNjQsInNwYWNlSWQiOjM1MjU5OCwib3JnSWQiOjM0NzU3MywidHlwZSI6ImFwaSIsImlhdCI6MTc4NTQxMTk5M30.K1MNnRwqq2kZDdW8lg-EXH1vLEc8p_yTYNKr_uEWVF4';
+const RESPONDIO_CHANNEL_ID = 442671;
+
+// Sends the netflix_delivery WhatsApp template via Respond.io's Messages API.
+// Returns true if Respond.io accepted the send request, false otherwise.
+// NOTE: "accepted" is not the same as "delivered" - Respond.io may still fail
+// to actually deliver (bad number, no WhatsApp, etc.) after accepting the call.
+async function sendWhatsAppDelivery(phone, email, profile, dashboardLink) {
+  try {
+    const num = String(phone).replace(/\D/g,'');
+    if (!num || num.length < 7) return false;
+    const respondPhone = num.startsWith('880') ? num : '880' + num.replace(/^0+/, '');
+
+    const payload = {
+      channelId: RESPONDIO_CHANNEL_ID,
+      message: {
+        type: 'whatsapp_template',
+        template: {
+          name: 'netflix_delivery',
+          languageCode: 'en',
+          components: [
+            { type: 'header', format: 'text', text: 'Your Netflix Account Is Ready!', parameters: [] },
+            {
+              type: 'body',
+              text: 'Email: {{1}}\nProfile: {{2}}\n\nDashboard Link: {{3}}\n\nLogin Guide (Must Watch):\nhttps://youtu.be/QGbMYXSumVc\n\n⚠️ Rules: Use this account only on the devices included in your purchase, do not change anything, and use the service only from Bangladesh. Violation may result in immediate subscription cancellation.',
+              parameters: [
+                { type: 'text', text: email },
+                { type: 'text', text: profile },
+                { type: 'text', text: dashboardLink },
+              ],
+            },
+            { type: 'footer', text: 'Thank you for choosing FanFlix BD.', parameters: [] },
+          ],
+        },
+      },
+    };
+
+    const res = await fetch(`https://api.respond.io/v2/contact/phone:${respondPhone}/message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESPONDIO_API_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Respond.io send failed:', res.status, errText.slice(0,300));
+      return false;
+    }
+    return true;
+  } catch(e) {
+    console.error('sendWhatsAppDelivery error:', e.message);
+    return false;
+  }
+}
+
 const UDDOKTAPAY_BASE_URL = process.env.UDDOKTAPAY_BASE_URL || 'https://payment.fanflixbd.com/api';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'https://pg.eps.com.bd/DefaultPaymentLink?id=805A9AEE';
 const WA_NUMBER = '8801928382918';
@@ -1705,8 +1763,12 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
     waitlist.splice(idx, 1);
     saveWaitlist(waitlist);
     checkLowStock();
-    sendTelegram(`✅ <b>Link Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${SITE_URL}/c/${token}\n⏳ ${d} days`);
-    res.json({ success:true, token, link:SITE_URL+'/c/'+token, profile:slot.profile, pin:slot.pin });
+    const dashLink = SITE_URL+'/c/'+token;
+    const sent = await sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink);
+    sendTelegram(sent
+      ? `✅ <b>Approved + WhatsApp Sent!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days`
+      : `⚠️ <b>Approved but WhatsApp Failed!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n❗ Please message this customer manually.`);
+    res.json({ success:true, token, link:dashLink, profile:slot.profile, pin:slot.pin, delivered:sent });
   } catch(e) {
     console.error('Approve error:', e.message);
     res.status(500).json({ success:false, error:e.message });
@@ -2096,17 +2158,40 @@ Added to waitlist.`);
     saveLinks(allLinks);
     checkLowStock();
 
-    sendTelegram(
-      `🔗 <b>Link Created — UddoktaPay!</b>
+    const dashLink = `${SITE_URL}/c/${token}`;
+    sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink).then(sent => {
+      if (sent) {
+        sendTelegram(
+          `✅ <b>Auto-Delivered via WhatsApp!</b>
 ` +
-      `👤 ${customerName} | 📱 ${sender_number}
+          `🤜 ${customerName} | 📱 ${sender_number}
 ` +
-      `👤 ${slot.profile} | PIN: ${slot.pin}
+          `🤜 ${slot.profile} | PIN: ${slot.pin}
 ` +
-      `🔗 ${SITE_URL}/c/${token}
+          `🔗 ${dashLink}
 ` +
-      `⏳ ${days} days`
-    );
+          `⏳ ${days} days
+
+` +
+          `📲 Sent automatically — no action needed`
+        );
+      } else {
+        sendTelegram(
+          `⚠️ <b>Link Created but WhatsApp Failed!</b>
+` +
+          `🤜 ${customerName} | 📱 ${sender_number}
+` +
+          `🤜 ${slot.profile} | PIN: ${slot.pin}
+` +
+          `🔗 ${dashLink}
+` +
+          `⏳ ${days} days
+
+` +
+          `❗ Please message this customer manually with the info above.`
+        );
+      }
+    });
 
   } catch(e) {
     console.error('UddoktaPay IPN error:', e.message);
@@ -2360,7 +2445,7 @@ app.post('/api/admin/settings', adminAuth, (req, res) => {
 });
 
 // ── AUTO CREATE LINK — accepts secret in header OR body ──────────────
-app.post('/api/auto-create', (req, res) => {
+app.post('/api/auto-create', async (req, res) => {
   try {
     const settings = loadSettings();
     if (!settings.autoLink) return res.status(403).json({ success:false, error:'Auto link is disabled' });
@@ -2369,23 +2454,62 @@ app.post('/api/auto-create', (req, res) => {
     const { phone, days, customerName } = req.body;
     if (!phone) return res.status(400).json({ error:'Phone required' });
     const d = normalizeDays(days);
+    const product = req.body.product || 'Netflix';
+    const amount = req.body.amount || 0;
+    const orderName = req.body.orderName || '';
+    const phoneNorm = phone.replace(/\D/g,'');
+    const now = Date.now();
 
-    // autoLink=ON → always go to waitlist for manual approval
-    const waitlist = loadWaitlist();
-    const alreadyWaiting = waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phone.replace(/\D/g,''));
-    if (!alreadyWaiting) {
-      waitlist.push({ phone, customerName: customerName||'', days: d, product: req.body.product||'Netflix', orderName: req.body.orderName||'', amount: req.body.amount||0, addedAt: Date.now() });
-      saveWaitlist(waitlist);
-    }
-    sendTelegram(
-      `🔔 <b>New Order — Pending Approval</b>\n\n` +
-      `👤 ${customerName||'Customer'} | 📱 ${phone}\n` +
-      `📦 ${req.body.product||'Netflix'} | ${d} days\n` +
-      `💰 ৳${req.body.amount||0}\n` +
-      `🛒 ${req.body.orderName||''}\n\n` +
-      `<b>Admin → Waitlist to approve</b>`
+    // Renewal check - if they already have an unreleased link, just extend it
+    const allLinks = loadLinks();
+    const existingActive = Object.values(allLinks).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
-    return res.json({ success:true, waitlisted:true });
+    if (existingActive.length > 0) {
+      for (const el of existingActive) renewCustomerLink(allLinks, el.token, d);
+      saveLinks(allLinks);
+      const first = existingActive[0];
+      const dashLink = `${SITE_URL}/c/${first.token}`;
+      sendWhatsAppDelivery(phone, first.email, first.profile, dashLink).then(sent => {
+        sendTelegram(sent
+          ? `🔄 <b>Auto-Renewed + WhatsApp Sent!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days`
+          : `🔄 <b>Auto-Renewed (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days\n\n❗ Please message manually.`);
+      });
+      return res.json({ success:true, renewed:true, token:first.token });
+    }
+
+    // New customer - try to assign a real slot immediately instead of always waitlisting
+    const slot = getNextAvailableSlot(d, detectDeviceType(product));
+    if (!slot) {
+      const waitlist = loadWaitlist();
+      const alreadyWaiting = waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phoneNorm);
+      if (!alreadyWaiting) {
+        waitlist.push({ phone, customerName: customerName||'', days: d, product, orderName, amount, addedAt: now });
+        saveWaitlist(waitlist);
+      }
+      sendTelegram(
+        `🔔 <b>New Order — No Slot Available</b>\n\n` +
+        `👤 ${customerName||'Customer'} | 📱 ${phone}\n` +
+        `📦 ${product} | ${d} days\n` +
+        `💰 ৳${amount}\n` +
+        `🛒 ${orderName}\n\n` +
+        `<b>Admin → Waitlist to approve when a slot frees up</b>`
+      );
+      return res.json({ success:true, waitlisted:true });
+    }
+
+    const token = generateToken();
+    allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName:customerName||'', plan:product, amount, orderName, renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    saveLinks(allLinks);
+    checkLowStock();
+
+    const dashLink = `${SITE_URL}/c/${token}`;
+    const sent = await sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink);
+    sendTelegram(sent
+      ? `✅ <b>Auto-Delivered via WhatsApp!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n📲 Sent automatically — no action needed`
+      : `⚠️ <b>Link Created but WhatsApp Failed!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n❗ Please message this customer manually with the info above.`);
+
+    return res.json({ success:true, token, delivered: sent });
   } catch(e) {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
