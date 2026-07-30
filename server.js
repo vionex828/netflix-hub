@@ -221,9 +221,11 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
     const firstName = (customerName || 'FanFlix Customer').split(' ')[0] || 'FanFlix';
     const lastName = (customerName || '').split(' ').slice(1).join(' ') || '';
 
-    // Step 1: create (or update) the contact - required before messaging is possible
+    // Step 1: create (or update) the contact - required before messaging is possible.
+    // Uses the same identifier-based URL pattern as the (confirmed working) message
+    // endpoint below: /v2/contact/phone:{number} - not a literal "/create" path.
     try {
-      const contactRes = await fetch('https://api.respond.io/v2/contact/create', {
+      const contactRes = await fetch(`https://api.respond.io/v2/contact/phone:${respondPhone}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
