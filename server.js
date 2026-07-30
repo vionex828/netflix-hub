@@ -240,7 +240,10 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
       if (!contactRes.ok) {
         const errText = await contactRes.text();
         // Contact may already exist - that's fine, not a real failure. Only log unexpected errors.
-        if (contactRes.status !== 409) {
+        // Respond.io returns 403 (not 409) when the contact already exists - that's
+        // fine, not a real failure, so only log genuinely unexpected errors.
+        const alreadyExists = contactRes.status === 403 && /already exist/i.test(errText);
+        if (!alreadyExists) {
           console.error('Respond.io contact create failed:', contactRes.status, errText.slice(0,300));
         }
       }
@@ -274,18 +277,35 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
       },
     };
 
-    const res = await fetch(`https://api.respond.io/v2/contact/phone:${respondPhone}/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESPONDIO_API_KEY}`,
-      },
-      body: JSON.stringify(payload),
-    });
+    // Respond.io's own guidance: wait 5-10s after creating a contact before the
+    // next action (message send) - the contact resource needs time to finish
+    // being created on their end first.
+    await new Promise(r => setTimeout(r, 8000));
+
+    // Retry on 449 (Respond.io's own "queued, try again shortly" status).
+    // Growing backoff (10s, 20s, 30s) - a freshly-connected WhatsApp channel can
+    // take longer than a few seconds to fully activate for sending.
+    let res, lastErrText = '';
+    const backoffs = [10000, 20000, 30000];
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      res = await fetch(`https://api.respond.io/v2/contact/phone:${respondPhone}/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${RESPONDIO_API_KEY}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) break;
+      lastErrText = await res.text();
+      if (res.status !== 449 || attempt > backoffs.length) break; // only retry on queue-delay status
+      const wait = backoffs[attempt-1];
+      console.error(`Respond.io send queued (attempt ${attempt}/4), retrying in ${wait/1000}s...`);
+      await new Promise(r => setTimeout(r, wait));
+    }
 
     if (!res.ok) {
-      const errText = await res.text();
-      console.error('Respond.io send failed:', res.status, errText.slice(0,300));
+      console.error('Respond.io send failed:', res.status, lastErrText.slice(0,300));
       return false;
     }
     return true;
@@ -1797,11 +1817,23 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
     saveWaitlist(waitlist);
     checkLowStock();
     const dashLink = SITE_URL+'/c/'+token;
-    const sent = await sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink, w.customerName);
-    sendTelegram(sent
-      ? `✅ <b>Approved + WhatsApp Sent!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days`
-      : `⚠️ <b>Approved but WhatsApp Failed!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n❗ Please message this customer manually.`);
-    res.json({ success:true, token, link:dashLink, profile:slot.profile, pin:slot.pin, delivered:sent });
+    res.json({ success:true, token, link:dashLink, profile:slot.profile, pin:slot.pin, pendingWhatsApp:true });
+    sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink, w.customerName).then(sent => {
+      if (sent) {
+        sendTelegram(`✅ <b>Approved + WhatsApp Sent!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days`);
+      } else {
+        // WhatsApp failed even after retries - undo the slot assignment and put back in waitlist
+        const currentLinks = loadLinks();
+        delete currentLinks[token];
+        saveLinks(currentLinks);
+        const currentWaitlist = loadWaitlist();
+        if (!currentWaitlist.find(x => x.phone === phone)) {
+          currentWaitlist.push({ phone, customerName: w.customerName||'', days: d, product: w.product||'', orderName: w.orderName||'', amount: w.amount||0, addedAt: Date.now() });
+          saveWaitlist(currentWaitlist);
+        }
+        sendTelegram(`⚠️ <b>WhatsApp Failed — Back in Waitlist!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n\nSlot released, customer moved back to Waitlist. Approve manually when ready.`);
+      }
+    });
   } catch(e) {
     console.error('Approve error:', e.message);
     res.status(500).json({ success:false, error:e.message });
@@ -2209,19 +2241,22 @@ Added to waitlist.`);
           `📲 Sent automatically — no action needed`
         );
       } else {
+        // WhatsApp failed even after retries - undo the slot assignment and put in waitlist
+        const currentLinks = loadLinks();
+        delete currentLinks[token];
+        saveLinks(currentLinks);
+        const currentWaitlist = loadWaitlist();
+        if (!currentWaitlist.find(x => x.phone === phone)) {
+          currentWaitlist.push({ phone, customerName, days, product, orderName, amount: amountNum, addedAt: Date.now() });
+          saveWaitlist(currentWaitlist);
+        }
         sendTelegram(
-          `⚠️ <b>Link Created but WhatsApp Failed!</b>
+          `⚠️ <b>WhatsApp Failed — Back in Waitlist!</b>
 ` +
           `🤜 ${customerName} | 📱 ${sender_number}
-` +
-          `🤜 ${slot.profile} | PIN: ${slot.pin}
-` +
-          `🔗 ${dashLink}
-` +
-          `⏳ ${days} days
 
 ` +
-          `❗ Please message this customer manually with the info above.`
+          `Slot released, customer moved back to Waitlist. Approve manually when ready.`
         );
       }
     });
@@ -2537,12 +2572,23 @@ app.post('/api/auto-create', async (req, res) => {
     checkLowStock();
 
     const dashLink = `${SITE_URL}/c/${token}`;
-    const sent = await sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink, customerName);
-    sendTelegram(sent
-      ? `✅ <b>Auto-Delivered via WhatsApp!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n📲 Sent automatically — no action needed`
-      : `⚠️ <b>Link Created but WhatsApp Failed!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n❗ Please message this customer manually with the info above.`);
-
-    return res.json({ success:true, token, delivered: sent });
+    res.json({ success:true, token, delivered: 'pending' });
+    sendWhatsAppDelivery(phone, slot.email, slot.profile, dashLink, customerName).then(sent => {
+      if (sent) {
+        sendTelegram(`✅ <b>Auto-Delivered via WhatsApp!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n👤 ${slot.profile} | PIN: ${slot.pin}\n🔗 ${dashLink}\n⏳ ${d} days\n\n📲 Sent automatically — no action needed`);
+      } else {
+        // WhatsApp failed even after retries - undo the slot assignment and put in waitlist
+        const currentLinks = loadLinks();
+        delete currentLinks[token];
+        saveLinks(currentLinks);
+        const currentWaitlist = loadWaitlist();
+        if (!currentWaitlist.find(x => x.phone === phone)) {
+          currentWaitlist.push({ phone, customerName: customerName||'', days: d, product, orderName, amount, addedAt: Date.now() });
+          saveWaitlist(currentWaitlist);
+        }
+        sendTelegram(`⚠️ <b>WhatsApp Failed — Back in Waitlist!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n\nSlot released, customer moved back to Waitlist. Approve manually when ready.`);
+      }
+    });
   } catch(e) {
     console.error('Auto create error:', e.message);
     res.status(500).json({ success:false, error: e.message });
