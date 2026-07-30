@@ -252,7 +252,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-item" onclick="showSection('pendingrelease')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Pending Release<span class="sb-badge" id="sb-pendingrelease-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('accountperf')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Account Performance</div>
       <div class="sb-item" onclick="showSection('recyclebin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Recycle Bin<span class="sb-badge" id="sb-recyclebin-count" style="background:var(--muted2)">0</span></div>
-      <div class="sb-item" onclick="showSection('yopmail')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>Yopmail Accounts</div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
     </nav>
@@ -396,39 +395,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="recyclebin-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
-      <div id="section-yopmail" style="display:none;padding:1.5rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-          <div style="font-size:1.1rem;font-weight:700">Yopmail Accounts</div>
-          <button onclick="showAddYopmailForm()" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem">+ Add Group</button>
-        </div>
-        <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Netflix accounts delivered via yopmail forwarding instead of Gmail. Checked automatically every 45s — no more manual yopmail.com visits.</div>
-
-        <div id="add-yopmail-form" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-bottom:1rem">
-          <div style="margin-bottom:.8rem">
-            <label class="form-label">Type</label>
-            <select class="form-inp" id="yop-type" onchange="toggleYopmailFormFields()" style="cursor:pointer">
-              <option value="individual">Individual (auto-derived yopmail address)</option>
-              <option value="shared">Shared (multiple accounts, one yopmail inbox)</option>
-            </select>
-          </div>
-          <div id="yop-shared-fields" style="display:none;margin-bottom:.8rem">
-            <label class="form-label">Yopmail Username (before @yopmail.com)</label>
-            <input class="form-inp" id="yop-username" placeholder="e.g. helloresellersnft"/>
-          </div>
-          <div style="margin-bottom:.8rem">
-            <label class="form-label">Label (optional)</label>
-            <input class="form-inp" id="yop-label" placeholder="e.g. Group 1"/>
-          </div>
-          <div style="margin-bottom:.8rem">
-            <label class="form-label">Linked Netflix Account Email(s) — one per line</label>
-            <textarea class="form-inp" id="yop-linked-emails" rows="3" placeholder="rh-ck@outlook.com&#10;zh-bp@outlook.com" style="resize:vertical;font-family:var(--m);font-size:.75rem"></textarea>
-          </div>
-          <button class="create-btn" onclick="addYopmailGroup()">Add Group</button>
-        </div>
-
-        <div id="yopmail-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
-      </div>
-
       <div id="section-customers" style="display:none;padding:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem">
           <div style="font-size:1.1rem;font-weight:700">Customers</div>
@@ -529,7 +495,7 @@ function doUniversalSearch(q){
 function jumpToUniversalResult(phone){
   document.getElementById('universal-search-results').style.display='none';
   document.getElementById('universal-search-inp').value='';
-  const secs=['section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin','section-yopmail'];
+  const secs=['section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const dash=document.getElementById('sec-dashboard');if(dash)dash.style.display='block';
   const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
@@ -593,75 +559,6 @@ async function loadLinks(){
     const sbb=document.getElementById('sb-active-count');if(sbb)sbb.textContent=active;
   }catch(e){}
 }
-function showAddYopmailForm(){const f=document.getElementById('add-yopmail-form');if(f)f.style.display=f.style.display==='none'?'block':'none';}
-function toggleYopmailFormFields(){
-  const type=document.getElementById('yop-type').value;
-  const sharedFields=document.getElementById('yop-shared-fields');
-  if(sharedFields)sharedFields.style.display=type==='shared'?'block':'none';
-}
-async function addYopmailGroup(){
-  const type=document.getElementById('yop-type').value;
-  const label=document.getElementById('yop-label').value.trim();
-  const yopmailUsername=document.getElementById('yop-username').value.trim();
-  const linkedEmailsRaw=document.getElementById('yop-linked-emails').value.trim();
-  const linkedEmails=linkedEmailsRaw.split('\n').map(e=>e.trim()).filter(e=>e);
-  if(!linkedEmails.length)return showToast('Enter at least one linked email',true);
-  if(type==='shared'&&!yopmailUsername)return showToast('Enter the shared yopmail username',true);
-  const r=await fetch('/api/admin/yopmail-groups',{method:'POST',headers:{'Content-Type':'application/json','x-admin-token':adminToken},body:JSON.stringify({type,label,yopmailUsername,linkedEmails})});
-  const d=await r.json();
-  if(d.success){
-    showToast('✅ Group added');
-    document.getElementById('yop-label').value='';
-    document.getElementById('yop-username').value='';
-    document.getElementById('yop-linked-emails').value='';
-    document.getElementById('add-yopmail-form').style.display='none';
-    loadYopmailGroups();
-  }else showToast('Error: '+(d.error||'Unknown'),true);
-}
-async function loadYopmailGroups(){
-  const list=document.getElementById('yopmail-list');
-  if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
-  try{
-    const r=await fetch('/api/admin/yopmail-groups',{headers:{'x-admin-token':adminToken}});
-    const d=await r.json();
-    const groups=d.groups||[];
-    if(!list)return;
-    if(!groups.length){list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No yopmail groups added yet.</div>';return;}
-    list.innerHTML=groups.map(g=>{
-      const typeLabel=g.type==='shared'?`🔗 Shared (${g.linkedEmails.length} accounts)`:'👤 Individual';
-      const lastCodeHtml=g.lastCode
-        ?`<div style="font-family:var(--m);font-size:.65rem;color:var(--green);margin-top:4px">🔑 ${esc(g.lastCode.code)} for ${esc(g.lastCode.email)} · ${timeAgo(g.lastCode.ts)}</div>`
-        :`<div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:4px">No code received yet</div>`;
-      return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
-          <div style="flex:1;min-width:200px">
-            <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(g.label||g.yopmailUsername)} <span style="color:var(--muted2);font-size:.6rem">(${esc(g.yopmailUsername)}@yopmail.com)</span></div>
-            <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);margin-top:2px">${typeLabel}</div>
-            <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${g.linkedEmails.map(e=>esc(e)).join(', ')}</div>
-            ${lastCodeHtml}
-          </div>
-          <div style="display:flex;gap:.5rem">
-            <button onclick="checkYopmailNow('${g.id}')" style="background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:6px 12px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.62rem">🔄 Check Now</button>
-            <button onclick="deleteYopmailGroup('${g.id}')" style="background:var(--red);color:#fff;border:none;padding:6px 12px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.62rem">🗑</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){if(list)list.innerHTML='<div style="color:var(--red);padding:1rem;font-family:var(--m)">Error loading</div>';}
-}
-async function checkYopmailNow(id){
-  showToast('Checking...');
-  await fetch('/api/admin/yopmail-groups/'+id+'/check-now',{method:'POST',headers:{'x-admin-token':adminToken}});
-  showToast('✅ Checked');
-  loadYopmailGroups();
-}
-async function deleteYopmailGroup(id){
-  if(!confirm('Remove this yopmail group?'))return;
-  await fetch('/api/admin/yopmail-groups/'+id,{method:'DELETE',headers:{'x-admin-token':adminToken}});
-  showToast('Removed');
-  loadYopmailGroups();
-}
-
 async function loadRecycleBin(){
   const list=document.getElementById('recyclebin-list');
   if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
@@ -823,10 +720,10 @@ async function replaceAllLinks(){
   const d=await r.json();if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin','section-yopmail'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
+function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
 const REVOKE_REASON_LABELS={outside_bd:'🌍 Outside Bangladesh login',pin_change:'🔑 Unauthorized PIN/profile change',multi_device:'📱 Multiple device sharing',security:'⚠️ Netflix account security issue',payment:'💳 Payment issue',other:null};
 function showRevoked(){
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin','section-yopmail'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('sec-dashboard').style.display='block';
   const t=document.getElementById('topbar-title');if(t)t.textContent='Revoked Links';
@@ -866,7 +763,7 @@ function filterLinks(resetAcctFilter){
   }
 }
 
-function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin','section-yopmail'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
+function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
   // Show clean all expired button when viewing expired
   const cleanBtn=document.getElementById('clean-expired-btn');
   if(cleanBtn)cleanBtn.style.display=status==='expired'?'inline-flex':'none';
@@ -887,7 +784,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin','section-yopmail'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -926,11 +823,6 @@ function showSection(s){
     document.getElementById('section-recyclebin').style.display='block';
     if(t)t.textContent='Recycle Bin';
     loadRecycleBin();return;
-  }
-  if(s==='yopmail'){
-    document.getElementById('section-yopmail').style.display='block';
-    if(t)t.textContent='Yopmail Accounts';
-    loadYopmailGroups();return;
   }
   if(s==='settings'){
     document.getElementById('section-settings').style.display='block';
