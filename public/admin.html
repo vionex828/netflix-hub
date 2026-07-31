@@ -604,6 +604,13 @@ async function emptyRecycleBin(){
   loadRecycleBin();
 }
 
+async function clearBannedFlag(email){
+  if(!confirm('Mark this account as fixed? This clears the "Account Issue" flag.'))return;
+  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email)+'/clear-banned',{method:'POST',headers:{'x-admin-token':adminToken}});
+  const d=await r.json();
+  if(d.success){showToast('✅ Flag cleared');loadAccountPerformance();}
+  else showToast('Error clearing flag',true);
+}
 async function loadAccountPerformance(){
   const list=document.getElementById('accountperf-list');
   if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
@@ -616,15 +623,19 @@ async function loadAccountPerformance(){
     list.innerHTML=accounts.map((a,i)=>{
       const riskColor=a.riskScore>=8?'var(--red)':a.riskScore>=3?'var(--amber)':'var(--green)';
       const riskLabel=a.riskScore>=8?'⚠️ High Risk':a.riskScore>=3?'⚡ Moderate':'✅ Healthy';
-      return `<div style="background:var(--s1);border:1px solid ${a.riskScore>=8?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
+      const bannedBadge=a.bannedDetected?`<span style="background:rgba(229,9,20,.15);color:var(--red);font-family:var(--m);font-size:.6rem;padding:3px 9px;border-radius:100px;font-weight:700;margin-left:6px">🚫 ACCOUNT ISSUE (${timeAgo(a.bannedAt)})</span>`:'';
+      return `<div style="background:var(--s1);border:1px solid ${a.bannedDetected?'rgba(229,9,20,.5)':a.riskScore>=8?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem">
           <div style="flex:1;min-width:200px">
-            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;cursor:pointer" onclick="showAccountLinksModal('${esc(a.email)}')">${i+1}. ${esc(a.email)}</div>
+            <div style="font-family:var(--m);font-size:.78rem;font-weight:600;cursor:pointer" onclick="showAccountLinksModal('${esc(a.email)}')">${i+1}. ${esc(a.email)}${bannedBadge}</div>
             <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);margin-top:3px">
               🌍 ${a.outsideBdCount} outside-BD · 🔑 ${a.pinChangeCount} PIN changes · 📉 ${a.nonRenewalRate}% non-renewal
             </div>
           </div>
-          <span style="color:${riskColor};font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">${riskLabel}</span>
+          <div style="display:flex;align-items:center;gap:.6rem">
+            <span style="color:${riskColor};font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">${riskLabel}</span>
+            ${a.bannedDetected?`<button onclick="clearBannedFlag('${esc(a.email)}')" style="background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:5px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">Mark Fixed</button>`:''}
+          </div>
         </div>
       </div>`;
     }).join('');
