@@ -5,6 +5,7 @@ const { simpleParser } = require('mailparser');
 // ── EMAIL CODE CACHE + PERSISTENT IMAP POLLER ───────────────────────────────
 const emailCodeCache = new Map(); // email → { codes: [], fetchedAt: timestamp }
 const alertedSignins = new Set(); // dedup outside-BD login alerts (ts+email)
+const alertedBanned = new Set(); // dedup Netflix account-banned alerts (ts+email)
 const alertedPinChanges = new Set(); // dedup PIN change alerts (ts+email+profile)
 
 function getCodesFromCache(email) {
@@ -517,17 +518,11 @@ async function checkGeoAndAlert(token, ip) {
       const links = loadLinks();
       const link = links[token];
 
-      // Instant auto-block - customer can be reactivated later from admin if it was a mistake
-      if (link && link.active) {
-        link.active = false;
-        link.revokedReason = 'outside_bd';
-        link.revokedCountry = geo.country;
-        link.revokedIp = ip;
-        link.revokedAt = Date.now();
-        saveLinks(links);
-      }
-
-      sendTelegram(`🚨 <b>Outside BD Login — Auto-Blocked!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n⛔ Dashboard access blocked instantly. Reactivate from admin if this is a mistake.`);
+      // Detection only - no auto-block. Railway's edge/proxy IP forwarding has
+      // been unreliable during region changes, causing false positives that
+      // wrongly locked out real customers. Admin reviews and revokes manually
+      // from the Outside BD Login section if this is confirmed genuine.
+      sendTelegram(`🌍 <b>Outside BD Login Detected!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n👉 Review in Admin → Outside BD Login and revoke manually if confirmed genuine.`);
       try {
         const alerts = loadNetflixAlerts();
         alerts.unshift({
@@ -945,6 +940,34 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     }
     return null;
   }
+  // Netflix account banned/cancelled detection - "Welcome back! It's easy to
+  // rejoin Netflix" is what Netflix sends when an account has been cancelled
+  // (voluntarily or by Netflix). Flag the account so admin sees it and
+  // customers on that account see a clear status message instead of a
+  // blank/endless-loading dashboard.
+  const isBannedNotice = sl.includes('rejoin netflix') || (sl.includes('welcome back') && bodyPlain.toLowerCase().includes('restart your membership'));
+  if (isBannedNotice) {
+    const bannedKey = toEmail + '_' + ts;
+    if (!alertedBanned.has(bannedKey)) {
+      alertedBanned.add(bannedKey);
+      try {
+        const accounts = loadAccounts();
+        const idx = accounts.findIndex(a => a.email === toEmail);
+        if (idx !== -1) {
+          accounts[idx].bannedDetected = true;
+          accounts[idx].bannedAt = ts;
+          saveAccounts(accounts);
+        }
+        sendTelegram(`🚫 <b>Netflix Account Issue Detected!</b>\n\n📧 ${toEmail}\n\nNetflix sent a "rejoin" email - this usually means the account was cancelled or banned. Customers on this account will now see a status message on their dashboard.\n\n👉 Check Account Performance in admin for details.`);
+      } catch(e) { console.error('Banned account flag error:', e.message); }
+      if (alertedBanned.size > 500) {
+        const arr = [...alertedBanned];
+        alertedBanned.clear();
+        arr.slice(-200).forEach(k => alertedBanned.add(k));
+      }
+    }
+    return null;
+  }
     // PIN change detection
   const isPinChange = sl.includes('pin for profile') || sl.includes('new pin for') || sl.includes('pin has changed');
   if (isPinChange) {
@@ -1097,7 +1120,7 @@ app.post('/tg-webhook', async (req, res) => {
     const matchedAccount = accountsForCreate.find(a => a.email === email);
     const profileConfig = getSlotConfig(matchedAccount);
     const maxSlotsHere = getMaxSlotsForAccount(matchedAccount);
-    const existing = Object.values(links).filter(l => l.email===email && l.active && l.expiresAt>now);
+    const existing = Object.values(links).filter(l => l.email===email && l.active && !l.released);
     if (existing.length >= maxSlotsHere) return sendTelegram(`❌ Account Full! ${email} has ${maxSlotsHere}/${maxSlotsHere} active links.\nUse /list ${email}`, chatId);
     const created = [];
     for (const prof of profileConfig) {
@@ -1283,9 +1306,9 @@ app.post('/api/admin/create', adminAuth, (req, res) => {
   const normalizedProfile = normalizeProfile(profile);
   const normalizedPin = pin;
   // Check if active link already exists for this email+profile
-  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&normalizeProfile(l.profile)===normalizedProfile&&l.active&&l.expiresAt>now);
+  const existing = Object.values(links).find(l => l.email===email.toLowerCase()&&normalizeProfile(l.profile)===normalizedProfile&&l.active&&!l.released);
   if (existing) return res.json({ success:true, token:existing.token, link:`/c/${existing.token}`, existing:true });
-  const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&l.expiresAt>now).length;
+  const activeCount = Object.values(links).filter(l => l.email===email.toLowerCase()&&l.active&&!l.released).length;
   const acctForCreate = loadAccounts().find(a => a.email === email.toLowerCase());
   const maxForCreate = getMaxSlotsForAccount(acctForCreate);
   if (activeCount >= maxForCreate) return res.status(400).json({ error:`Account full (${maxForCreate}/${maxForCreate})` });
@@ -1357,13 +1380,30 @@ app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
 app.post('/api/admin/replaceall', adminAuth, (req, res) => {
   const { oldEmail, newEmail } = req.body;
   if (!oldEmail||!newEmail) return res.status(400).json({ error:'Missing fields' });
+  const oldNorm = oldEmail.toLowerCase().trim();
+  const newNorm = newEmail.toLowerCase().trim();
   const links = loadLinks();
   let count = 0;
   for (const token of Object.keys(links)) {
-    if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
+    if (links[token].email.toLowerCase().trim() === oldNorm) { links[token].email = newNorm; count++; }
   }
   saveLinks(links);
   cache.clear();
+
+  // Keep accounts.json in sync too - carry over deviceType/planDays/notes from the
+  // old account entry to the new email, so Netflix Accounts section stays correct.
+  const accounts = loadAccounts();
+  const oldAcctIdx = accounts.findIndex(a => a.email === oldNorm);
+  const newAcctExists = accounts.find(a => a.email === newNorm);
+  if (oldAcctIdx !== -1 && !newAcctExists) {
+    accounts[oldAcctIdx].email = newNorm;
+    saveAccounts(accounts);
+  } else if (oldAcctIdx !== -1 && newAcctExists) {
+    // New email already registered as its own account - just remove the old one
+    accounts.splice(oldAcctIdx, 1);
+    saveAccounts(accounts);
+  }
+
   res.json({ success:true, count });
 });
 
@@ -1506,6 +1546,14 @@ app.get('/api/link/:token', async (req, res) => {
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false, error:'invalid', message:'Invalid link.' });
   if (!link.active) return res.status(403).json({ success:false, error:'revoked', message:getRevokeReasonText(link), reason:link.revokedReason||null, country:link.revokedCountry||null, ip:link.revokedIp||null });
+  // Check if the Netflix account itself has a detected issue (banned/cancelled by Netflix)
+  try {
+    const accounts = loadAccounts();
+    const acct = accounts.find(a => a.email === link.email);
+    if (acct && acct.bannedDetected) {
+      return res.status(503).json({ success:false, error:'account_issue', message:'We are aware of an issue with this account and are working to resolve it. Please check back shortly, or contact support.', profile:link.profile, token:req.params.token });
+    }
+  } catch(e) {}
   const now = Date.now();
   const daysLeft = Math.ceil((link.expiresAt-now)/(24*60*60*1000));
   const totalDays = link.days || 30;
@@ -2432,8 +2480,10 @@ app.get('/api/admin/account-performance', adminAuth, (req, res) => {
         pinChangeCount,
         nonRenewalRate,
         riskScore,
+        bannedDetected: a.bannedDetected || false,
+        bannedAt: a.bannedAt || null,
       };
-    }).sort((a,b) => b.riskScore - a.riskScore);
+    }).sort((a,b) => (b.bannedDetected?1:0) - (a.bannedDetected?1:0) || b.riskScore - a.riskScore);
 
     res.json({ success:true, accounts: result });
   } catch(e) { res.status(500).json({ success:false, error:e.message }); }
@@ -2499,6 +2549,17 @@ app.post('/api/admin/accounts/:email/devicetype', adminAuth, (req, res) => {
   accounts[idx].deviceType = req.body.deviceType === 'tv' ? 'tv' : 'mobile';
   saveAccounts(accounts);
   res.json({ success:true, deviceType: accounts[idx].deviceType });
+});
+
+app.post('/api/admin/accounts/:email/clear-banned', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const target = decodeURIComponent(req.params.email).trim().toLowerCase();
+  const idx = accounts.findIndex(a => a.email === target);
+  if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
+  delete accounts[idx].bannedDetected;
+  delete accounts[idx].bannedAt;
+  saveAccounts(accounts);
+  res.json({ success:true });
 });
 
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
