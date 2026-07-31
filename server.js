@@ -2578,10 +2578,8 @@ app.post('/api/auto-create', async (req, res) => {
       return res.json({ success:true, renewed:true, token:first.token });
     }
 
-    // Send order confirmation immediately, then wait 20s before attempting delivery
-    sendOrderConfirmation(phone, customerName, product, amount, orderName).then(sent => {
-      if (!sent) console.error('order_confirmation send failed for', phone);
-    });
+    // EPS bot already sent order_confirmation before calling this endpoint.
+    // Wait 20s before attempting delivery, spacing the two WhatsApp messages out.
     await new Promise(r => setTimeout(r, 20000));
 
     // New customer - try to assign a real slot immediately instead of always waitlisting
