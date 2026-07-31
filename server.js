@@ -207,13 +207,13 @@ const UDDOKTAPAY_API_KEY = process.env.UDDOKTAPAY_API_KEY || 'WCHHkn251WojpUh2zK
 const RESPONDIO_API_KEY = process.env.RESPONDIO_API_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MzMzNjQsInNwYWNlSWQiOjM1MjU5OCwib3JnSWQiOjM0NzU3MywidHlwZSI6ImFwaSIsImlhdCI6MTc4NTQxMTk5M30.K1MNnRwqq2kZDdW8lg-EXH1vLEc8p_yTYNKr_uEWVF4';
 const RESPONDIO_CHANNEL_ID = 442671;
 
-// Sends the netflix_delivery WhatsApp template via Respond.io's Messages API.
+// Generic WhatsApp template sender via Respond.io's Messages API.
 // Respond.io requires the contact to already exist before you can message them -
 // so we create (or update, if already exists) the contact first, then send.
 // Returns true if Respond.io accepted the send request, false otherwise.
 // NOTE: "accepted" is not the same as "delivered" - Respond.io may still fail
 // to actually deliver (bad number, no WhatsApp, etc.) after accepting the call.
-async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, customerName) {
+async function sendWhatsAppTemplate(phone, customerName, templateName, components) {
   try {
     const num = String(phone).replace(/\D/g,'');
     if (!num || num.length < 7) return false;
@@ -222,8 +222,6 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
     const lastName = (customerName || '').split(' ').slice(1).join(' ') || '';
 
     // Step 1: create (or update) the contact - required before messaging is possible.
-    // Uses the same identifier-based URL pattern as the (confirmed working) message
-    // endpoint below: /v2/contact/phone:{number} - not a literal "/create" path.
     try {
       const contactRes = await fetch(`https://api.respond.io/v2/contact/phone:${respondPhone}`, {
         method: 'POST',
@@ -231,60 +229,32 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${RESPONDIO_API_KEY}`,
         },
-        body: JSON.stringify({
-          phone: `+${respondPhone}`,
-          firstName,
-          lastName,
-        }),
+        body: JSON.stringify({ phone: `+${respondPhone}`, firstName, lastName }),
       });
       if (!contactRes.ok) {
         const errText = await contactRes.text();
-        // Contact may already exist - that's fine, not a real failure. Only log unexpected errors.
-        // Respond.io returns 403 (not 409) when the contact already exists - that's
-        // fine, not a real failure, so only log genuinely unexpected errors.
         const alreadyExists = contactRes.status === 403 && /already exist/i.test(errText);
         if (!alreadyExists) {
-          console.error('Respond.io contact create failed:', contactRes.status, errText.slice(0,300));
+          console.error(`Respond.io contact create failed (${templateName}):`, contactRes.status, errText.slice(0,300));
         }
       }
     } catch(e) {
-      console.error('Respond.io contact create error:', e.message);
-      // Don't abort - still try the message send below in case contact already existed
+      console.error(`Respond.io contact create error (${templateName}):`, e.message);
     }
 
-    // Step 2: send the message now that the contact should exist
     const payload = {
       channelId: RESPONDIO_CHANNEL_ID,
       message: {
         type: 'whatsapp_template',
-        template: {
-          name: 'netflix_delivery',
-          languageCode: 'en',
-          components: [
-            { type: 'header', format: 'text', text: 'Your Netflix Account Is Ready!', parameters: [] },
-            {
-              type: 'body',
-              text: 'Email: {{1}}\nProfile: {{2}}\n\nDashboard Link: {{3}}\n\nLogin Guide (Must Watch):\nhttps://youtu.be/QGbMYXSumVc\n\n⚠️ Rules: Use this account only on the devices included in your purchase, do not change anything, and use the service only from Bangladesh. Violation may result in immediate subscription cancellation.',
-              parameters: [
-                { type: 'text', text: email },
-                { type: 'text', text: profile },
-                { type: 'text', text: dashboardLink },
-              ],
-            },
-            { type: 'footer', text: 'Thank you for choosing FanFlix BD.', parameters: [] },
-          ],
-        },
+        template: { name: templateName, languageCode: 'en', components },
       },
     };
 
-    // Respond.io's own guidance: wait 5-10s after creating a contact before the
-    // next action (message send) - the contact resource needs time to finish
-    // being created on their end first.
+    // Respond.io's own guidance: wait after creating a contact before the next
+    // action - the contact resource needs time to finish being created first.
     await new Promise(r => setTimeout(r, 8000));
 
     // Retry on 449 (Respond.io's own "queued, try again shortly" status).
-    // Growing backoff (10s, 20s, 30s) - a freshly-connected WhatsApp channel can
-    // take longer than a few seconds to fully activate for sending.
     let res, lastErrText = '';
     const backoffs = [10000, 20000, 30000];
     for (let attempt = 1; attempt <= 4; attempt++) {
@@ -298,21 +268,85 @@ async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, custom
       });
       if (res.ok) break;
       lastErrText = await res.text();
-      if (res.status !== 449 || attempt > backoffs.length) break; // only retry on queue-delay status
+      if (res.status !== 449 || attempt > backoffs.length) break;
       const wait = backoffs[attempt-1];
-      console.error(`Respond.io send queued (attempt ${attempt}/4), retrying in ${wait/1000}s...`);
+      console.error(`Respond.io send queued (${templateName}, attempt ${attempt}/4), retrying in ${wait/1000}s...`);
       await new Promise(r => setTimeout(r, wait));
     }
 
     if (!res.ok) {
-      console.error('Respond.io send failed:', res.status, lastErrText.slice(0,300));
+      console.error(`Respond.io send failed (${templateName}):`, res.status, lastErrText.slice(0,300));
       return false;
     }
     return true;
   } catch(e) {
-    console.error('sendWhatsAppDelivery error:', e.message);
+    console.error(`sendWhatsAppTemplate error (${templateName}):`, e.message);
     return false;
   }
+}
+
+// netflix_delivery - approved template, sends account credentials + dashboard link
+async function sendWhatsAppDelivery(phone, email, profile, dashboardLink, customerName) {
+  return sendWhatsAppTemplate(phone, customerName, 'netflix_delivery', [
+    { type: 'header', format: 'text', text: 'Your Netflix Account Is Ready!', parameters: [] },
+    {
+      type: 'body',
+      text: 'Email: {{1}}\nProfile: {{2}}\n\nDashboard Link: {{3}}\n\nLogin Guide (Must Watch):\nhttps://youtu.be/QGbMYXSumVc\n\n⚠️ Rules: Use this account only on the devices included in your purchase, do not change anything, and use the service only from Bangladesh. Violation may result in immediate subscription cancellation.',
+      parameters: [
+        { type: 'text', text: email },
+        { type: 'text', text: profile },
+        { type: 'text', text: dashboardLink },
+      ],
+    },
+    { type: 'footer', text: 'Thank you for choosing FanFlix BD.', parameters: [] },
+  ]);
+}
+
+// order_confirmation - approved template, sent instantly when payment is confirmed
+async function sendOrderConfirmation(phone, customerName, product, amount, orderId) {
+  return sendWhatsAppTemplate(phone, customerName, 'order_confirmation', [
+    { type: 'header', format: 'text', text: 'Order Confirmation', parameters: [] },
+    {
+      type: 'body',
+      text: 'This is an automated confirmation from FanFlix BD regarding your recent order.\n\nProduct: {{1}}\nAmount paid: ৳{{2}}\nOrder id: {{3}}\n\nYour payment has been received and your order is now being processed. You will receive your account details shortly.',
+      parameters: [
+        { type: 'text', text: product },
+        { type: 'text', text: String(amount) },
+        { type: 'text', text: orderId },
+      ],
+    },
+  ]);
+}
+
+// universal_renewal_notice - approved template, 2 days before expiry, any product
+async function sendUniversalRenewalNotice(phone, customerName, product, daysLeft) {
+  return sendWhatsAppTemplate(phone, customerName, 'universal_renewal_notice', [
+    { type: 'header', format: 'text', text: 'Account Status Update', parameters: [] },
+    {
+      type: 'body',
+      text: 'This is an automated notice regarding your {{1}} account. Your current service period ends in {{2}} day(s). Please reply this text to manage your renewal.',
+      parameters: [
+        { type: 'text', text: product },
+        { type: 'text', text: String(daysLeft) },
+      ],
+    },
+    { type: 'footer', text: 'Thank you for choosing FanFlix BD!', parameters: [] },
+  ]);
+}
+
+// payment_pending_notice - approved template, sent ~1h after unpaid order (used by EPS bot)
+async function sendPaymentPendingNotice(phone, customerName, product, orderId) {
+  return sendWhatsAppTemplate(phone, customerName, 'payment_pending_notice', [
+    { type: 'header', format: 'text', text: 'Payment Pending', parameters: [] },
+    {
+      type: 'body',
+      text: 'This is an automated notice from FanFlix BD regarding your recent order.\n\nProduct: {{1}}\nOrder id: {{2}}\n\nOur records show that payment has not yet been completed for this order. If you have already made the payment, please reply to this message with your payment details so we can verify and process your order.',
+      parameters: [
+        { type: 'text', text: product },
+        { type: 'text', text: orderId },
+      ],
+    },
+  ]);
 }
 
 const UDDOKTAPAY_BASE_URL = process.env.UDDOKTAPAY_BASE_URL || 'https://payment.fanflixbd.com/api';
@@ -635,21 +669,6 @@ async function sendMorningReport() {
   sendTelegram(msg);
 }
 
-// BulkSMS - 1-click self-renew reminder
-const BULKSMS_API_KEY = process.env.BULKSMS_API_KEY || 'vQVe9pjP7d34mdiGFWQj';
-const BULKSMS_SENDER  = process.env.BULKSMS_SENDER  || '8809617621396';
-async function sendBulkSMS(phone, message) {
-  try {
-    const num = String(phone).replace(/\D/g,'');
-    if (!num || num.length < 7) return false;
-    const url = `http://bulksmsbd.net/api/smsapi?api_key=${BULKSMS_API_KEY}&type=text&number=${num}&senderid=${BULKSMS_SENDER}&message=${encodeURIComponent(message)}`;
-    const res = await fetch(url);
-    const result = await res.text();
-    console.log('SMS sent to', num, ':', result);
-    return true;
-  } catch(e) { console.error('SMS error:', e.message); return false; }
-}
-
 function checkExpiringLinks() {
   const links = loadLinks();
   const now = Date.now();
@@ -670,19 +689,27 @@ function checkExpiringLinks() {
 }
 setInterval(checkExpiringLinks, 60*60*1000);
 
-// SMS reminder - once daily at 9:30 PM BD time, for links expiring within the next 24h
-async function sendRenewalSmsReminders() {
+
+// Universal renewal reminder via WhatsApp - once daily at 9:30 PM BD time,
+// 2 days before expiry, for ALL active customers regardless of product type.
+// Replaces the old BulkSMS-based reminder system entirely.
+async function sendUniversalRenewalReminders() {
   const links = loadLinks();
   const now = Date.now();
-  const oneDay = 24*60*60*1000;
+  const twoDays = 2*24*60*60*1000;
   let changed = false;
   for (const link of Object.values(links)) {
     if (!link.active || link.released) continue;
     const remaining = link.expiresAt - now;
-    if (remaining > 0 && remaining <= oneDay && !link.renewalSmsSent) {
+    if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
       if (link.phone) {
-        const msg = `প্রিয় গ্রাহক, আপনার Netflix সাবস্ক্রিপশনের মেয়াদ আগামীকাল শেষ হবে। মাত্র ১ ক্লিকে রিনিউ করুন, সাপোর্টে যোগাযোগের প্রয়োজন নেই: ${SITE_URL}/c/${link.token}`;
-        await sendBulkSMS(link.phone, msg);
+        const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
+        const productName = link.plan || 'Netflix';
+        sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft).then(sent => {
+          if (!sent) {
+            sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n🤜 ${link.customerName||'Customer'} | 📱 ${link.phone}\n🤜 ${link.profile}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
+          }
+        });
       }
       link.renewalSmsSent = true;
       changed = true;
@@ -690,7 +717,7 @@ async function sendRenewalSmsReminders() {
   }
   if (changed) saveLinks(links);
 }
-function scheduleRenewalSms() {
+function scheduleUniversalRenewalReminders() {
   const now = new Date();
   const bd = new Date(now.getTime() + 6*60*60*1000);
   const next930pm = new Date(bd);
@@ -700,12 +727,11 @@ function scheduleRenewalSms() {
   }
   const msUntil = next930pm.getTime() - now.getTime();
   setTimeout(() => {
-    sendRenewalSmsReminders();
-    setInterval(sendRenewalSmsReminders, 24*60*60*1000);
+    sendUniversalRenewalReminders();
+    setInterval(sendUniversalRenewalReminders, 24*60*60*1000);
   }, msUntil);
 }
-try { scheduleRenewalSms(); } catch(e) { console.error('Renewal SMS schedule error:', e.message); }
-
+try { scheduleUniversalRenewalReminders(); } catch(e) { console.error('Universal renewal reminder schedule error:', e.message); }
 // Netflix account expiry alert
 function checkAccountExpiry() {
   try {
@@ -2203,6 +2229,12 @@ app.post('/uddoktapay-ipn', async (req, res) => {
       return;
     }
 
+    // Send order confirmation immediately, then wait 20s before attempting delivery
+    sendOrderConfirmation(phone, customerName, product, amountNum, orderName || invoice_id).then(sent => {
+      if (!sent) console.error('order_confirmation send failed for', phone);
+    });
+    await new Promise(r => setTimeout(r, 20000));
+
     // New customer
     const slot = getNextAvailableSlot(days, detectDeviceType(product));
     if (!slot) {
@@ -2545,6 +2577,12 @@ app.post('/api/auto-create', async (req, res) => {
       });
       return res.json({ success:true, renewed:true, token:first.token });
     }
+
+    // Send order confirmation immediately, then wait 20s before attempting delivery
+    sendOrderConfirmation(phone, customerName, product, amount, orderName).then(sent => {
+      if (!sent) console.error('order_confirmation send failed for', phone);
+    });
+    await new Promise(r => setTimeout(r, 20000));
 
     // New customer - try to assign a real slot immediately instead of always waitlisting
     const slot = getNextAvailableSlot(d, detectDeviceType(product));
