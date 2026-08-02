@@ -693,24 +693,33 @@ async function sendUniversalRenewalReminders() {
   const now = Date.now();
   const twoDays = 2*24*60*60*1000;
   let changed = false;
+  const dueLinks = [];
   for (const link of Object.values(links)) {
     if (!link.active || link.released) continue;
     const remaining = link.expiresAt - now;
     if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
-      if (link.phone) {
-        const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
-        const productName = link.plan || 'Netflix';
-        sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft).then(sent => {
-          if (!sent) {
-            sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n🤜 ${link.customerName||'Customer'} | 📱 ${link.phone}\n🤜 ${link.profile}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
-          }
-        });
-      }
+      dueLinks.push(link);
       link.renewalSmsSent = true;
       changed = true;
     }
   }
   if (changed) saveLinks(links);
+
+  // Send with a 15s gap between each customer - avoids firing many simultaneous
+  // requests at Respond.io, which was causing more "queued" (449) responses.
+  for (const link of dueLinks) {
+    if (link.phone) {
+      const remaining = link.expiresAt - now;
+      const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
+      const productName = link.plan || 'Netflix';
+      sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft).then(sent => {
+        if (!sent) {
+          sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n🤜 ${link.customerName||'Customer'} | 📱 ${link.phone}\n🤜 ${link.profile}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
+        }
+      });
+      await new Promise(r => setTimeout(r, 15000));
+    }
+  }
 }
 function scheduleUniversalRenewalReminders() {
   const now = new Date();
