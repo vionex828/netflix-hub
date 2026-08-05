@@ -397,6 +397,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <button class="strm-tab" data-type="hbo" onclick="switchStreamTab('hbo')">HBO Max</button>
           <button class="strm-tab" data-type="disney" onclick="switchStreamTab('disney')">Disney+</button>
           <button class="strm-tab" data-type="chatgpt" onclick="switchStreamTab('chatgpt')">ChatGPT Plus</button>
+          <button class="strm-tab" data-type="netflix3p" onclick="switchStreamTab('netflix3p')">Netflix (3rd Party)</button>
         </div>
 
         <!-- View toggle: Accounts (stock) vs Customers (who has slots) -->
@@ -652,12 +653,13 @@ async function clearBannedFlag(email){
 // ── STREAMING ACCOUNTS ──────────────────────────────────────────────
 let currentStreamType = 'prime';
 const STREAM_PROFILES = {
-  prime:   [['Profile A','56561'],['Profile B','56562'],['Profile C','56563'],['Profile D','56564'],['Profile E','56565'],['Profile F','56566']],
-  hbo:     [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655']],
-  disney:  [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655'],['Profile F','5656'],['Profile G','5657']],
-  chatgpt: null,
+  prime:     [['Profile A','56561'],['Profile B','56562'],['Profile C','56563'],['Profile D','56564'],['Profile E','56565'],['Profile F','56566']],
+  hbo:       [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655']],
+  disney:    [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655'],['Profile F','5656'],['Profile G','5657']],
+  chatgpt:   null,
+  netflix3p: [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655']],
 };
-const STREAM_NAMES = { prime:'Prime Video', hbo:'HBO Max', disney:'Disney+', chatgpt:'ChatGPT Plus' };
+const STREAM_NAMES = { prime:'Prime Video', hbo:'HBO Max', disney:'Disney+', chatgpt:'ChatGPT Plus', netflix3p:'Netflix (3rd Party)' };
 
 function switchStreamTab(type){
   currentStreamType = type;
