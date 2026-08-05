@@ -94,6 +94,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--f);display:flex;fl
 .field-inp::placeholder{color:var(--muted2)}
 .field-select{width:100%;background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:9px 12px;border-radius:7px;font-family:var(--m);font-size:.75rem;outline:none;cursor:pointer;appearance:none;}
 .create-btn{background:var(--red);border:none;color:#fff;padding:9px 18px;border-radius:7px;font-family:var(--f);font-size:.82rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s;display:flex;align-items:center;gap:6px;height:38px;}
+.strm-tab{background:var(--s3);border:1px solid var(--border);color:var(--muted);padding:8px 16px;border-radius:8px;font-family:var(--m);font-size:.72rem;cursor:pointer;transition:all .15s}
+.strm-tab.active{background:var(--red);border-color:var(--red);color:#fff;font-weight:600}
 .create-btn:hover{background:var(--red2)}
 .right-panel{display:flex;flex-direction:column;gap:1.2rem}
 .chart-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1.3rem}
@@ -251,6 +253,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div class="sb-item" onclick="showSection('outsidebd')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>Outside BD Login<span class="sb-badge" id="sb-outsidebd-count" style="background:var(--red)">0</span></div>
       <div class="sb-item" onclick="showSection('pendingrelease')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2a10 10 0 100 20 10 10 0 000-20z"/><path d="M12 6v6l4 2"/></svg>Pending Release<span class="sb-badge" id="sb-pendingrelease-count" style="background:var(--amber)">0</span></div>
       <div class="sb-item" onclick="showSection('accountperf')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>Account Performance</div>
+      <div class="sb-item" onclick="showSection('streaming')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Streaming Accounts</div>
       <div class="sb-item" onclick="showSection('recyclebin')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>Recycle Bin<span class="sb-badge" id="sb-recyclebin-count" style="background:var(--muted2)">0</span></div>
       <div class="sb-item" onclick="showSection('customers')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Customers<span class="sb-badge" id="sb-customers-count" style="background:var(--blue)">0</span></div>
       <div class="sb-item" onclick="showSection('settings')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
@@ -386,7 +389,36 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="accountperf-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
-      <div id="section-recyclebin" style="display:none;padding:1.5rem">
+      <div id="section-streaming" style="display:none;padding:1.5rem">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">Streaming Accounts</div>
+        <!-- Product tabs -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1.2rem;flex-wrap:wrap">
+          <button class="strm-tab active" data-type="prime" onclick="switchStreamTab('prime')">Prime Video</button>
+          <button class="strm-tab" data-type="hbo" onclick="switchStreamTab('hbo')">HBO Max</button>
+          <button class="strm-tab" data-type="disney" onclick="switchStreamTab('disney')">Disney+</button>
+          <button class="strm-tab" data-type="chatgpt" onclick="switchStreamTab('chatgpt')">ChatGPT Plus</button>
+        </div>
+
+        <!-- Add account form -->
+        <div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.2rem">
+          <div style="font-size:.85rem;font-weight:600;margin-bottom:.8rem" id="strm-form-title">Add Prime Video Account</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:.6rem">
+            <input id="strm-email" placeholder="Email" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem">
+            <input id="strm-password" placeholder="Password" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem">
+          </div>
+          <div id="strm-pins-wrap" style="margin-bottom:.6rem">
+            <div style="font-family:var(--m);font-size:.62rem;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:.5rem">Profile PINs</div>
+            <div id="strm-pins-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem"></div>
+          </div>
+          <input id="strm-notes" placeholder="Notes (optional)" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem;margin-bottom:.6rem">
+          <button class="create-btn" onclick="addStreamingAccount()">Add Account</button>
+        </div>
+
+        <!-- Accounts list -->
+        <div style="font-family:var(--m);font-size:.7rem;color:var(--muted);margin-bottom:.6rem" id="strm-list-header">Accounts</div>
+        <div id="strm-accounts-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
+      </div>
+
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
           <div style="font-size:1.1rem;font-weight:700">Recycle Bin <span id="recyclebin-count" style="font-family:var(--m);font-size:.75rem;color:var(--muted);margin-left:.5rem"></span></div>
           <button onclick="emptyRecycleBin()" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem">🗑 Empty Bin</button>
@@ -495,7 +527,7 @@ function doUniversalSearch(q){
 function jumpToUniversalResult(phone){
   document.getElementById('universal-search-results').style.display='none';
   document.getElementById('universal-search-inp').value='';
-  const secs=['section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
+  const secs=['section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const dash=document.getElementById('sec-dashboard');if(dash)dash.style.display='block';
   const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
@@ -611,6 +643,109 @@ async function clearBannedFlag(email){
   if(d.success){showToast('✅ Flag cleared');loadAccountPerformance();}
   else showToast('Error clearing flag',true);
 }
+// ── STREAMING ACCOUNTS ──────────────────────────────────────────────
+let currentStreamType = 'prime';
+const STREAM_PROFILES = {
+  prime:   ['Profile A','Profile B','Profile C','Profile D','Profile E','Profile F'],
+  hbo:     ['Profile A','Profile B','Profile C','Profile D','Profile E'],
+  disney:  ['Profile A','Profile B','Profile C','Profile D','Profile E','Profile F','Profile G'],
+  chatgpt: null,
+};
+const STREAM_NAMES = { prime:'Prime Video', hbo:'HBO Max', disney:'Disney+', chatgpt:'ChatGPT Plus' };
+
+function switchStreamTab(type){
+  currentStreamType = type;
+  document.querySelectorAll('.strm-tab').forEach(b=>b.classList.toggle('active', b.dataset.type===type));
+  document.getElementById('strm-form-title').textContent = 'Add '+STREAM_NAMES[type]+' Account';
+  // Build PIN inputs per profile (or hide for chatgpt)
+  const pinsWrap = document.getElementById('strm-pins-wrap');
+  const pinsGrid = document.getElementById('strm-pins-grid');
+  const profiles = STREAM_PROFILES[type];
+  if(!profiles){
+    pinsWrap.style.display='none';
+    pinsGrid.innerHTML='';
+  } else {
+    pinsWrap.style.display='block';
+    pinsGrid.innerHTML = profiles.map(p=>`
+      <div>
+        <div style="font-family:var(--m);font-size:.58rem;color:var(--muted);margin-bottom:3px">${p}</div>
+        <input class="strm-pin-input" data-profile="${p}" placeholder="PIN" maxlength="6" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;color:var(--text);font-family:var(--m);font-size:.72rem">
+      </div>`).join('');
+  }
+  loadStreamingAccounts(type);
+}
+
+async function addStreamingAccount(){
+  const type = currentStreamType;
+  const email = document.getElementById('strm-email').value.trim();
+  const password = document.getElementById('strm-password').value.trim();
+  const notes = document.getElementById('strm-notes').value.trim();
+  if(!email||!password){showToast('Email and password required',true);return;}
+  const pins = {};
+  document.querySelectorAll('.strm-pin-input').forEach(inp=>{
+    if(inp.value.trim()) pins[inp.dataset.profile] = inp.value.trim();
+  });
+  const r = await fetch('/api/admin/streaming/'+type+'/accounts',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-admin-token':adminToken},
+    body:JSON.stringify({email,password,pins,notes})
+  });
+  const d = await r.json();
+  if(d.success){
+    showToast('✅ Account added');
+    document.getElementById('strm-email').value='';
+    document.getElementById('strm-password').value='';
+    document.getElementById('strm-notes').value='';
+    document.querySelectorAll('.strm-pin-input').forEach(inp=>inp.value='');
+    loadStreamingAccounts(type);
+  } else showToast(d.error||'Error adding account',true);
+}
+
+async function loadStreamingAccounts(type){
+  const list = document.getElementById('strm-accounts-list');
+  list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
+  try{
+    const r = await fetch('/api/admin/streaming/'+type+'/accounts',{headers:{'x-admin-token':adminToken}});
+    const d = await r.json();
+    if(!d.success||!d.accounts.length){
+      list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No '+STREAM_NAMES[type]+' accounts yet. Add one above.</div>';
+      document.getElementById('strm-list-header').textContent = STREAM_NAMES[type]+' Accounts (0)';
+      return;
+    }
+    document.getElementById('strm-list-header').textContent = STREAM_NAMES[type]+' Accounts ('+d.accounts.length+')';
+    list.innerHTML = d.accounts.map(a=>{
+      const pct = Math.round((a.slotsUsed/a.slotsTotal)*100);
+      const barColor = pct>=90?'var(--red)':pct>=60?'var(--amber)':'var(--green)';
+      return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:200px">
+            <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(a.email)}</div>
+            <div style="font-family:var(--m);font-size:.62rem;color:var(--muted);margin-top:3px">🔑 ${esc(a.password)}${a.notes?' · '+esc(a.notes):''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            <div style="text-align:right">
+              <div style="font-family:var(--m);font-size:.7rem;color:${barColor};font-weight:600">${a.slotsUsed}/${a.slotsTotal}</div>
+              <div style="font-family:var(--m);font-size:.55rem;color:var(--muted2)">slots used</div>
+            </div>
+            <button onclick="deleteStreamingAccount('${type}','${a.id}')" style="background:var(--s3);border:1px solid var(--border);color:var(--red);padding:6px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.62rem">Delete</button>
+          </div>
+        </div>
+        <div style="background:var(--s3);border-radius:100px;height:4px;overflow:hidden;margin-top:.7rem"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:100px"></div></div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--red);font-family:var(--m);font-size:.75rem">Error loading accounts</div>';
+  }
+}
+
+async function deleteStreamingAccount(type,id){
+  if(!confirm('Delete this account? Customers already assigned will keep their access until expiry.'))return;
+  const r = await fetch('/api/admin/streaming/'+type+'/accounts/'+id,{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  const d = await r.json();
+  if(d.success){showToast('Account deleted');loadStreamingAccounts(type);}
+  else showToast('Error deleting',true);
+}
+
 async function loadAccountPerformance(){
   const list=document.getElementById('accountperf-list');
   if(list)list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
@@ -731,10 +866,10 @@ async function replaceAllLinks(){
   const d=await r.json();if(d.success){showToast(`✅ ${d.count} links updated!`);loadAll();}else showToast('Error: '+(d.error||'Unknown'),true);
 }
 
-function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
+function showNeverUsed(){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const filtered={};for(const[k,v]of Object.entries(allLinks)){if(v.uses===0&&v.active&&v.expiresAt>Date.now())filtered[k]=v;}renderLinks(filtered,0);document.querySelector('.table-card').scrollIntoView({behavior:'smooth'});showToast(`${Object.keys(filtered).length} never-used links`);}
 const REVOKE_REASON_LABELS={outside_bd:'🌍 Outside Bangladesh login',pin_change:'🔑 Unauthorized PIN/profile change',multi_device:'📱 Multiple device sharing',security:'⚠️ Netflix account security issue',payment:'💳 Payment issue',other:null};
 function showRevoked(){
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   document.getElementById('sec-dashboard').style.display='block';
   const t=document.getElementById('topbar-title');if(t)t.textContent='Revoked Links';
@@ -774,7 +909,7 @@ function filterLinks(resetAcctFilter){
   }
 }
 
-function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
+function filterByStatus(status){const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});document.getElementById('sec-dashboard').style.display='block';const t=document.getElementById('topbar-title');if(t)t.textContent='Customer Links';
   // Show clean all expired button when viewing expired
   const cleanBtn=document.getElementById('clean-expired-btn');
   if(cleanBtn)cleanBtn.style.display=status==='expired'?'inline-flex':'none';
@@ -795,7 +930,7 @@ function showSection(s){
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
   // Hide ALL sections first
-  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-recyclebin'];
+  const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
   const t=document.getElementById('topbar-title');
   // Scroll content back to top
@@ -829,6 +964,11 @@ function showSection(s){
     document.getElementById('section-accountperf').style.display='block';
     if(t)t.textContent='Netflix Account Performance';
     loadAccountPerformance();return;
+  }
+  if(s==='streaming'){
+    document.getElementById('section-streaming').style.display='block';
+    if(t)t.textContent='Streaming Accounts';
+    switchStreamTab(currentStreamType||'prime');return;
   }
   if(s==='recyclebin'){
     document.getElementById('section-recyclebin').style.display='block';
