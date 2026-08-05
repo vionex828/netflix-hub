@@ -984,6 +984,10 @@ function showSection(s){
   try{closeMobNav();}catch(e){}
   document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
   try{if(event&&event.currentTarget)event.currentTarget.classList.add('active');}catch(e){}
+  // Reset the "Clean All Expired" button - it only belongs on the expired-links filter view,
+  // so hide it whenever navigating to any section (prevents it staying stuck visible).
+  const cleanBtnReset=document.getElementById('clean-expired-btn');
+  if(cleanBtnReset)cleanBtnReset.style.display='none';
   // Hide ALL sections first
   const secs=['sec-dashboard','section-accounts','section-settings','section-waitlist','section-customers','section-outsidebd','section-pendingrelease','section-accountperf','section-streaming','section-recyclebin'];
   secs.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
