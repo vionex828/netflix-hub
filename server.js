@@ -201,6 +201,65 @@ const DATA_DIR = (() => {
 const LINKS_FILE = `${DATA_DIR}/links.json`;
 const ANALYTICS_FILE = `${DATA_DIR}/analytics.json`;
 const IP_FILE = `${DATA_DIR}/ips.json`;
+
+// Streaming product credential stores - one accounts + links file per product
+const STREAMING_PRODUCTS = {
+  prime:   { name: 'Amazon Prime Video',  accountsFile: `${DATA_DIR}/prime-accounts.json`,   linksFile: `${DATA_DIR}/prime-links.json`   },
+  hbo:     { name: 'HBO Max',             accountsFile: `${DATA_DIR}/hbo-accounts.json`,     linksFile: `${DATA_DIR}/hbo-links.json`     },
+  disney:  { name: 'Disney+',             accountsFile: `${DATA_DIR}/disney-accounts.json`,  linksFile: `${DATA_DIR}/disney-links.json`  },
+  chatgpt: { name: 'ChatGPT Plus',        accountsFile: `${DATA_DIR}/chatgpt-accounts.json`, linksFile: `${DATA_DIR}/chatgpt-links.json` },
+};
+
+// Slot layouts per product - slots = max people sharing one profile
+const STREAMING_PROFILES = {
+  prime:   [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:1},{profile:'Profile F',slots:1} ],
+  hbo:     [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:2} ],
+  disney:  [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:2},{profile:'Profile F',slots:2},{profile:'Profile G',slots:2} ],
+  chatgpt: null, // no profiles - fixed credentials, capacity tracked by customer count per account (max 15)
+};
+
+function loadStreamingAccounts(type) { try { return JSON.parse(fs.readFileSync(STREAMING_PRODUCTS[type].accountsFile,'utf8')); } catch(e) { return []; } }
+function saveStreamingAccounts(type, data) { ensureDataDir(); fs.writeFileSync(STREAMING_PRODUCTS[type].accountsFile, JSON.stringify(data,null,2)); }
+function loadStreamingLinks(type) { try { return JSON.parse(fs.readFileSync(STREAMING_PRODUCTS[type].linksFile,'utf8')); } catch(e) { return {}; } }
+function saveStreamingLinks(type, data) { ensureDataDir(); fs.writeFileSync(STREAMING_PRODUCTS[type].linksFile, JSON.stringify(data,null,2)); }
+
+function generateStreamingToken(type) {
+  return type + '-' + crypto.randomBytes(6).toString('hex');
+}
+
+function getMaxSlotsForStreamingAccount(type) {
+  const profiles = STREAMING_PROFILES[type];
+  if (!profiles) return 15; // chatgpt: 15 per account
+  return profiles.reduce((sum, p) => sum + p.slots, 0);
+}
+
+function getNextAvailableStreamingSlot(type, days) {
+  const accounts = loadStreamingAccounts(type);
+  const links = loadStreamingLinks(type);
+  const profiles = STREAMING_PROFILES[type];
+  const now = Date.now();
+
+  for (const account of accounts) {
+    if (!account.active) continue;
+    const accountLinks = Object.values(links).filter(l => l.accountId === account.id && l.active && !l.released);
+
+    if (!profiles) {
+      // ChatGPT: no profiles, just count active customers per account
+      if (accountLinks.length < 15) {
+        return { accountId: account.id, email: account.email, password: account.password, profile: null, pin: null };
+      }
+    } else {
+      const usedProfiles = accountLinks.map(l => l.profile);
+      for (const prof of profiles) {
+        const used = usedProfiles.filter(p => p === prof.profile).length;
+        if (used < prof.slots) {
+          return { accountId: account.id, email: account.email, password: account.password, profile: prof.profile, pin: account.pins?.[prof.profile] || null };
+        }
+      }
+    }
+  }
+  return null;
+}
 const LOGIN_VIDEO = process.env.LOGIN_VIDEO || 'https://youtu.be/PLACEHOLDER1';
 const HOUSEHOLD_VIDEO = process.env.HOUSEHOLD_VIDEO || 'https://youtu.be/PLACEHOLDER2';
 const SITE_URL = process.env.SITE_URL || 'https://household.fanflixbd.com';
@@ -335,7 +394,26 @@ async function sendUniversalRenewalNotice(phone, customerName, product, daysLeft
   ]);
 }
 
-// payment_pending_notice - approved template, sent ~1h after unpaid order (used by EPS bot)
+// universal_account_delivery - approved template, sends credentials + dashboard link
+// Works for Prime, HBO, Disney+, ChatGPT and any future streaming product.
+async function sendUniversalAccountDelivery(phone, customerName, product, email, password, profile, pin) {
+  return sendWhatsAppTemplate(phone, customerName, 'universal_account_delivery', [
+    { type: 'header', format: 'text', text: 'Account Delivery', parameters: [] },
+    {
+      type: 'body',
+      text: 'This is an automated delivery from FanFlix BD regarding your recent order.\n\n📦 Product: {{1}}\n\n📧 Email: {{2}}\n🔑 Password: {{3}}\n👤 Profile: {{4}}\n🔢 PIN: {{5}}\n\n⚠️ Please use only the profile assigned to you. Do not change anything and do not login on more than 2 devices.',
+      parameters: [
+        { type: 'text', text: product },
+        { type: 'text', text: email },
+        { type: 'text', text: password },
+        { type: 'text', text: profile || 'N/A' },
+        { type: 'text', text: pin || 'N/A' },
+      ],
+    },
+    { type: 'footer', text: 'Thank you for choosing FanFlix BD!', parameters: [] },
+  ]);
+}
+
 async function sendPaymentPendingNotice(phone, customerName, product, orderId) {
   return sendWhatsAppTemplate(phone, customerName, 'payment_pending_notice', [
     { type: 'header', format: 'text', text: 'Payment Pending', parameters: [] },
@@ -2445,6 +2523,62 @@ app.get('/admin-manifest.json', (req, res) => res.sendFile(path.join(__dirname,'
 app.get('/admin-sw.js', (req, res) => res.sendFile(path.join(__dirname,'public','admin-sw.js')));
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname,'public','admin.html')));
 
+// ── STREAMING PRODUCT ADMIN ENDPOINTS ────────────────────────────────────────
+// GET  /api/admin/streaming/:type/accounts  - list all accounts for a product
+// POST /api/admin/streaming/:type/accounts  - add a new account
+// DELETE /api/admin/streaming/:type/accounts/:id - remove an account
+// GET  /api/admin/streaming/:type/links     - list all customer links for a product
+
+app.get('/api/admin/streaming/:type/accounts', adminAuth, (req, res) => {
+  const { type } = req.params;
+  if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ error:'Unknown type' });
+  const accounts = loadStreamingAccounts(type);
+  const links = loadStreamingLinks(type);
+  const profiles = STREAMING_PROFILES[type];
+  const maxSlots = getMaxSlotsForStreamingAccount(type);
+  const withStats = accounts.map(a => {
+    const accountLinks = Object.values(links).filter(l => l.accountId === a.id && l.active && !l.released);
+    return { ...a, slotsUsed: accountLinks.length, slotsTotal: maxSlots };
+  });
+  res.json({ success:true, accounts: withStats, maxSlots, hasProfiles: !!profiles });
+});
+
+app.post('/api/admin/streaming/:type/accounts', adminAuth, (req, res) => {
+  const { type } = req.params;
+  if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ error:'Unknown type' });
+  const { email, password, notes } = req.body;
+  if (!email || !password) return res.status(400).json({ error:'Email and password required' });
+  const accounts = loadStreamingAccounts(type);
+  const id = crypto.randomBytes(6).toString('hex');
+  // pins is an object mapping profile name to PIN - admin fills these in when adding the account
+  const pins = req.body.pins || {};
+  accounts.push({ id, email: email.toLowerCase().trim(), password, pins, notes: notes||'', active:true, addedAt:Date.now() });
+  saveStreamingAccounts(type, accounts);
+  res.json({ success:true, id });
+});
+
+app.delete('/api/admin/streaming/:type/accounts/:id', adminAuth, (req, res) => {
+  const { type, id } = req.params;
+  if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ error:'Unknown type' });
+  const accounts = loadStreamingAccounts(type);
+  const filtered = accounts.filter(a => a.id !== id);
+  saveStreamingAccounts(type, filtered);
+  res.json({ success:true });
+});
+
+app.get('/api/admin/streaming/:type/links', adminAuth, (req, res) => {
+  const { type } = req.params;
+  if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ error:'Unknown type' });
+  const links = loadStreamingLinks(type);
+  const now = Date.now();
+  const result = Object.values(links).map(l => ({
+    ...l,
+    daysLeft: Math.max(0, Math.ceil((l.expiresAt - now) / 86400000)),
+    expired: l.expiresAt < now,
+  })).sort((a,b) => b.createdAt - a.createdAt);
+  res.json({ success:true, links: result, total: result.length });
+});
+
 app.get('/api/admin/accounts', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const links = loadLinks();
@@ -2615,6 +2749,76 @@ app.post('/api/admin/settings', adminAuth, (req, res) => {
 });
 
 // ── AUTO CREATE LINK — accepts secret in header OR body ──────────────
+// Streaming product auto-delivery - called by EPS bot when a Prime/HBO/Disney+/ChatGPT order matches payment
+app.post('/api/streaming/auto-create', async (req, res) => {
+  try {
+    const authToken = req.headers['x-admin-token'] || req.body.secret;
+    if (authToken !== ADMIN_PASS) return res.status(401).json({ error:'Unauthorized' });
+    const { type, phone, customerName, days, product, amount, orderName } = req.body;
+    if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ success:false, error:'Unknown product type' });
+    if (!phone) return res.status(400).json({ success:false, error:'Phone required' });
+
+    const d = normalizeDays(days);
+    const now = Date.now();
+    const links = loadStreamingLinks(type);
+    const phoneNorm = phone.replace(/\D/g,'');
+
+    // Renewal check - if existing active link found, extend it
+    const existingActive = Object.values(links).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
+    );
+    if (existingActive.length > 0) {
+      for (const el of existingActive) {
+        links[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+        links[el.token].renewalSmsSent = false;
+        links[el.token].renewalCount = (links[el.token].renewalCount||0) + 1;
+      }
+      saveStreamingLinks(type, links);
+      const first = existingActive[0];
+      sendUniversalAccountDelivery(phone, customerName, STREAMING_PRODUCTS[type].name, first.email, first.password, first.profile, first.pin).then(sent => {
+        sendTelegram(sent
+          ? `🔄 <b>Renewed + Re-Delivered (${type.toUpperCase()})!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ Extended +${d} days`
+          : `🔄 <b>Renewed (${type.toUpperCase()}) — WhatsApp Failed!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n❗ Please message manually.`);
+      });
+      return res.json({ success:true, renewed:true });
+    }
+
+    // New customer - try to assign a slot
+    const slot = getNextAvailableStreamingSlot(type, d);
+    if (!slot) {
+      sendTelegram(`🔔 <b>New ${type.toUpperCase()} Order — No Slot Available</b>\n\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📦 ${product} | ${d} days\n💰 ৳${amount}\n\n<b>Add more ${STREAMING_PRODUCTS[type].name} accounts in admin</b>`);
+      return res.json({ success:true, waitlisted:true, reason:'no_slot' });
+    }
+
+    const token = generateStreamingToken(type);
+    links[token] = {
+      token, accountId: slot.accountId, email: slot.email, password: slot.password,
+      profile: slot.profile, pin: slot.pin, phone, customerName: customerName||'',
+      plan: product||STREAMING_PRODUCTS[type].name, amount: amount||0, orderName: orderName||'',
+      days: d, createdAt: now, expiresAt: now + d*24*60*60*1000,
+      uses: 0, lastUsed: null, active: true, released: false, renewalSmsSent: false, renewalCount: 0,
+    };
+    saveStreamingLinks(type, links);
+
+    // Send WhatsApp delivery, fallback to Telegram alert if it fails
+    const sent = await sendUniversalAccountDelivery(phone, customerName, STREAMING_PRODUCTS[type].name, slot.email, slot.password, slot.profile, slot.pin);
+    if (sent) {
+      sendTelegram(`✅ <b>Auto-Delivered (${type.toUpperCase()})!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📧 ${slot.email}\n👤 ${slot.profile||'N/A'}\n⏳ ${d} days\n\n📲 Sent automatically`);
+    } else {
+      // WhatsApp failed - undo slot assignment, alert admin
+      delete links[token];
+      saveStreamingLinks(type, links);
+      sendTelegram(`⚠️ <b>${type.toUpperCase()} Delivery Failed — Slot Released!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📧 ${slot.email}\n👤 ${slot.profile||'N/A'}\n\n❗ WhatsApp delivery failed. Please deliver manually and re-assign from admin.`);
+      return res.json({ success:false, error:'WhatsApp delivery failed, slot released' });
+    }
+
+    res.json({ success:true, token, delivered:true });
+  } catch(e) {
+    console.error('streaming auto-create error:', e.message);
+    res.status(500).json({ success:false, error: e.message });
+  }
+});
+
 app.post('/api/auto-create', async (req, res) => {
   try {
     const settings = loadSettings();
