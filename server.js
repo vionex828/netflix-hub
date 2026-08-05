@@ -204,18 +204,20 @@ const IP_FILE = `${DATA_DIR}/ips.json`;
 
 // Streaming product credential stores - one accounts + links file per product
 const STREAMING_PRODUCTS = {
-  prime:   { name: 'Amazon Prime Video',  accountsFile: `${DATA_DIR}/prime-accounts.json`,   linksFile: `${DATA_DIR}/prime-links.json`   },
-  hbo:     { name: 'HBO Max',             accountsFile: `${DATA_DIR}/hbo-accounts.json`,     linksFile: `${DATA_DIR}/hbo-links.json`     },
-  disney:  { name: 'Disney+',             accountsFile: `${DATA_DIR}/disney-accounts.json`,  linksFile: `${DATA_DIR}/disney-links.json`  },
-  chatgpt: { name: 'ChatGPT Plus',        accountsFile: `${DATA_DIR}/chatgpt-accounts.json`, linksFile: `${DATA_DIR}/chatgpt-links.json` },
+  prime:     { name: 'Amazon Prime Video',  accountsFile: `${DATA_DIR}/prime-accounts.json`,   linksFile: `${DATA_DIR}/prime-links.json`   },
+  hbo:       { name: 'HBO Max',             accountsFile: `${DATA_DIR}/hbo-accounts.json`,     linksFile: `${DATA_DIR}/hbo-links.json`     },
+  disney:    { name: 'Disney+',             accountsFile: `${DATA_DIR}/disney-accounts.json`,  linksFile: `${DATA_DIR}/disney-links.json`  },
+  chatgpt:   { name: 'ChatGPT Plus',        accountsFile: `${DATA_DIR}/chatgpt-accounts.json`, linksFile: `${DATA_DIR}/chatgpt-links.json` },
+  netflix3p: { name: 'Netflix Account',     accountsFile: `${DATA_DIR}/netflix3p-accounts.json`, linksFile: `${DATA_DIR}/netflix3p-links.json` },
 };
 
 // Slot layouts per product - slots = max people sharing one profile
 const STREAMING_PROFILES = {
-  prime:   [ {profile:'Profile A',slots:2,pin:'56561'},{profile:'Profile B',slots:2,pin:'56562'},{profile:'Profile C',slots:2,pin:'56563'},{profile:'Profile D',slots:2,pin:'56564'},{profile:'Profile E',slots:1,pin:'56565'},{profile:'Profile F',slots:1,pin:'56566'} ],
-  hbo:     [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'} ],
-  disney:  [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'},{profile:'Profile F',slots:2,pin:'5656'},{profile:'Profile G',slots:2,pin:'5657'} ],
-  chatgpt: null, // no profiles - fixed credentials, capacity tracked by customer count per account (max 15)
+  prime:     [ {profile:'Profile A',slots:2,pin:'56561'},{profile:'Profile B',slots:2,pin:'56562'},{profile:'Profile C',slots:2,pin:'56563'},{profile:'Profile D',slots:2,pin:'56564'},{profile:'Profile E',slots:1,pin:'56565'},{profile:'Profile F',slots:1,pin:'56566'} ],
+  hbo:       [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'} ],
+  disney:    [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'},{profile:'Profile F',slots:2,pin:'5656'},{profile:'Profile G',slots:2,pin:'5657'} ],
+  chatgpt:   null, // no profiles - fixed credentials, capacity tracked by customer count per account (max 15)
+  netflix3p: [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:1,pin:'5653'},{profile:'Profile D',slots:1,pin:'5654'},{profile:'Profile E',slots:1,pin:'5655'} ],
 };
 
 function loadStreamingAccounts(type) { try { return JSON.parse(fs.readFileSync(STREAMING_PRODUCTS[type].accountsFile,'utf8')); } catch(e) { return []; } }
@@ -2882,6 +2884,28 @@ app.post('/api/auto-create', async (req, res) => {
       return res.json({ success:true, renewed:true, token:first.token });
     }
 
+    // Third-party Netflix renewal check - if this customer is on a third-party account,
+    // extend that instead of assigning them a new slot.
+    const tpLinksAll = loadStreamingLinks('netflix3p');
+    const tpExisting = Object.values(tpLinksAll).filter(l =>
+      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
+    );
+    if (tpExisting.length > 0) {
+      for (const el of tpExisting) {
+        tpLinksAll[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+        tpLinksAll[el.token].renewalSmsSent = false;
+        tpLinksAll[el.token].renewalCount = (tpLinksAll[el.token].renewalCount||0) + 1;
+      }
+      saveStreamingLinks('netflix3p', tpLinksAll);
+      const tf = tpExisting[0];
+      sendUniversalAccountDelivery(phone, customerName, 'Netflix Account', tf.email, tf.password, tf.profile, tf.pin).then(sent => {
+        sendTelegram(sent
+          ? `🔄 <b>Auto-Renewed (Netflix 3rd-Party)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ Extended +${d} days`
+          : `🔄 <b>Renewed 3rd-Party (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ +${d} days\n\n❗ Please message manually.`);
+      });
+      return res.json({ success:true, renewed:true, thirdParty:true });
+    }
+
     // EPS bot already sent order_confirmation before calling this endpoint.
     // Wait 20s before attempting delivery, spacing the two WhatsApp messages out.
     await new Promise(r => setTimeout(r, 20000));
@@ -2889,6 +2913,41 @@ app.post('/api/auto-create', async (req, res) => {
     // New customer - try to assign a real slot immediately instead of always waitlisting
     const slot = getNextAvailableSlot(d, detectDeviceType(product));
     if (!slot) {
+      // Own Netflix stock is full - try third-party Netflix pool as a fallback before waitlisting.
+      // Third-party accounts have no inbox access, so they're delivered as fixed credentials
+      // via WhatsApp (no dashboard), same as Prime/HBO/etc.
+      const tpSlot = getNextAvailableStreamingSlot('netflix3p', d);
+      if (tpSlot) {
+        const tpLinks = loadStreamingLinks('netflix3p');
+        const tpToken = generateStreamingToken('netflix3p');
+        tpLinks[tpToken] = {
+          token: tpToken, accountId: tpSlot.accountId, email: tpSlot.email, password: tpSlot.password,
+          profile: tpSlot.profile, pin: tpSlot.pin, phone, customerName: customerName||'',
+          plan: 'Netflix Account', amount: amount||0, orderName: orderName||'',
+          days: d, createdAt: now, expiresAt: now + d*24*60*60*1000,
+          uses: 0, lastUsed: null, active: true, released: false, renewalSmsSent: false, renewalCount: 0,
+        };
+        saveStreamingLinks('netflix3p', tpLinks);
+        res.json({ success:true, token: tpToken, delivered: 'pending', thirdParty: true });
+        const sent = await sendUniversalAccountDelivery(phone, customerName, 'Netflix Account', tpSlot.email, tpSlot.password, tpSlot.profile, tpSlot.pin);
+        if (sent) {
+          sendTelegram(`✅ <b>Auto-Delivered (Netflix 3rd-Party)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📧 ${tpSlot.email}\n👤 ${tpSlot.profile} | PIN: ${tpSlot.pin}\n⏳ ${d} days\n\n📲 Own stock was full — delivered from third-party pool`);
+        } else {
+          // WhatsApp failed - undo the third-party slot, then waitlist
+          const undoLinks = loadStreamingLinks('netflix3p');
+          delete undoLinks[tpToken];
+          saveStreamingLinks('netflix3p', undoLinks);
+          const wl = loadWaitlist();
+          if (!wl.find(w => w.phone && w.phone.replace(/\D/g,'') === phoneNorm)) {
+            wl.push({ phone, customerName: customerName||'', days: d, product, orderName, amount, addedAt: Date.now() });
+            saveWaitlist(wl);
+          }
+          sendTelegram(`⚠️ <b>Netflix 3rd-Party Delivery Failed — Waitlisted!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n\nWhatsApp failed. Slot released, customer waitlisted. Approve manually when ready.`);
+        }
+        return;
+      }
+
+      // Both own AND third-party stock full - waitlist
       const waitlist = loadWaitlist();
       const alreadyWaiting = waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phoneNorm);
       if (!alreadyWaiting) {
@@ -2901,7 +2960,7 @@ app.post('/api/auto-create', async (req, res) => {
         `📦 ${product} | ${d} days\n` +
         `💰 ৳${amount}\n` +
         `🛒 ${orderName}\n\n` +
-        `<b>Admin → Waitlist to approve when a slot frees up</b>`
+        `<b>Own + 3rd-party both full. Admin → Waitlist to approve when a slot frees up</b>`
       );
       return res.json({ success:true, waitlisted:true });
     }
