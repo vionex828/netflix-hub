@@ -392,11 +392,17 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div id="section-streaming" style="display:none;padding:1.5rem">
         <div style="font-size:1.1rem;font-weight:700;margin-bottom:1rem">Streaming Accounts</div>
         <!-- Product tabs -->
-        <div style="display:flex;gap:.5rem;margin-bottom:1.2rem;flex-wrap:wrap">
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <button class="strm-tab active" data-type="prime" onclick="switchStreamTab('prime')">Prime Video</button>
           <button class="strm-tab" data-type="hbo" onclick="switchStreamTab('hbo')">HBO Max</button>
           <button class="strm-tab" data-type="disney" onclick="switchStreamTab('disney')">Disney+</button>
           <button class="strm-tab" data-type="chatgpt" onclick="switchStreamTab('chatgpt')">ChatGPT Plus</button>
+        </div>
+
+        <!-- View toggle: Accounts (stock) vs Customers (who has slots) -->
+        <div style="display:flex;gap:.4rem;margin-bottom:1.2rem">
+          <button id="strm-view-accounts" class="strm-tab active" onclick="loadStreamingAccounts(currentStreamType)" style="font-size:.66rem">📦 Accounts (Stock)</button>
+          <button id="strm-view-customers" class="strm-tab" onclick="viewStreamingCustomers(currentStreamType)" style="font-size:.66rem">👥 Customers</button>
         </div>
 
         <!-- Add account form -->
@@ -646,9 +652,9 @@ async function clearBannedFlag(email){
 // ── STREAMING ACCOUNTS ──────────────────────────────────────────────
 let currentStreamType = 'prime';
 const STREAM_PROFILES = {
-  prime:   ['Profile A','Profile B','Profile C','Profile D','Profile E','Profile F'],
-  hbo:     ['Profile A','Profile B','Profile C','Profile D','Profile E'],
-  disney:  ['Profile A','Profile B','Profile C','Profile D','Profile E','Profile F','Profile G'],
+  prime:   [['Profile A','56561'],['Profile B','56562'],['Profile C','56563'],['Profile D','56564'],['Profile E','56565'],['Profile F','56566']],
+  hbo:     [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655']],
+  disney:  [['Profile A','5651'],['Profile B','5652'],['Profile C','5653'],['Profile D','5654'],['Profile E','5655'],['Profile F','5656'],['Profile G','5657']],
   chatgpt: null,
 };
 const STREAM_NAMES = { prime:'Prime Video', hbo:'HBO Max', disney:'Disney+', chatgpt:'ChatGPT Plus' };
@@ -666,10 +672,10 @@ function switchStreamTab(type){
     pinsGrid.innerHTML='';
   } else {
     pinsWrap.style.display='block';
-    pinsGrid.innerHTML = profiles.map(p=>`
+    pinsGrid.innerHTML = profiles.map(([p, defaultPin])=>`
       <div>
         <div style="font-family:var(--m);font-size:.58rem;color:var(--muted);margin-bottom:3px">${p}</div>
-        <input class="strm-pin-input" data-profile="${p}" placeholder="PIN" maxlength="6" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;color:var(--text);font-family:var(--m);font-size:.72rem">
+        <input class="strm-pin-input" data-profile="${p}" value="${defaultPin}" placeholder="PIN" maxlength="6" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;color:var(--text);font-family:var(--m);font-size:.72rem">
       </div>`).join('');
   }
   loadStreamingAccounts(type);
@@ -702,6 +708,8 @@ async function addStreamingAccount(){
 }
 
 async function loadStreamingAccounts(type){
+  document.getElementById('strm-view-accounts').classList.add('active');
+  document.getElementById('strm-view-customers').classList.remove('active');
   const list = document.getElementById('strm-accounts-list');
   list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div>';
   try{
@@ -727,7 +735,7 @@ async function loadStreamingAccounts(type){
               <div style="font-family:var(--m);font-size:.7rem;color:${barColor};font-weight:600">${a.slotsUsed}/${a.slotsTotal}</div>
               <div style="font-family:var(--m);font-size:.55rem;color:var(--muted2)">slots used</div>
             </div>
-            <button onclick="deleteStreamingAccount('${type}','${a.id}')" style="background:var(--s3);border:1px solid var(--border);color:var(--red);padding:6px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.62rem">Delete</button>
+            <button onclick="deleteStreamingAccount('${type}','${a.id}',${a.slotsUsed})" style="background:var(--s3);border:1px solid var(--border);color:var(--red);padding:6px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.62rem">Delete</button>
           </div>
         </div>
         <div style="background:var(--s3);border-radius:100px;height:4px;overflow:hidden;margin-top:.7rem"><div style="height:100%;width:${pct}%;background:${barColor};border-radius:100px"></div></div>
@@ -738,12 +746,57 @@ async function loadStreamingAccounts(type){
   }
 }
 
-async function deleteStreamingAccount(type,id){
-  if(!confirm('Delete this account? Customers already assigned will keep their access until expiry.'))return;
+async function deleteStreamingAccount(type,id,slotsUsed){
+  const warn = slotsUsed>0
+    ? `This account has ${slotsUsed} active customer(s) assigned. Deleting it means their credentials will no longer be tracked (they keep access until Netflix/the account itself stops working). Continue?`
+    : 'Delete this account? It has no active customers.';
+  if(!confirm(warn))return;
   const r = await fetch('/api/admin/streaming/'+type+'/accounts/'+id,{method:'DELETE',headers:{'x-admin-token':adminToken}});
   const d = await r.json();
   if(d.success){showToast('Account deleted');loadStreamingAccounts(type);}
   else showToast('Error deleting',true);
+}
+
+async function viewStreamingCustomers(type){
+  document.getElementById('strm-view-customers').classList.add('active');
+  document.getElementById('strm-view-accounts').classList.remove('active');
+  const list = document.getElementById('strm-accounts-list');
+  list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading customers...</div>';
+  try{
+    const r = await fetch('/api/admin/streaming/'+type+'/links',{headers:{'x-admin-token':adminToken}});
+    const d = await r.json();
+    const active = d.links.filter(l=>l.active&&!l.released);
+    if(!active.length){
+      list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">No active customers for '+STREAM_NAMES[type]+'.</div>';
+      return;
+    }
+    document.getElementById('strm-list-header').textContent = STREAM_NAMES[type]+' Customers ('+active.length+')';
+    list.innerHTML = active.map(l=>{
+      const dColor = l.daysLeft<=3?'var(--red)':l.daysLeft<=7?'var(--amber)':'var(--green)';
+      return `<div style="background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:.9rem 1.1rem;margin-bottom:.6rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:180px">
+            <div style="font-family:var(--m);font-size:.74rem;font-weight:600">${esc(l.customerName||'Customer')} · 📱 ${esc(l.phone||'')}</div>
+            <div style="font-family:var(--m);font-size:.6rem;color:var(--muted);margin-top:3px">${esc(l.email)}${l.profile?' · '+esc(l.profile):''}${l.pin?' · PIN '+esc(l.pin):''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:.7rem">
+            <span style="font-family:var(--m);font-size:.68rem;color:${dColor};font-weight:600">${l.daysLeft}d left</span>
+            <button onclick="revokeStreamingCustomer('${type}','${l.token}')" style="background:var(--s3);border:1px solid var(--border);color:var(--red);padding:5px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.6rem">Revoke</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div style="text-align:center;padding:2rem;color:var(--red);font-family:var(--m);font-size:.75rem">Error loading customers</div>';
+  }
+}
+
+async function revokeStreamingCustomer(type,token){
+  if(!confirm('Revoke this customer access and free their slot?'))return;
+  const r = await fetch('/api/admin/streaming/'+type+'/revoke/'+token,{method:'POST',headers:{'x-admin-token':adminToken}});
+  const d = await r.json();
+  if(d.success){showToast('Customer revoked, slot freed');viewStreamingCustomers(type);}
+  else showToast('Error revoking',true);
 }
 
 async function loadAccountPerformance(){
