@@ -212,9 +212,9 @@ const STREAMING_PRODUCTS = {
 
 // Slot layouts per product - slots = max people sharing one profile
 const STREAMING_PROFILES = {
-  prime:   [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:1},{profile:'Profile F',slots:1} ],
-  hbo:     [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:2} ],
-  disney:  [ {profile:'Profile A',slots:2},{profile:'Profile B',slots:2},{profile:'Profile C',slots:2},{profile:'Profile D',slots:2},{profile:'Profile E',slots:2},{profile:'Profile F',slots:2},{profile:'Profile G',slots:2} ],
+  prime:   [ {profile:'Profile A',slots:2,pin:'56561'},{profile:'Profile B',slots:2,pin:'56562'},{profile:'Profile C',slots:2,pin:'56563'},{profile:'Profile D',slots:2,pin:'56564'},{profile:'Profile E',slots:1,pin:'56565'},{profile:'Profile F',slots:1,pin:'56566'} ],
+  hbo:     [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'} ],
+  disney:  [ {profile:'Profile A',slots:2,pin:'5651'},{profile:'Profile B',slots:2,pin:'5652'},{profile:'Profile C',slots:2,pin:'5653'},{profile:'Profile D',slots:2,pin:'5654'},{profile:'Profile E',slots:2,pin:'5655'},{profile:'Profile F',slots:2,pin:'5656'},{profile:'Profile G',slots:2,pin:'5657'} ],
   chatgpt: null, // no profiles - fixed credentials, capacity tracked by customer count per account (max 15)
 };
 
@@ -253,7 +253,7 @@ function getNextAvailableStreamingSlot(type, days) {
       for (const prof of profiles) {
         const used = usedProfiles.filter(p => p === prof.profile).length;
         if (used < prof.slots) {
-          return { accountId: account.id, email: account.email, password: account.password, profile: prof.profile, pin: account.pins?.[prof.profile] || null };
+          return { accountId: account.id, email: account.email, password: account.password, profile: prof.profile, pin: account.pins?.[prof.profile] || prof.pin || null };
         }
       }
     }
@@ -406,8 +406,8 @@ async function sendUniversalAccountDelivery(phone, customerName, product, email,
         { type: 'text', text: product },
         { type: 'text', text: email },
         { type: 'text', text: password },
-        { type: 'text', text: profile || 'N/A' },
-        { type: 'text', text: pin || 'N/A' },
+        { type: 'text', text: profile || 'Shared Account (no profile)' },
+        { type: 'text', text: pin || 'Not required' },
       ],
     },
     { type: 'footer', text: 'Thank you for choosing FanFlix BD!', parameters: [] },
@@ -767,32 +767,49 @@ setInterval(checkExpiringLinks, 60*60*1000);
 // 2 days before expiry, for ALL active customers regardless of product type.
 // Replaces the old BulkSMS-based reminder system entirely.
 async function sendUniversalRenewalReminders() {
-  const links = loadLinks();
   const now = Date.now();
   const twoDays = 2*24*60*60*1000;
-  let changed = false;
   const dueLinks = [];
+
+  // Netflix links
+  const links = loadLinks();
+  let changed = false;
   for (const link of Object.values(links)) {
     if (!link.active || link.released) continue;
     const remaining = link.expiresAt - now;
     if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
-      dueLinks.push(link);
+      dueLinks.push({ link, productName: link.plan || 'Netflix' });
       link.renewalSmsSent = true;
       changed = true;
     }
   }
   if (changed) saveLinks(links);
 
+  // Streaming product links (Prime/HBO/Disney+/ChatGPT)
+  for (const type of Object.keys(STREAMING_PRODUCTS)) {
+    const sLinks = loadStreamingLinks(type);
+    let sChanged = false;
+    for (const link of Object.values(sLinks)) {
+      if (!link.active || link.released) continue;
+      const remaining = link.expiresAt - now;
+      if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
+        dueLinks.push({ link, productName: STREAMING_PRODUCTS[type].name });
+        link.renewalSmsSent = true;
+        sChanged = true;
+      }
+    }
+    if (sChanged) saveStreamingLinks(type, sLinks);
+  }
+
   // Send with a 15s gap between each customer - avoids firing many simultaneous
   // requests at Respond.io, which was causing more "queued" (449) responses.
-  for (const link of dueLinks) {
+  for (const { link, productName } of dueLinks) {
     if (link.phone) {
       const remaining = link.expiresAt - now;
       const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
-      const productName = link.plan || 'Netflix';
       sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft).then(sent => {
         if (!sent) {
-          sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n🤜 ${link.customerName||'Customer'} | 📱 ${link.phone}\n🤜 ${link.profile}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
+          sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n👤 ${link.customerName||'Customer'} | 📱 ${link.phone}\n📦 ${productName}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
         }
       });
       await new Promise(r => setTimeout(r, 15000));
@@ -2577,6 +2594,19 @@ app.get('/api/admin/streaming/:type/links', adminAuth, (req, res) => {
     expired: l.expiresAt < now,
   })).sort((a,b) => b.createdAt - a.createdAt);
   res.json({ success:true, links: result, total: result.length });
+});
+
+// Revoke a specific streaming customer - frees their slot immediately
+app.post('/api/admin/streaming/:type/revoke/:token', adminAuth, (req, res) => {
+  const { type, token } = req.params;
+  if (!STREAMING_PRODUCTS[type]) return res.status(400).json({ error:'Unknown type' });
+  const links = loadStreamingLinks(type);
+  if (!links[token]) return res.status(404).json({ success:false, error:'Link not found' });
+  links[token].active = false;
+  links[token].released = true;
+  links[token].revokedAt = Date.now();
+  saveStreamingLinks(type, links);
+  res.json({ success:true });
 });
 
 app.get('/api/admin/accounts', adminAuth, (req, res) => {
