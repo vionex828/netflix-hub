@@ -1986,9 +1986,40 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       return res.json({ success:true, renewed:true, token:first.token, link:SITE_URL+'/c/'+first.token });
     }
 
-    // New customer — get slot
+    // New customer — get slot (own account first)
     const slot = getNextAvailableSlot(d, detectDeviceType(w.product));
-    if (!slot) return res.status(503).json({ success:false, error:'No slots available for ' + d + ' day plan' });
+    if (!slot) {
+      // Own stock full - try third-party Netflix pool before giving up
+      const tpSlot = getNextAvailableStreamingSlot('netflix3p', d);
+      if (tpSlot) {
+        const tpLinks = loadStreamingLinks('netflix3p');
+        const tpToken = generateStreamingToken('netflix3p');
+        tpLinks[tpToken] = {
+          token: tpToken, accountId: tpSlot.accountId, email: tpSlot.email, password: tpSlot.password,
+          profile: tpSlot.profile, pin: tpSlot.pin, phone, customerName: w.customerName||'',
+          plan: 'Netflix Account', amount: w.amount||0, orderName: w.orderName||'',
+          days: d, createdAt: now, expiresAt: now + d*24*60*60*1000,
+          uses: 0, lastUsed: null, active: true, released: false, renewalSmsSent: false, renewalCount: 0,
+        };
+        saveStreamingLinks('netflix3p', tpLinks);
+        waitlist.splice(idx, 1);
+        saveWaitlist(waitlist);
+        res.json({ success:true, thirdParty:true, profile:tpSlot.profile, pin:tpSlot.pin });
+        const sent = await sendUniversalAccountDelivery(phone, w.customerName, 'Netflix Account', tpSlot.email, tpSlot.password, tpSlot.profile, tpSlot.pin);
+        if (sent) {
+          sendTelegram(`✅ <b>Approved (Netflix 3rd-Party)!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n📧 ${tpSlot.email}\n👤 ${tpSlot.profile} | PIN: ${tpSlot.pin}\n⏳ ${d} days\n\n📲 Delivered from third-party pool`);
+        } else {
+          const undoLinks = loadStreamingLinks('netflix3p');
+          delete undoLinks[tpToken];
+          saveStreamingLinks('netflix3p', undoLinks);
+          const wl = loadWaitlist();
+          if (!wl.find(x => x.phone === phone)) { wl.push(w); saveWaitlist(wl); }
+          sendTelegram(`⚠️ <b>3rd-Party Approve Failed — Back in Waitlist!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n\nWhatsApp failed. Slot released, customer back in waitlist.`);
+        }
+        return;
+      }
+      return res.status(503).json({ success:false, error:'No slots available (own + 3rd-party both full) for ' + d + ' day plan' });
+    }
 
     const token = generateToken();
     allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName:w.customerName||'', plan:w.product||'', amount:w.amount||0, orderName:w.orderName||'', renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
@@ -2834,10 +2865,9 @@ app.post('/api/streaming/auto-create', async (req, res) => {
 
     // Send WhatsApp delivery, fallback to Telegram alert if it fails
     const sent = await sendUniversalAccountDelivery(phone, customerName, STREAMING_PRODUCTS[type].name, slot.email, slot.password, slot.profile, slot.pin);
-    if (sent) {
-      sendTelegram(`✅ <b>Auto-Delivered (${type.toUpperCase()})!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📧 ${slot.email}\n👤 ${slot.profile||'N/A'}\n⏳ ${d} days\n\n📲 Sent automatically`);
-    } else {
-      // WhatsApp failed - undo slot assignment, alert admin
+    if (!sent) {
+      // WhatsApp failed - undo slot assignment, alert admin.
+      // (On success we stay silent here - EPS bot already sends the success Telegram message.)
       delete links[token];
       saveStreamingLinks(type, links);
       sendTelegram(`⚠️ <b>${type.toUpperCase()} Delivery Failed — Slot Released!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📧 ${slot.email}\n👤 ${slot.profile||'N/A'}\n\n❗ WhatsApp delivery failed. Please deliver manually and re-assign from admin.`);
