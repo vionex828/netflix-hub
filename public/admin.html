@@ -413,10 +413,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <input id="strm-email" placeholder="Email" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem">
             <input id="strm-password" placeholder="Password" style="background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem">
           </div>
-          <div id="strm-pins-wrap" style="margin-bottom:.6rem">
-            <div style="font-family:var(--m);font-size:.62rem;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-bottom:.5rem">Profile PINs</div>
-            <div id="strm-pins-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.5rem"></div>
-          </div>
           <input id="strm-notes" placeholder="Notes (optional)" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem;color:var(--text);font-family:var(--m);font-size:.75rem;margin-bottom:.6rem">
           <button class="create-btn" onclick="addStreamingAccount()">Add Account</button>
         </div>
@@ -426,6 +422,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <div id="strm-accounts-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
 
+      <div id="section-recyclebin" style="display:none;padding:1.5rem">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
           <div style="font-size:1.1rem;font-weight:700">Recycle Bin <span id="recyclebin-count" style="font-family:var(--m);font-size:.75rem;color:var(--muted);margin-left:.5rem"></span></div>
           <button onclick="emptyRecycleBin()" style="background:var(--red);color:#fff;border:none;padding:7px 14px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem">🗑 Empty Bin</button>
@@ -650,6 +647,16 @@ async function clearBannedFlag(email){
   if(d.success){showToast('✅ Flag cleared');loadAccountPerformance();}
   else showToast('Error clearing flag',true);
 }
+async function deleteNetflixAccount(email,activeCount){
+  const warn = activeCount>0
+    ? `This Netflix account has ${activeCount} active customer(s). Deleting removes it from stock permanently — their links will stop working. Continue?`
+    : 'Delete this Netflix account from stock permanently? This cannot be undone.';
+  if(!confirm(warn))return;
+  const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
+  const d=await r.json();
+  if(d.success){showToast('Account deleted');loadAccountPerformance();loadAll&&loadAll();}
+  else showToast(d.error||'Error deleting account',true);
+}
 // ── STREAMING ACCOUNTS ──────────────────────────────────────────────
 let currentStreamType = 'prime';
 const STREAM_PROFILES = {
@@ -665,21 +672,6 @@ function switchStreamTab(type){
   currentStreamType = type;
   document.querySelectorAll('.strm-tab').forEach(b=>b.classList.toggle('active', b.dataset.type===type));
   document.getElementById('strm-form-title').textContent = 'Add '+STREAM_NAMES[type]+' Account';
-  // Build PIN inputs per profile (or hide for chatgpt)
-  const pinsWrap = document.getElementById('strm-pins-wrap');
-  const pinsGrid = document.getElementById('strm-pins-grid');
-  const profiles = STREAM_PROFILES[type];
-  if(!profiles){
-    pinsWrap.style.display='none';
-    pinsGrid.innerHTML='';
-  } else {
-    pinsWrap.style.display='block';
-    pinsGrid.innerHTML = profiles.map(([p, defaultPin])=>`
-      <div>
-        <div style="font-family:var(--m);font-size:.58rem;color:var(--muted);margin-bottom:3px">${p}</div>
-        <input class="strm-pin-input" data-profile="${p}" value="${defaultPin}" placeholder="PIN" maxlength="6" style="width:100%;background:var(--s3);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;color:var(--text);font-family:var(--m);font-size:.72rem">
-      </div>`).join('');
-  }
   loadStreamingAccounts(type);
 }
 
@@ -689,14 +681,10 @@ async function addStreamingAccount(){
   const password = document.getElementById('strm-password').value.trim();
   const notes = document.getElementById('strm-notes').value.trim();
   if(!email||!password){showToast('Email and password required',true);return;}
-  const pins = {};
-  document.querySelectorAll('.strm-pin-input').forEach(inp=>{
-    if(inp.value.trim()) pins[inp.dataset.profile] = inp.value.trim();
-  });
   const r = await fetch('/api/admin/streaming/'+type+'/accounts',{
     method:'POST',
     headers:{'Content-Type':'application/json','x-admin-token':adminToken},
-    body:JSON.stringify({email,password,pins,notes})
+    body:JSON.stringify({email,password,notes})
   });
   const d = await r.json();
   if(d.success){
@@ -704,7 +692,6 @@ async function addStreamingAccount(){
     document.getElementById('strm-email').value='';
     document.getElementById('strm-password').value='';
     document.getElementById('strm-notes').value='';
-    document.querySelectorAll('.strm-pin-input').forEach(inp=>inp.value='');
     loadStreamingAccounts(type);
   } else showToast(d.error||'Error adding account',true);
 }
@@ -825,6 +812,7 @@ async function loadAccountPerformance(){
           <div style="display:flex;align-items:center;gap:.6rem">
             <span style="color:${riskColor};font-family:var(--m);font-size:.68rem;font-weight:600;white-space:nowrap">${riskLabel}</span>
             ${a.bannedDetected?`<button onclick="clearBannedFlag('${esc(a.email)}')" style="background:var(--s3);border:1px solid var(--s4);color:var(--text);padding:5px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">Mark Fixed</button>`:''}
+            <button onclick="deleteNetflixAccount('${esc(a.email)}',${a.activeCount||0})" style="background:var(--s3);border:1px solid var(--border);color:var(--red);padding:5px 10px;border-radius:7px;cursor:pointer;font-family:var(--m);font-size:.6rem;white-space:nowrap">Delete</button>
           </div>
         </div>
       </div>`;
@@ -1452,10 +1440,17 @@ async function loadWaitlist(){
             ? `<span style="background:rgba(70,211,105,.12);color:var(--green);font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px">🔄 Likely renewal</span>`
             : `<span style="background:rgba(229,9,20,.15);color:var(--red);font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px">⚠️ Already has active link</span>`)
         : '';
+      // Product type badge - shows which pool this waitlist entry belongs to
+      const ptColors={prime:'#00A8E1',hbo:'#0042E4',disney:'#1CE783',chatgpt:'#10A37F',netflix3p:'#E50914'};
+      const ptNames={prime:'Prime',hbo:'HBO Max',disney:'Disney+',chatgpt:'ChatGPT',netflix3p:'Netflix 3P'};
+      const pt=w.productType;
+      const typeBadge = pt&&ptNames[pt]
+        ? `<span style="background:${ptColors[pt]}22;color:${ptColors[pt]};font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:600">${ptNames[pt]}</span>`
+        : `<span style="background:rgba(229,9,20,.12);color:var(--red);font-family:var(--m);font-size:.58rem;padding:2px 8px;border-radius:100px;margin-left:6px;font-weight:600">Netflix</span>`;
       return `
       <div style="background:var(--s1);border:1px solid ${w.hasExistingLink&&!w.existingExpired?'rgba(229,9,20,.3)':'var(--border)'};border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem;display:flex;align-items:center;gap:1rem">
         <div style="flex:1;min-width:0">
-          <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}${dupBadge}</div>
+          <div style="font-family:var(--m);font-size:.78rem;font-weight:600">${esc(w.customerName||'Unknown')}${typeBadge}${dupBadge}</div>
           <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-top:2px">📞 ${esc(w.phone)} · ${esc(w.product||'Netflix')} · ${w.days||30}d · ৳${w.amount||0}</div>
           <div style="font-family:var(--m);font-size:.6rem;color:var(--muted2);margin-top:2px">${timeAgo(w.addedAt)}</div>
         </div>
