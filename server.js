@@ -587,22 +587,51 @@ async function checkGeoAndAlert(token, ip) {
     const raw = await geoRes.json();
     if (raw.success === false) return; // lookup failed (private IP, invalid, rate limited, etc.)
     const geo = { country: raw.country, countryCode: raw.country_code };
+
+    // Detect datacenter/hosting IPs. Railway's own edge/proxy sometimes forwards a
+    // datacenter IP (its Singapore region) instead of the real customer IP - those are
+    // the false positives that previously locked out real BD customers. ipwho.is marks
+    // these under connection.type / isp. We NEVER auto-block a datacenter IP.
+    const connType = (raw.connection?.type || '').toLowerCase();
+    const isp = (raw.connection?.isp || raw.connection?.org || '').toLowerCase();
+    const datacenterHints = ['hosting','datacenter','data center','cloud','server','railway','amazon','aws','google','microsoft','azure','digitalocean','ovh','linode','vultr','hetzner'];
+    const looksDatacenter = connType.includes('hosting') || datacenterHints.some(h => isp.includes(h));
+
     if (geo.countryCode && geo.countryCode !== 'BD') {
       const geoData = loadGeo();
       if (!geoData[token]) geoData[token] = [];
       const already = geoData[token].find(g => g.ip === ip);
       if (!already) {
-        geoData[token].push({ ip, country: geo.country, code: geo.countryCode });
+        geoData[token].push({ ip, country: geo.country, code: geo.countryCode, datacenter: looksDatacenter, ts: Date.now() });
         saveGeo(geoData);
       }
       const links = loadLinks();
       const link = links[token];
 
-      // Detection only - no auto-block. Railway's edge/proxy IP forwarding has
-      // been unreliable during region changes, causing false positives that
-      // wrongly locked out real customers. Admin reviews and revokes manually
-      // from the Outside BD Login section if this is confirmed genuine.
-      sendTelegram(`🌍 <b>Outside BD Login Detected!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n👉 Review in Admin → Outside BD Login and revoke manually if confirmed genuine.`);
+      // Count DISTINCT non-datacenter outside-BD IPs for this token. We only auto-block
+      // when there are 2+ confirmed real (non-datacenter) foreign IPs - this makes a single
+      // fluke reading (or a datacenter mis-read) never enough to block a real customer.
+      const realForeignIPs = (geoData[token] || []).filter(g => !g.datacenter);
+      const confirmedCount = realForeignIPs.length;
+      const shouldAutoBlock = !looksDatacenter && confirmedCount >= 2 && link && link.active && !link.released;
+
+      if (shouldAutoBlock) {
+        // Auto-block: release the slot so it can't keep being used from abroad.
+        link.active = false;
+        link.released = true;
+        link.autoBlockedAt = Date.now();
+        link.autoBlockedReason = 'outside_bd_confirmed';
+        links[token] = link;
+        saveLinks(links);
+        sendTelegram(`🚫 <b>AUTO-BLOCKED — Outside BD (confirmed ${confirmedCount}x)!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n✅ Slot released automatically after ${confirmedCount} confirmed foreign logins. Restore from Recycle Bin / re-create if this was a mistake.`);
+      } else {
+        // Not enough confirmations yet (or datacenter IP) - alert only, no block.
+        const reason = looksDatacenter
+          ? `\n⚠️ IP looks like a datacenter/proxy (possibly Railway's own routing) — NOT counted toward auto-block.`
+          : `\n📊 Confirmed foreign logins so far: ${confirmedCount}/2 needed to auto-block.`;
+        sendTelegram(`🌍 <b>Outside BD Login Detected!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}${reason}\n\n👉 Review in Admin → Outside BD Login and revoke manually if confirmed genuine.`);
+      }
+
       try {
         const alerts = loadNetflixAlerts();
         alerts.unshift({
@@ -614,6 +643,8 @@ async function checkGeoAndAlert(token, ip) {
           profile: link?.profile || '',
           phone: link?.phone || '',
           customerName: link?.customerName || '',
+          autoBlocked: shouldAutoBlock,
+          datacenter: looksDatacenter,
           ts: Date.now(),
         });
         saveNetflixAlerts(alerts.slice(0, 100));
@@ -1747,17 +1778,27 @@ app.get('/api/admin/revenue', adminAuth, (req, res) => {
     let allTimeTotal = 0, allTimeCount = 0;
     const byProduct = {};
 
-    for (const link of Object.values(links)) {
+    // Helper - tally one link's amount into all the buckets
+    const tally = (link, fallbackName) => {
       const amount = parseFloat(link.amount) || 0;
-      if (!amount || !link.createdAt) continue;
+      if (!amount || !link.createdAt) return;
       const createdStr = new Date(link.createdAt).toISOString().split('T')[0];
       allTimeTotal += amount; allTimeCount++;
       if (createdStr === todayStr) { todayTotal += amount; todayCount++; }
       if (createdStr.slice(0,7) === monthStr) { monthTotal += amount; monthCount++; }
-      const prod = link.plan || 'Unknown';
+      const prod = link.plan || fallbackName || 'Unknown';
       if (!byProduct[prod]) byProduct[prod] = { total: 0, count: 0 };
       byProduct[prod].total += amount;
       byProduct[prod].count++;
+    };
+
+    // Netflix (own) links
+    for (const link of Object.values(links)) tally(link, 'Netflix');
+
+    // Streaming product links (Prime/HBO/Disney+/ChatGPT/3rd-party Netflix)
+    for (const type of Object.keys(STREAMING_PRODUCTS)) {
+      const sLinks = loadStreamingLinks(type);
+      for (const link of Object.values(sLinks)) tally(link, STREAMING_PRODUCTS[type].name);
     }
 
     res.json({
@@ -1966,6 +2007,57 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
     if (idx === -1) return res.status(404).json({ success:false, error:'Not in waitlist' });
     const w = waitlist[idx];
     const d = normalizeDays(w.days);
+
+    // If this waitlist entry is for a streaming product (Prime/HBO/Disney+/ChatGPT),
+    // assign from that product's pool instead of Netflix.
+    if (w.productType && STREAMING_PRODUCTS[w.productType]) {
+      const type = w.productType;
+      const now2 = Date.now();
+      const phoneNorm2 = phone.replace(/\D/g,'');
+      const sLinks = loadStreamingLinks(type);
+
+      // Renewal check within this product's pool
+      const sExisting = Object.values(sLinks).filter(l => l.phone && l.phone.replace(/\D/g,'') === phoneNorm2 && l.active && !l.released);
+      if (sExisting.length > 0) {
+        for (const el of sExisting) {
+          sLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
+          sLinks[el.token].renewalSmsSent = false;
+          sLinks[el.token].renewalCount = (sLinks[el.token].renewalCount||0) + 1;
+        }
+        saveStreamingLinks(type, sLinks);
+        waitlist.splice(idx, 1); saveWaitlist(waitlist);
+        const sf = sExisting[0];
+        sendUniversalAccountDelivery(phone, w.customerName, STREAMING_PRODUCTS[type].name, sf.email, sf.password, sf.profile, sf.pin);
+        return res.json({ success:true, renewed:true });
+      }
+
+      const sSlot = getNextAvailableStreamingSlot(type, d);
+      if (!sSlot) return res.status(503).json({ success:false, error:'No '+STREAMING_PRODUCTS[type].name+' slots available. Add more accounts first.' });
+
+      const sToken = generateStreamingToken(type);
+      sLinks[sToken] = {
+        token: sToken, accountId: sSlot.accountId, email: sSlot.email, password: sSlot.password,
+        profile: sSlot.profile, pin: sSlot.pin, phone, customerName: w.customerName||'',
+        plan: w.product || STREAMING_PRODUCTS[type].name, amount: w.amount||0, orderName: w.orderName||'',
+        days: d, createdAt: now2, expiresAt: now2 + d*24*60*60*1000,
+        uses: 0, lastUsed: null, active: true, released: false, renewalSmsSent: false, renewalCount: 0,
+      };
+      saveStreamingLinks(type, sLinks);
+      waitlist.splice(idx, 1); saveWaitlist(waitlist);
+      res.json({ success:true, thirdParty:false, streaming:type, profile:sSlot.profile, pin:sSlot.pin });
+      const sent = await sendUniversalAccountDelivery(phone, w.customerName, STREAMING_PRODUCTS[type].name, sSlot.email, sSlot.password, sSlot.profile, sSlot.pin);
+      if (sent) {
+        sendTelegram(`✅ <b>Approved (${STREAMING_PRODUCTS[type].name})!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n📧 ${sSlot.email}\n👤 ${sSlot.profile||'Shared'} | PIN: ${sSlot.pin||'—'}\n⏳ ${d} days\n\n📲 Delivered via WhatsApp`);
+      } else {
+        const undo = loadStreamingLinks(type);
+        delete undo[sToken];
+        saveStreamingLinks(type, undo);
+        const wl2 = loadWaitlist();
+        if (!wl2.find(x => x.phone === phone && x.productType === type)) { wl2.push(w); saveWaitlist(wl2); }
+        sendTelegram(`⚠️ <b>${STREAMING_PRODUCTS[type].name} Approve Failed — Back in Waitlist!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n\nWhatsApp failed, slot released.`);
+      }
+      return;
+    }
 
     // Renewal check
     const allLinks = loadLinks();
@@ -2677,11 +2769,13 @@ app.get('/api/admin/account-performance', adminAuth, (req, res) => {
       const pinChangeCount = alerts.filter(al => al.email === a.email && al.source === 'pin_change').length;
       const nonRenewalRate = everCount > 0 ? Math.round((1 - renewedCount/everCount) * 100) : 0;
       const riskScore = outsideBdCount*3 + pinChangeCount*2 + neverRenewedExpired;
+      const activeCount = accountLinks.filter(l => l.active && !l.released && l.expiresAt > now).length;
 
       return {
         email: a.email,
         active: a.active !== false,
         everCount,
+        activeCount,
         outsideBdCount,
         pinChangeCount,
         nonRenewalRate,
@@ -2771,14 +2865,15 @@ app.post('/api/admin/accounts/:email/clear-banned', adminAuth, (req, res) => {
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const target = decodeURIComponent(req.params.email).trim().toLowerCase();
-  // Block delete if account has active customers
+  // The admin UI already warns about active customers and asks for confirmation,
+  // so we allow the delete (used for dead/banned accounts) and report how many were affected.
   const links = loadLinks();
   const now = Date.now();
-  const hasActive = Object.values(links).some(l => l.email === target && l.active && l.expiresAt > now);
-  if (hasActive) return res.status(400).json({ success:false, error:'Cannot delete — account has active customers. Revoke their links first.' });
+  const activeCount = Object.values(links).filter(l => l.email === target && l.active && l.expiresAt > now).length;
   const filtered = accounts.filter(a => a.email.trim().toLowerCase() !== target);
+  if (filtered.length === accounts.length) return res.status(404).json({ success:false, error:'Account not found' });
   saveAccounts(filtered);
-  res.json({ success:true, removed: accounts.length - filtered.length });
+  res.json({ success:true, removed: accounts.length - filtered.length, activeCustomersAffected: activeCount });
 });
 
 app.post('/api/admin/accounts/:email/plan', adminAuth, (req, res) => {
@@ -2849,7 +2944,14 @@ app.post('/api/streaming/auto-create', async (req, res) => {
     // New customer - try to assign a slot
     const slot = getNextAvailableStreamingSlot(type, d);
     if (!slot) {
-      sendTelegram(`🔔 <b>New ${type.toUpperCase()} Order — No Slot Available</b>\n\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📦 ${product} | ${d} days\n💰 ৳${amount}\n\n<b>Add more ${STREAMING_PRODUCTS[type].name} accounts in admin</b>`);
+      // Stock full - add to waitlist (tagged with productType so approve assigns from the right pool)
+      const waitlist = loadWaitlist();
+      const phoneNorm2 = phone.replace(/\D/g,'');
+      if (!waitlist.find(w => w.phone && w.phone.replace(/\D/g,'') === phoneNorm2 && w.productType === type)) {
+        waitlist.push({ phone, customerName: customerName||'', days: d, product: product||STREAMING_PRODUCTS[type].name, orderName: orderName||'', amount: amount||0, productType: type, addedAt: Date.now() });
+        saveWaitlist(waitlist);
+      }
+      sendTelegram(`🔔 <b>New ${STREAMING_PRODUCTS[type].name} Order — Waitlisted</b>\n\n👤 ${customerName||'Customer'} | 📱 ${phone}\n📦 ${product} | ${d} days\n💰 ৳${amount}\n\n<b>Stock full — added to Waitlist. Add more ${STREAMING_PRODUCTS[type].name} accounts, then approve.</b>`);
       return res.json({ success:true, waitlisted:true, reason:'no_slot' });
     }
 
