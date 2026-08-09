@@ -279,7 +279,20 @@ async function sendWhatsAppTemplate(phone, customerName, templateName, component
   try {
     const num = String(phone).replace(/\D/g,'');
     if (!num || num.length < 7) return false;
-    const respondPhone = num.startsWith('880') ? num : '880' + num.replace(/^0+/, '');
+    // Keep the number's own country code. Only add 880 (Bangladesh) when the number
+    // clearly has no country code - i.e. a local BD number starting with 0 or a bare
+    // 10-digit 1XXXXXXXXX mobile. Numbers that already include a country code (11+ digits
+    // not starting with 0) are used as-is, so foreign customers receive delivery too.
+    let respondPhone;
+    if (num.startsWith('880')) {
+      respondPhone = num;
+    } else if (num.startsWith('0')) {
+      respondPhone = '880' + num.replace(/^0+/, ''); // local BD format 01XXXXXXXXX
+    } else if (num.length === 10 && num.startsWith('1')) {
+      respondPhone = '880' + num; // bare BD mobile without leading 0
+    } else {
+      respondPhone = num; // already has a country code (foreign or otherwise) - use as-is
+    }
     const firstName = (customerName || 'FanFlix Customer').split(' ')[0] || 'FanFlix';
     const lastName = (customerName || '').split(' ').slice(1).join(' ') || '';
 
@@ -340,6 +353,18 @@ async function sendWhatsAppTemplate(phone, customerName, templateName, component
       console.error(`Respond.io send failed (${templateName}):`, res.status, lastErrText.slice(0,300));
       return false;
     }
+    // Respond.io returns 200 even when a message is only "queued". Parse the body and
+    // confirm it wasn't rejected - a failed/rejected status means the number couldn't
+    // receive it (e.g. not on WhatsApp), and we must treat that as a failure so the
+    // caller releases the slot instead of wasting it.
+    try {
+      const okBody = await res.json();
+      const status = (okBody.status || okBody.messageStatus || '').toString().toLowerCase();
+      if (status && /fail|reject|error|invalid|undeliver/.test(status)) {
+        console.error(`Respond.io message rejected (${templateName}):`, status);
+        return false;
+      }
+    } catch(e) { /* no JSON body / not parseable - treat 200 as accepted */ }
     return true;
   } catch(e) {
     console.error(`sendWhatsAppTemplate error (${templateName}):`, e.message);
@@ -608,28 +633,24 @@ async function checkGeoAndAlert(token, ip) {
       const links = loadLinks();
       const link = links[token];
 
-      // Count DISTINCT non-datacenter outside-BD IPs for this token. We only auto-block
-      // when there are 2+ confirmed real (non-datacenter) foreign IPs - this makes a single
-      // fluke reading (or a datacenter mis-read) never enough to block a real customer.
-      const realForeignIPs = (geoData[token] || []).filter(g => !g.datacenter);
-      const confirmedCount = realForeignIPs.length;
-      const shouldAutoBlock = !looksDatacenter && confirmedCount >= 2 && link && link.active && !link.released;
+      // Block on the FIRST confirmed residential (non-datacenter) foreign IP.
+      // Datacenter/hosting IPs are still skipped entirely - those are Railway's own
+      // routing false-reads, never a real customer. A real customer on a residential
+      // foreign IP gets blocked immediately (no second chance).
+      const shouldAutoBlock = !looksDatacenter && link && link.active && !link.released;
 
       if (shouldAutoBlock) {
         // Auto-block: release the slot so it can't keep being used from abroad.
         link.active = false;
         link.released = true;
         link.autoBlockedAt = Date.now();
-        link.autoBlockedReason = 'outside_bd_confirmed';
+        link.autoBlockedReason = 'outside_bd';
         links[token] = link;
         saveLinks(links);
-        sendTelegram(`🚫 <b>AUTO-BLOCKED — Outside BD (confirmed ${confirmedCount}x)!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n✅ Slot released automatically after ${confirmedCount} confirmed foreign logins. Restore from Recycle Bin / re-create if this was a mistake.`);
+        sendTelegram(`🚫 <b>AUTO-BLOCKED — Outside BD!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n✅ Slot released automatically (residential foreign login). Restore from Recycle Bin if this was a mistake.`);
       } else {
-        // Not enough confirmations yet (or datacenter IP) - alert only, no block.
-        const reason = looksDatacenter
-          ? `\n⚠️ IP looks like a datacenter/proxy (possibly Railway's own routing) — NOT counted toward auto-block.`
-          : `\n📊 Confirmed foreign logins so far: ${confirmedCount}/2 needed to auto-block.`;
-        sendTelegram(`🌍 <b>Outside BD Login Detected!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}${reason}\n\n👉 Review in Admin → Outside BD Login and revoke manually if confirmed genuine.`);
+        // Datacenter/proxy IP - alert only, never block (avoids Railway false-reads).
+        sendTelegram(`🌍 <b>Outside BD Login Detected (not blocked)</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n⚠️ IP looks like a datacenter/proxy (possibly Railway's own routing) — NOT auto-blocked. Review manually if needed.`);
       }
 
       try {
@@ -662,6 +683,9 @@ function getNextAvailableSlot(customerDays, deviceType) {
   function tryAccounts(accountList) {
     for (const account of accountList) {
       const email = account.email;
+      // Skip accounts with no valid email - assigning one would create a broken
+      // link that shows "invalid" to the customer.
+      if (!email || !String(email).trim() || !String(email).includes('@')) continue;
       // Untagged accounts default to mobile for backward compatibility
       const accountType = account.deviceType === 'tv' ? 'tv' : 'mobile';
       if (accountType !== wantType) continue;
@@ -750,48 +774,17 @@ async function sendMorningReport() {
   const now = Date.now();
   const threeDays = 3*24*60*60*1000;
   const sevenDays = 7*24*60*60*1000;
-  const expiring3 = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)<=threeDays);
-  const expiring7 = Object.values(links).filter(l => l.active && l.expiresAt>now && (l.expiresAt-now)>threeDays && (l.expiresAt-now)<=sevenDays);
   const active = Object.values(links).filter(l => l.active && l.expiresAt>now);
   const expired = Object.values(links).filter(l => l.expiresAt<=now);
   let msg = `<b>FanFlix Morning Report</b>\n📅 ${new Date().toLocaleDateString('en-BD',{timeZone:'Asia/Dhaka',weekday:'long',year:'numeric',month:'long',day:'numeric'})}\n\n`;
-  msg += `Active: ${active.length} | Expiring 3d: ${expiring3.length} | Expiring 7d: ${expiring7.length} | Expired: ${expired.length}\n\n`;
-  if (expiring3.length > 0) {
-    msg += `<b>Expiring in 3 days — Renew now:</b>\n`;
-    for (const l of expiring3) {
-      const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg += `• ${l.profile} | ${l.email}\n  ${days}d | /renew ${l.token} 30\n`;
-    }
-    msg += '\n';
-  }
-  if (expiring7.length > 0) {
-    msg += `<b>Expiring in 7 days:</b>\n`;
-    for (const l of expiring7) {
-      const days = Math.ceil((l.expiresAt-now)/(24*60*60*1000));
-      msg += `• ${l.profile} | ${l.email} | ${days}d\n`;
-    }
-  }
-  if (expiring3.length === 0 && expiring7.length === 0) msg += `All links are healthy!`;
+  msg += `Active: ${active.length} | Expired: ${expired.length}`;
   sendTelegram(msg);
 }
 
 function checkExpiringLinks() {
-  const links = loadLinks();
-  const now = Date.now();
-  const threeDays = 3*24*60*60*1000;
-  let changed = false;
-  for (const link of Object.values(links)) {
-    if (!link.active) continue;
-    const remaining = link.expiresAt - now;
-    // Telegram 3 days before
-    if (remaining > 0 && remaining <= threeDays && !link.warningSent) {
-      const days = Math.ceil(remaining/(24*60*60*1000));
-      sendTelegram(`<b>Link Expiring Soon!</b>\n\n📧 ${link.email}\n👤 ${link.profile}\n⏳ <b>${days} day(s) left</b>\n🔗 ${SITE_URL}/c/${link.token}\n\n/renew ${link.token} 30`);
-      links[link.token].warningSent = true;
-      changed = true;
-    }
-  }
-  if (changed) saveLinks(links);
+  // Per-link "expiring soon" Telegram notifications removed by request.
+  // Renewal reminders now go to customers via WhatsApp (sendUniversalRenewalReminders),
+  // and a single daily summary is sent instead of one Telegram per expiring link.
 }
 setInterval(checkExpiringLinks, 60*60*1000);
 
@@ -836,17 +829,27 @@ async function sendUniversalRenewalReminders() {
 
   // Send with a 15s gap between each customer - avoids firing many simultaneous
   // requests at Respond.io, which was causing more "queued" (449) responses.
+  // Instead of one Telegram per customer, we tally results and send a single summary.
+  let sentCount = 0;
+  const failedList = [];
   for (const { link, productName } of dueLinks) {
     if (link.phone) {
       const remaining = link.expiresAt - now;
       const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
-      sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft).then(sent => {
-        if (!sent) {
-          sendTelegram(`⚠️ <b>Renewal Reminder Failed!</b>\n👤 ${link.customerName||'Customer'} | 📱 ${link.phone}\n📦 ${productName}\n\nCouldn't send WhatsApp reminder - consider contacting them another way.`);
-        }
-      });
+      const ok = await sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft);
+      if (ok) sentCount++;
+      else failedList.push(`${link.customerName||'Customer'} (${link.phone})`);
       await new Promise(r => setTimeout(r, 15000));
     }
+  }
+
+  // One summary Telegram (only if there was anything to send)
+  if (dueLinks.length > 0) {
+    let summary = `🔔 <b>Renewal Reminders Sent</b>\n\n✅ Successfully sent to <b>${sentCount}</b> customer(s) today.`;
+    if (failedList.length > 0) {
+      summary += `\n\n⚠️ <b>Failed (${failedList.length}):</b>\n` + failedList.map(f => `• ${f}`).join('\n') + `\n\nConsider contacting these customers another way.`;
+    }
+    sendTelegram(summary);
   }
 }
 function scheduleUniversalRenewalReminders() {
@@ -1278,35 +1281,6 @@ app.post('/tg-webhook', async (req, res) => {
     return sendTelegram(msg2, chatId);
   }
 
-  if (text.startsWith('/replaceall')) {
-    const parts = text.replace('/replaceall','').trim().split(' ');
-    if (parts.length < 2) return sendTelegram('❌ Format: /replaceall oldemail newemail', chatId);
-    const [oldEmail, newEmail] = parts;
-    const links = loadLinks();
-    let count = 0;
-    for (const token of Object.keys(links)) {
-      if (links[token].email === oldEmail.toLowerCase()) { links[token].email = newEmail.toLowerCase(); count++; }
-    }
-    if (count === 0) return sendTelegram(`❌ No links found for ${oldEmail}`, chatId);
-    saveLinks(links);
-    cache.delete(oldEmail.toLowerCase());
-    cache.delete(newEmail.toLowerCase());
-    return sendTelegram(`✅ <b>Account Replaced!</b>\n\n📧 Old: ${oldEmail}\n📧 New: ${newEmail}\n🔗 ${count} links updated\n\nAll customer links now fetch from new account!`, chatId);
-  }
-
-  if (text.startsWith('/replace')) {
-    const parts = text.replace('/replace','').trim().split(' ');
-    if (parts.length < 2) return sendTelegram('❌ Format: /replace TOKEN newemail@gmail.com', chatId);
-    const [token, newEmail] = parts;
-    const links = loadLinks();
-    if (!links[token]) return sendTelegram('❌ Link not found: '+token, chatId);
-    const oldEmail = links[token].email;
-    links[token].email = newEmail.toLowerCase();
-    saveLinks(links);
-    cache.delete(oldEmail); cache.delete(newEmail.toLowerCase());
-    return sendTelegram(`✅ <b>Link Updated!</b>\n\n🔗 /c/${token}\n👤 ${links[token].profile}\n📧 Old: ${oldEmail}\n📧 New: ${newEmail}`, chatId);
-  }
-
   if (text.startsWith('/list')) {
     const emailFilter = text.replace('/list','').trim().toLowerCase();
     const links = loadLinks();
@@ -1405,7 +1379,6 @@ app.post('/tg-webhook', async (req, res) => {
     return sendTelegram(
       `🎬 <b>FanFlix Bot Commands</b>\n\n` +
       `<b>Create:</b>\n/create email | days\n\n` +
-      `<b>Replace Account:</b>\n/replace TOKEN newemail\n/replaceall oldemail newemail\n\n` +
       `<b>Manage:</b>\n/list email\n/renew TOKEN days\n/extend TOKEN days\n/revoke TOKEN\n\n` +
       `<b>Info:</b>\n/slots\n/stats\n/expiry\n/ip TOKEN\n/help`, chatId
     );
@@ -1500,48 +1473,6 @@ app.post('/api/admin/renew/:token', adminAuth, (req, res) => {
   links[req.params.token].renewalSmsSent = false;
   links[req.params.token].active = true;
   saveLinks(links); res.json({ success:true });
-});
-
-app.post('/api/admin/replace/:token', adminAuth, (req, res) => {
-  const links = loadLinks();
-  if (!links[req.params.token]) return res.status(404).json({ error:'Not found' });
-  const { newEmail } = req.body;
-  if (!newEmail) return res.status(400).json({ error:'Missing newEmail' });
-  const oldEmail = links[req.params.token].email;
-  links[req.params.token].email = newEmail.toLowerCase().trim();
-  saveLinks(links);
-  cache.clear();
-  res.json({ success:true, oldEmail, newEmail });
-});
-
-app.post('/api/admin/replaceall', adminAuth, (req, res) => {
-  const { oldEmail, newEmail } = req.body;
-  if (!oldEmail||!newEmail) return res.status(400).json({ error:'Missing fields' });
-  const oldNorm = oldEmail.toLowerCase().trim();
-  const newNorm = newEmail.toLowerCase().trim();
-  const links = loadLinks();
-  let count = 0;
-  for (const token of Object.keys(links)) {
-    if (links[token].email.toLowerCase().trim() === oldNorm) { links[token].email = newNorm; count++; }
-  }
-  saveLinks(links);
-  cache.clear();
-
-  // Keep accounts.json in sync too - carry over deviceType/planDays/notes from the
-  // old account entry to the new email, so Netflix Accounts section stays correct.
-  const accounts = loadAccounts();
-  const oldAcctIdx = accounts.findIndex(a => a.email === oldNorm);
-  const newAcctExists = accounts.find(a => a.email === newNorm);
-  if (oldAcctIdx !== -1 && !newAcctExists) {
-    accounts[oldAcctIdx].email = newNorm;
-    saveAccounts(accounts);
-  } else if (oldAcctIdx !== -1 && newAcctExists) {
-    // New email already registered as its own account - just remove the old one
-    accounts.splice(oldAcctIdx, 1);
-    saveAccounts(accounts);
-  }
-
-  res.json({ success:true, count });
 });
 
 // Update profile for a link
