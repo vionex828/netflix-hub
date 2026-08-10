@@ -653,7 +653,7 @@ async function deleteNetflixAccount(email,activeCount){
   if(!confirm(warn))return;
   const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
   const d=await r.json();
-  if(d.success){showToast('Account deleted');loadAccountPerformance();loadAll&&loadAll();}
+  if(d.success){showToast(`Account deleted. ${d.linksAffected||0} link(s) removed.`);loadAccountPerformance();loadAll&&loadAll();}
   else showToast(d.error||'Error deleting account',true);
 }
 // ── STREAMING ACCOUNTS ──────────────────────────────────────────────
@@ -1393,7 +1393,7 @@ async function deleteAccount(email){
   const r=await fetch('/api/admin/accounts/'+encodeURIComponent(email),{method:'DELETE',headers:{'x-admin-token':adminToken}});
   const d=await r.json();
   if(!d.success){showToast('❌ '+(d.error||'Cannot delete'),true);return;}
-  showToast('Deleted!');loadAll();loadAccounts();
+  showToast(`Deleted! ${d.linksAffected||0} customer link(s) also removed.`);loadAll();loadAccounts();
 }
 
 // ── WAITLIST ──
