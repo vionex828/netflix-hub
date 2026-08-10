@@ -6,6 +6,7 @@ const { simpleParser } = require('mailparser');
 const emailCodeCache = new Map(); // email → { codes: [], fetchedAt: timestamp }
 const alertedSignins = new Set(); // dedup outside-BD login alerts (ts+email)
 const alertedBanned = new Set(); // dedup Netflix account-banned alerts (ts+email)
+const deletedAccountEmails = new Set(); // emails of deleted accounts - suppress all further alerts for them
 const alertedPinChanges = new Set(); // dedup PIN change alerts (ts+email+profile)
 
 function getCodesFromCache(email) {
@@ -514,6 +515,16 @@ const GEO_FILE      = DATA_DIR + '/geo.json';
 const ACCOUNTS_FILE = DATA_DIR + '/accounts.json';
 const SETTINGS_FILE  = DATA_DIR + '/settings.json';
 const NETFLIX_ALERTS_FILE = DATA_DIR + '/netflix-alerts.json';
+const DELETED_EMAILS_FILE = DATA_DIR + '/deleted-emails.json';
+// Load persisted deleted-account emails on startup so alerts stay suppressed across restarts.
+try {
+  const savedDeleted = JSON.parse(fs.readFileSync(DELETED_EMAILS_FILE, 'utf8'));
+  if (Array.isArray(savedDeleted)) savedDeleted.forEach(e => deletedAccountEmails.add(e));
+} catch(e) { /* file doesn't exist yet - fine */ }
+function persistDeletedEmails() {
+  try { ensureDataDir(); fs.writeFileSync(DELETED_EMAILS_FILE, JSON.stringify([...deletedAccountEmails], null, 2)); }
+  catch(e) { console.error('persistDeletedEmails error:', e.message); }
+}
 function loadNetflixAlerts() { try { return JSON.parse(fs.readFileSync(NETFLIX_ALERTS_FILE,'utf8')); } catch(e) { return []; } }
 function saveNetflixAlerts(data) { ensureDataDir(); fs.writeFileSync(NETFLIX_ALERTS_FILE, JSON.stringify(data,null,2)); }
 const WAITLIST_FILE  = DATA_DIR + '/waitlist.json';
@@ -1087,6 +1098,8 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
   // blank/endless-loading dashboard.
   const isBannedNotice = sl.includes('rejoin netflix') || (sl.includes('welcome back') && bodyPlain.toLowerCase().includes('restart your membership'));
   if (isBannedNotice) {
+    // Don't alert for accounts that have been deleted from the system.
+    if (deletedAccountEmails.has((toEmail||'').trim().toLowerCase())) return null;
     const bannedKey = toEmail + '_' + ts;
     if (!alertedBanned.has(bannedKey)) {
       alertedBanned.add(bannedKey);
@@ -1111,6 +1124,7 @@ async function classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, 
     // PIN change detection
   const isPinChange = sl.includes('pin for profile') || sl.includes('new pin for') || sl.includes('pin has changed');
   if (isPinChange) {
+    if (deletedAccountEmails.has((toEmail||'').trim().toLowerCase())) return null;
     const pinAlertKey = toEmail + '_' + ts;
     if (!alertedPinChanges.has(pinAlertKey)) {
       alertedPinChanges.add(pinAlertKey);
@@ -2796,15 +2810,37 @@ app.post('/api/admin/accounts/:email/clear-banned', adminAuth, (req, res) => {
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const target = decodeURIComponent(req.params.email).trim().toLowerCase();
-  // The admin UI already warns about active customers and asks for confirmation,
-  // so we allow the delete (used for dead/banned accounts) and report how many were affected.
   const links = loadLinks();
   const now = Date.now();
   const activeCount = Object.values(links).filter(l => l.email === target && l.active && l.expiresAt > now).length;
+
   const filtered = accounts.filter(a => a.email.trim().toLowerCase() !== target);
   if (filtered.length === accounts.length) return res.status(404).json({ success:false, error:'Account not found' });
   saveAccounts(filtered);
-  res.json({ success:true, removed: accounts.length - filtered.length, activeCustomersAffected: activeCount });
+
+  // Also deactivate every customer link tied to this account so /c/token stops working
+  // (previously links stayed live after the account was deleted). We move them to the
+  // Recycle Bin (recycled) rather than hard-deleting, so it can be undone if needed.
+  let linksAffected = 0;
+  for (const token of Object.keys(links)) {
+    if (links[token].email && links[token].email.trim().toLowerCase() === target) {
+      links[token].active = false;
+      links[token].released = true;
+      links[token].recycled = true;
+      links[token].recycledAt = now;
+      links[token].recycledReason = 'account_deleted';
+      linksAffected++;
+    }
+  }
+  if (linksAffected > 0) saveLinks(links);
+  try { cache.clear(); } catch(e) {}
+
+  // Stop any further "account banned/issue" Telegram alerts for this email. The
+  // detector dedups on email+timestamp, so pre-seed a permanent suppress marker.
+  deletedAccountEmails.add(target);
+  persistDeletedEmails();
+
+  res.json({ success:true, removed: accounts.length - filtered.length, activeCustomersAffected: activeCount, linksAffected });
 });
 
 app.post('/api/admin/accounts/:email/plan', adminAuth, (req, res) => {
