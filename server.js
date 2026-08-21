@@ -2605,33 +2605,56 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
   res.json({ success:true, before, after:unique.length, removed: before - unique.length });
 });
 
-// Fetch a household code/link from the nfpro.store fallback API for one email.
-// Only returns household + update-link results (never sign-in/2FA) to match what
-// customers are allowed to see. Returns an array of code objects (same shape as our
-// own parser) or [] on any failure - so the caller can safely fall back or continue.
-async function fetchFromNfpro(email) {
+// Fetch a code/link from the nfpro.store API for one email + one choice type.
+// Returns an array of code objects (same shape as our own parser) or [] on any
+// failure - so the caller can safely fall back or continue.
+async function fetchFromNfpro(email, choice = 'household') {
   try {
     const r = await fetch(NFPRO_API_URL, {
       method: 'POST',
       headers: { 'X-Api-Key': NFPRO_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, choice: 'household' }),
+      body: JSON.stringify({ email, choice }),
       signal: AbortSignal.timeout(10000),
     });
     if (!r.ok) return [];
     const d = await r.json();
     const now = Date.now();
+    // Map nfpro's choice to our display type/label so cards render consistently.
+    const CHOICE_META = {
+      'household':    { type:'household', codeLabel:'Temporary Access Code', linkLabel:'Update Household (TV)' },
+      '4-digit':      { type:'signin',    codeLabel:'Sign-in Code' },
+      'verification': { type:'verify',    codeLabel:'Verification Code' },
+      '2FA':          { type:'2fa',       codeLabel:'2FA Code' },
+      'RESET':        { type:'reset',     codeLabel:'Password Reset Link' },
+    };
+    const meta = CHOICE_META[choice] || { type:'household', codeLabel:'Code' };
     if (d.code) {
-      return [{ type:'household', label:'Temporary Access Code', code:String(d.code), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
+      return [{ type:meta.type, label:meta.codeLabel, code:String(d.code), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
     }
     if (d.link) {
       const isUpdate = String(d.link).includes('update-primary') || String(d.link).includes('update-household');
-      return [{ type:isUpdate?'update':'household', label:isUpdate?'Update Household (TV)':'Temporary Access Code', link:String(d.link), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
+      const label = isUpdate ? 'Update Household (TV)' : (meta.linkLabel || meta.codeLabel);
+      const type = isUpdate ? 'update' : (choice === 'RESET' ? 'reset' : meta.type);
+      return [{ type, label, link:String(d.link), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
     }
     return [];
   } catch(e) {
     console.error('nfpro fetch error:', e.message);
     return [];
   }
+}
+
+// Full-access mode ("all access"): query nfpro.store for EVERY choice type it
+// supports (household, 4-digit, verification, 2FA, RESET) in parallel, merging
+// whatever comes back. Individual choice failures don't affect the others.
+async function fetchAllFromNfpro(email) {
+  const choices = ['household', '4-digit', 'verification', '2FA', 'RESET'];
+  const results = await Promise.allSettled(choices.map(c => fetchFromNfpro(email, c)));
+  const merged = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.length > 0) merged.push(...r.value);
+  }
+  return merged;
 }
 
 // Public customers may only ever see household code / TV update link - never
@@ -2687,19 +2710,37 @@ app.get('/api/codes-full', async (req, res) => {
   trackVisitor(ip); resetDailyIfNeeded();
   const start = Date.now();
   try {
-    // The background poller already runs continuously with includeSignin:true, so its
-    // cache normally has everything (household/update/signin/verify) ready instantly -
-    // use that first instead of always opening a brand new IMAP connection (which is
-    // slower and adds unnecessary load).
-    const bgCached = getCodesFromCache(email);
-    if (bgCached !== null && bgCached.length > 0) {
-      return res.json({ success:true, codes:bgCached, count:bgCached.length, fetchTime:'0.0', via:'cache' });
-    }
-    // Cache empty for this email - do a fresh, full IMAP fetch.
-    const codes = await fetchNetflixEmailsFresh(email, true);
-    setCodesInCache(email, codes);
+    // "All access": pull from every source we have at once, in parallel, and merge.
+    // 1) Our own background-poller cache (already has household/update/signin/verify
+    //    if this is one of our accounts and the poller has seen it recently).
+    // 2) A fresh IMAP search as a second chance if the cache was empty.
+    // 3) nfpro.store, queried for ALL 5 of its choice types at once (household,
+    //    4-digit, verification, 2FA, RESET) - this is what actually makes 2FA and
+    //    the password-reset link available, since our own parser doesn't classify
+    //    those two types at all.
+    const bgCached = getCodesFromCache(email) || [];
+    const [freshImap, nfproAll] = await Promise.allSettled([
+      bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
+      fetchAllFromNfpro(email),
+    ]);
+    const imapCodes = freshImap.status === 'fulfilled' ? freshImap.value : [];
+    const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
+
+    // Merge all three sources, de-duplicating on the actual code/link value so the
+    // same code found by two sources doesn't show twice.
+    const merged = [...bgCached, ...imapCodes, ...nfproCodes];
+    const seen = new Set();
+    const codes = merged.filter(c => {
+      const k = c.code || c.link;
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).sort((a,b) => b.ts - a.ts);
+
+    if (codes.length > 0) setCodesInCache(email, codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
-    res.json({ success:true, codes, count:codes.length, fetchTime, via:'imap-full' });
+    const via = bgCached.length > 0 ? 'cache+nfpro' : (imapCodes.length > 0 ? 'imap+nfpro' : (nfproCodes.length > 0 ? 'nfpro' : 'none'));
+    res.json({ success:true, codes, count:codes.length, fetchTime, via });
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
