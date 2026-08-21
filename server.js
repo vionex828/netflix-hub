@@ -181,6 +181,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
+// nfpro.store fallback API - used only by the public /api/codes tool when our own
+// IMAP finds nothing. Key lives in an env var (NFPRO_API_KEY); the literal below is a
+// fallback default so it still works if the env var isn't set yet.
+const NFPRO_API_KEY = process.env.NFPRO_API_KEY || '5f9233eec713d7d8e5ab213c99d1b532';
+const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/fetch';
 const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
@@ -805,16 +810,29 @@ setInterval(checkExpiringLinks, 60*60*1000);
 // Replaces the old BulkSMS-based reminder system entirely.
 async function sendUniversalRenewalReminders() {
   const now = Date.now();
-  const twoDays = 2*24*60*60*1000;
+  // The reminder job runs once a day (9:30 PM BD). If we only caught links with
+  // exactly <=2 days left at that moment, links whose expiry falls in the gap between
+  // two daily runs could be skipped entirely (expiry passes before the next run).
+  // We widen the window to 3 days AND include already-expired-but-recently links that
+  // were never reminded, so far fewer customers get missed. The renewalSmsSent flag
+  // still prevents duplicate reminders, and it's reset on every renewal.
+  const windowMs = 3 * 24 * 60 * 60 * 1000;
+  const graceMs = 1 * 24 * 60 * 60 * 1000; // also remind up to 1 day AFTER expiry (grace)
   const dueLinks = [];
+
+  const isDue = (link) => {
+    if (!link.active || link.released) return false;
+    if (link.renewalSmsSent) return false;
+    const remaining = link.expiresAt - now;
+    // Due if it expires within the next 3 days, OR expired within the last 1 day (grace).
+    return remaining <= windowMs && remaining >= -graceMs;
+  };
 
   // Netflix links
   const links = loadLinks();
   let changed = false;
   for (const link of Object.values(links)) {
-    if (!link.active || link.released) continue;
-    const remaining = link.expiresAt - now;
-    if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
+    if (isDue(link)) {
       dueLinks.push({ link, productName: link.plan || 'Netflix' });
       link.renewalSmsSent = true;
       changed = true;
@@ -827,9 +845,7 @@ async function sendUniversalRenewalReminders() {
     const sLinks = loadStreamingLinks(type);
     let sChanged = false;
     for (const link of Object.values(sLinks)) {
-      if (!link.active || link.released) continue;
-      const remaining = link.expiresAt - now;
-      if (remaining > 0 && remaining <= twoDays && !link.renewalSmsSent) {
+      if (isDue(link)) {
         dueLinks.push({ link, productName: STREAMING_PRODUCTS[type].name });
         link.renewalSmsSent = true;
         sChanged = true;
@@ -2583,6 +2599,35 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
   res.json({ success:true, before, after:unique.length, removed: before - unique.length });
 });
 
+// Fetch a household code/link from the nfpro.store fallback API for one email.
+// Only returns household + update-link results (never sign-in/2FA) to match what
+// customers are allowed to see. Returns an array of code objects (same shape as our
+// own parser) or [] on any failure - so the caller can safely fall back or continue.
+async function fetchFromNfpro(email) {
+  try {
+    const r = await fetch(NFPRO_API_URL, {
+      method: 'POST',
+      headers: { 'X-Api-Key': NFPRO_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, choice: 'household' }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return [];
+    const d = await r.json();
+    const now = Date.now();
+    if (d.code) {
+      return [{ type:'household', label:'Temporary Access Code', code:String(d.code), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
+    }
+    if (d.link) {
+      const isUpdate = String(d.link).includes('update-primary') || String(d.link).includes('update-household');
+      return [{ type:isUpdate?'update':'household', label:isUpdate?'Update Household (TV)':'Temporary Access Code', link:String(d.link), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
+    }
+    return [];
+  } catch(e) {
+    console.error('nfpro fetch error:', e.message);
+    return [];
+  }
+}
+
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
@@ -2593,16 +2638,23 @@ app.get('/api/codes', async (req, res) => {
   const start = Date.now();
   try {
     const bgCached = getCodesFromCache(email);
-    if (bgCached !== null) {
+    if (bgCached !== null && bgCached.length > 0) {
       const fetchTime = '0.0';
       return res.json({ success:true, codes:bgCached, count:bgCached.length, fetchTime, cached:true });
     }
-    const codes = await fetchNetflixEmailsFresh(email, false);
+    // 1) Try our own IMAP first (free, already running)
+    let codes = await fetchNetflixEmailsFresh(email, false);
+    let via = 'imap';
+    // 2) Fall back to nfpro.store API if our own inbox had nothing for this email
+    if (!codes || codes.length === 0) {
+      const nfpro = await fetchFromNfpro(email);
+      if (nfpro.length > 0) { codes = nfpro; via = 'nfpro'; }
+    }
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
     setCodesInCache(email, codes);
     setCache(email, codes);
     if (codes.length > 0) totalToday += 1;
-    res.json({ success:true, codes, count:codes.length, fetchTime });
+    res.json({ success:true, codes, count:codes.length, fetchTime, via });
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
@@ -2805,6 +2857,45 @@ app.post('/api/admin/accounts/:email/clear-banned', adminAuth, (req, res) => {
   delete accounts[idx].bannedAt;
   saveAccounts(accounts);
   res.json({ success:true });
+});
+
+// Cleanup ALL banned/cancelled accounts in one action - removes each flagged account
+// from accounts.json, recycles its customer links, and suppresses future alerts.
+app.post('/api/admin/accounts/cleanup-banned', adminAuth, (req, res) => {
+  const accounts = loadAccounts();
+  const banned = accounts.filter(a => a.bannedDetected);
+  if (banned.length === 0) return res.json({ success:true, removed:0, linksAffected:0, message:'No banned accounts found.' });
+
+  const bannedEmails = new Set(banned.map(a => a.email.trim().toLowerCase()));
+  const now = Date.now();
+
+  // Remove banned accounts from the pool
+  const remaining = accounts.filter(a => !a.bannedDetected);
+  saveAccounts(remaining);
+
+  // Recycle all their customer links
+  const links = loadLinks();
+  let linksAffected = 0;
+  for (const token of Object.keys(links)) {
+    const em = (links[token].email || '').trim().toLowerCase();
+    if (bannedEmails.has(em)) {
+      links[token].active = false;
+      links[token].released = true;
+      links[token].recycled = true;
+      links[token].recycledAt = now;
+      links[token].recycledReason = 'account_banned_cleanup';
+      linksAffected++;
+    }
+  }
+  if (linksAffected > 0) saveLinks(links);
+  try { cache.clear(); } catch(e) {}
+
+  // Suppress future alerts for all of them
+  bannedEmails.forEach(em => deletedAccountEmails.add(em));
+  persistDeletedEmails();
+
+  sendTelegram(`🧹 <b>Banned Accounts Cleaned Up</b>\n\n🗑 Removed <b>${banned.length}</b> banned account(s)\n🔗 ${linksAffected} customer link(s) recycled\n\nFuture alerts for these accounts are now suppressed.`);
+  res.json({ success:true, removed: banned.length, linksAffected });
 });
 
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
