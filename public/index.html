@@ -419,6 +419,8 @@ footer p{font-family:var(--f-mono);font-size:.58rem;color:var(--ink-dim);letter-
           <button class="tab active" id="tab-all" onclick="switchTab('all')">All <span class="tc" id="cnt-all">0</span></button>
           <button class="tab" id="tab-household" onclick="switchTab('household')">Household <span class="tc" id="cnt-household">0</span></button>
           <button class="tab" id="tab-update" onclick="switchTab('update')">TV Update <span class="tc" id="cnt-update">0</span></button>
+          <button class="tab" id="tab-signin" onclick="switchTab('signin')" style="display:none">Sign-in (4-digit) <span class="tc" id="cnt-signin">0</span></button>
+          <button class="tab" id="tab-verify" onclick="switchTab('verify')" style="display:none">Verification (6-digit) <span class="tc" id="cnt-verify">0</span></button>
         </div>
         <div class="cards-wrap" id="cards"></div>
       </div>
@@ -515,6 +517,13 @@ window.onload=()=>{
   fetchStats();
   setInterval(fetchStats, 30000);
 
+  if (window.__FULL_ACCESS__) {
+    const tSignin = document.getElementById('tab-signin');
+    const tVerify = document.getElementById('tab-verify');
+    if (tSignin) tSignin.style.display = 'flex';
+    if (tVerify) tVerify.style.display = 'flex';
+  }
+
   const path = window.location.pathname;
   const tokenMatch = path.match(/^\/c\/([a-f0-9]{8,})/i);
   if (tokenMatch) {
@@ -603,6 +612,7 @@ function updateCounts(){
   safe('cnt-household',allCodes.filter(i=>i.type==='household').length);
   safe('cnt-update',allCodes.filter(i=>i.type==='update').length);
   safe('cnt-signin',allCodes.filter(i=>i.type==='signin').length);
+  safe('cnt-verify',allCodes.filter(i=>i.type==='verify').length);
 }
 function renderCards(){
   const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
