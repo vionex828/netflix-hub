@@ -186,6 +186,12 @@ const GMAIL_PASS = process.env.GMAIL_PASS;
 // fallback default so it still works if the env var isn't set yet.
 const NFPRO_API_KEY = process.env.NFPRO_API_KEY || '5f9233eec713d7d8e5ab213c99d1b532';
 const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/fetch';
+// Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
+// (sign-in) and 6-digit (verification) codes on top of household/update. Gated by
+// BOTH the secret path AND a secret key baked into the page server-side (never in
+// the public index.html file), so guessing the path alone isn't enough.
+const ADMIN_TOOL_PATH = process.env.ADMIN_TOOL_PATH || '/vionex';
+const ADMIN_TOOL_KEY = process.env.ADMIN_TOOL_KEY || 'e5c66efb023a701785177b83';
 const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
@@ -2656,6 +2662,39 @@ app.get('/api/codes', async (req, res) => {
     if (codes.length > 0) totalToday += 1;
     res.json({ success:true, codes, count:codes.length, fetchTime, via });
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
+});
+
+// Full-access variant of /api/codes - requires the secret key (only ever embedded
+// in the page when served from ADMIN_TOOL_PATH, never in the public index.html file
+// on disk). Returns household + update-link + sign-in (4-digit) + verification
+// (6-digit) codes. Never used by the public tool.
+app.get('/api/codes-full', async (req, res) => {
+  const email = (req.query.email||'').trim();
+  const key = (req.query.key||'').trim();
+  if (key !== ADMIN_TOOL_KEY) return res.status(403).json({ success:false, error:'Invalid key' });
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+  trackVisitor(ip); resetDailyIfNeeded();
+  const start = Date.now();
+  try {
+    // Full mode always fetches fresh (no household-only cache reuse) so sign-in/verify
+    // codes aren't missed, and includeSignin:true unlocks the 4-digit/6-digit types.
+    const codes = await fetchNetflixEmailsFresh(email, true);
+    const fetchTime = ((Date.now()-start)/1000).toFixed(1);
+    res.json({ success:true, codes, count:codes.length, fetchTime, via:'imap-full' });
+  } catch(err) { res.status(500).json({ success:false, error:err.message }); }
+});
+
+// Secret full-access tool page - same UI as the public tool (/), served dynamically
+// with a flag + secret key injected so the frontend knows to call /api/codes-full.
+// The public index.html file on disk never contains this key.
+app.get(ADMIN_TOOL_PATH, (req, res) => {
+  try {
+    const fs2 = require('fs');
+    let html = fs2.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const inject = `<script>window.__FULL_ACCESS__=true;window.__FULL_KEY__=${JSON.stringify(ADMIN_TOOL_KEY)};</script>`;
+    html = html.replace('</head>', inject + '</head>');
+    res.send(html);
+  } catch(e) { res.status(500).send('Error loading page'); }
 });
 
 app.get('/admin-manifest.json', (req, res) => res.sendFile(path.join(__dirname,'public','admin-manifest.json')));
