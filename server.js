@@ -2634,19 +2634,29 @@ async function fetchFromNfpro(email) {
   }
 }
 
+// Public customers may only ever see household code / TV update link - never
+// sign-in or verification codes (those could let someone take over the account).
+// The shared background-poller cache mixes all types together (it always polls
+// with includeSignin:true so the /vionex full-access tool has everything ready),
+// so the PUBLIC endpoint must filter it down before returning anything from it.
+function publicSafeCodes(codes) {
+  return (codes || []).filter(c => c.type === 'household' || c.type === 'update');
+}
+
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
   if (isRateLimited(ip)) return res.status(429).json({ success:false, error:'Too many requests. Wait 5 minutes.' });
   const cached = getCached(email);
-  if (cached) return res.json({ success:true, codes:cached, count:cached.length, cached:true, fetchTime:0 });
+  if (cached) return res.json({ success:true, codes:publicSafeCodes(cached), count:publicSafeCodes(cached).length, cached:true, fetchTime:0 });
   const start = Date.now();
   try {
     const bgCached = getCodesFromCache(email);
-    if (bgCached !== null && bgCached.length > 0) {
+    const bgSafe = bgCached !== null ? publicSafeCodes(bgCached) : null;
+    if (bgSafe !== null && bgSafe.length > 0) {
       const fetchTime = '0.0';
-      return res.json({ success:true, codes:bgCached, count:bgCached.length, fetchTime, cached:true });
+      return res.json({ success:true, codes:bgSafe, count:bgSafe.length, fetchTime, cached:true });
     }
     // 1) Try our own IMAP first (free, already running)
     let codes = await fetchNetflixEmailsFresh(email, false);
@@ -2656,6 +2666,7 @@ app.get('/api/codes', async (req, res) => {
       const nfpro = await fetchFromNfpro(email);
       if (nfpro.length > 0) { codes = nfpro; via = 'nfpro'; }
     }
+    codes = publicSafeCodes(codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
     setCodesInCache(email, codes);
     setCache(email, codes);
@@ -2676,9 +2687,17 @@ app.get('/api/codes-full', async (req, res) => {
   trackVisitor(ip); resetDailyIfNeeded();
   const start = Date.now();
   try {
-    // Full mode always fetches fresh (no household-only cache reuse) so sign-in/verify
-    // codes aren't missed, and includeSignin:true unlocks the 4-digit/6-digit types.
+    // The background poller already runs continuously with includeSignin:true, so its
+    // cache normally has everything (household/update/signin/verify) ready instantly -
+    // use that first instead of always opening a brand new IMAP connection (which is
+    // slower and adds unnecessary load).
+    const bgCached = getCodesFromCache(email);
+    if (bgCached !== null && bgCached.length > 0) {
+      return res.json({ success:true, codes:bgCached, count:bgCached.length, fetchTime:'0.0', via:'cache' });
+    }
+    // Cache empty for this email - do a fresh, full IMAP fetch.
     const codes = await fetchNetflixEmailsFresh(email, true);
+    setCodesInCache(email, codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
     res.json({ success:true, codes, count:codes.length, fetchTime, via:'imap-full' });
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
