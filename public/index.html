@@ -554,7 +554,10 @@ async function doSearch(){
   btn && btn.classList.add('loading');
 
   try{
-    const res=await fetch(`/api/codes?email=${encodeURIComponent(email)}`);
+    const url = window.__FULL_ACCESS__
+      ? `/api/codes-full?email=${encodeURIComponent(email)}&key=${encodeURIComponent(window.__FULL_KEY__)}`
+      : `/api/codes?email=${encodeURIComponent(email)}`;
+    const res=await fetch(url);
     const data=await res.json();
     if(!data.success)throw new Error(data.error);
     allCodes=data.codes;
