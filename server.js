@@ -190,7 +190,7 @@ const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/f
 // known choice so far is 'login_code' - add more to FFU_CHOICES below once their
 // docs/testing reveal what else they support (e.g. household, update, 2FA, reset).
 const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_BkUxf0yeqOH1sTYtl0UqX6C742mYq7olPWKS6590';
-const FFU_API_URL = process.env.FFU_API_URL || 'http://web-household-30-production.up.railway.app/api/v1/fetch';
+const FFU_API_URL = process.env.FFU_API_URL || 'https://web-household-30-production.up.railway.app/api/v1/fetch';
 const FFU_CHOICES = ['login_code'];
 // Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
 // (sign-in) and 6-digit (verification) codes on top of household/update. Gated by
@@ -2802,6 +2802,7 @@ app.get('/api/codes', async (req, res) => {
 app.get('/api/codes-full', async (req, res) => {
   const email = (req.query.email||'').trim();
   const key = (req.query.key||'').trim();
+  console.log(`[codes-full] request received for ${email} - key match: ${key === ADMIN_TOOL_KEY}`);
   if (key !== ADMIN_TOOL_KEY) return res.status(403).json({ success:false, error:'Invalid key' });
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
@@ -2845,8 +2846,12 @@ app.get('/api/codes-full', async (req, res) => {
     if (nfproCodes.length > 0) sources.push('nfpro');
     if (ffuCodes.length > 0) sources.push('ffu');
     const via = sources.length > 0 ? sources.join('+') : 'none';
+    console.log(`[codes-full] ${email} -> sources:[${via}] imap:${imapCodes.length} nfpro:${nfproCodes.length} ffu:${ffuCodes.length} total:${codes.length}`);
     res.json({ success:true, codes, count:codes.length, fetchTime, via });
-  } catch(err) { res.status(500).json({ success:false, error:err.message }); }
+  } catch(err) {
+    console.error('[codes-full] CRASHED:', err.message, err.stack?.split('\n')[1]);
+    res.status(500).json({ success:false, error:err.message });
+  }
 });
 
 // Public tool landing page - branded per domain (see BRANDS config above).
