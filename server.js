@@ -177,7 +177,7 @@ const crypto = require('crypto');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
@@ -186,12 +186,65 @@ const GMAIL_PASS = process.env.GMAIL_PASS;
 // fallback default so it still works if the env var isn't set yet.
 const NFPRO_API_KEY = process.env.NFPRO_API_KEY || '5f9233eec713d7d8e5ab213c99d1b532';
 const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/fetch';
+// Second fallback code-fetch provider (different vendor from nfpro.store). Only
+// known choice so far is 'login_code' - add more to FFU_CHOICES below once their
+// docs/testing reveal what else they support (e.g. household, update, 2FA, reset).
+const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_BkUxf0yeqOH1sTYtl0UqX6C742mYq7olPWKS6590';
+const FFU_API_URL = process.env.FFU_API_URL || 'http://web-household-30-production.up.railway.app/api/v1/fetch';
+const FFU_CHOICES = ['login_code'];
 // Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
 // (sign-in) and 6-digit (verification) codes on top of household/update. Gated by
 // BOTH the secret path AND a secret key baked into the page server-side (never in
 // the public index.html file), so guessing the path alone isn't enough.
 const ADMIN_TOOL_PATH = process.env.ADMIN_TOOL_PATH || '/vionex';
 const ADMIN_TOOL_KEY = process.env.ADMIN_TOOL_KEY || 'e5c66efb023a701785177b83';
+
+// ── MULTI-DOMAIN WHITE-LABEL BRANDING ────────────────────────────────────────
+// Each entry customizes the public tool page for one domain: brand name, accent
+// color, WhatsApp contact, title/description, and footer line. To add a new
+// domain: point its DNS at this Railway service (Custom Domain in Railway
+// settings), then add an entry below keyed by the exact hostname (no https://,
+// no trailing slash, no www). Any domain not listed here gets DEFAULT_BRAND.
+const BRANDS = {
+  'household.fanflixbd.com': {
+    name: 'FANFLIX',
+    accent: '#e11d3c', accentDark: '#c8102f', accentSoft: 'rgba(225,29,60,.1)',
+    whatsapp: '8801928382918',
+    title: 'FANFLIX \u2013 Netflix & Combo Subscriptions in Bangladesh',
+    description: 'Netflix and combo subscriptions delivered instantly in Bangladesh. Get your household verification code in one click.',
+    footer: '\u00a9 FANFLIX BD \u00b7 Household Code Tool \u00b7 All rights reserved',
+  },
+  // Add more domains below, following the same shape. Example:
+  // 'yourbrand.com': {
+  //   name: 'YOURBRAND',
+  //   accent: '#2f6fd6', accentDark: '#1f4fa0', accentSoft: 'rgba(47,111,214,.1)',
+  //   whatsapp: '8801XXXXXXXXX',
+  //   title: 'YOURBRAND \u2013 Netflix Subscriptions',
+  //   description: 'Netflix subscriptions delivered instantly.',
+  //   footer: '\u00a9 YOURBRAND \u00b7 Household Code Tool \u00b7 All rights reserved',
+  // },
+};
+const DEFAULT_BRAND = BRANDS['household.fanflixbd.com'];
+
+function getBrand(hostname) {
+  const h = (hostname || '').toLowerCase().replace(/^www\./, '');
+  return BRANDS[h] || DEFAULT_BRAND;
+}
+
+// Rewrites brand-specific strings in a page's HTML (title, meta description,
+// accent color CSS vars, WhatsApp number, footer, and every "FANFLIX" logo
+// mention) to match the requesting domain's brand.
+function applyBrand(html, brand) {
+  let out = html;
+  out = out.replace(/<title>[^<]*<\/title>/, `<title>${brand.title}</title>`);
+  out = out.replace(/(<meta name="description" content=")[^"]*(")/, `$1${brand.description}$2`);
+  out = out.replace(/--accent:#[0-9a-fA-F]{3,8};--accent-h:#[0-9a-fA-F]{3,8};--accent-soft:rgba\([^)]*\);/,
+    `--accent:${brand.accent};--accent-h:${brand.accentDark};--accent-soft:${brand.accentSoft};`);
+  out = out.replace(/\u00a9 FANFLIX BD[^<]*/, brand.footer);
+  out = out.replaceAll('FANFLIX', brand.name);
+  out = out.replaceAll('8801928382918', brand.whatsapp);
+  return out;
+}
 const PORT = process.env.PORT || 3000;
 const TG_TOKEN = process.env.TG_TOKEN || '8653224571:AAEYZfrLWtRk_U-A0t6e3sudBSibrtW2meE';
 const TG_CHAT = process.env.TG_CHAT || '-1002242163455';
@@ -2657,6 +2710,50 @@ async function fetchAllFromNfpro(email) {
   return merged;
 }
 
+// Second fallback provider (FFU). Response shape isn't fully confirmed yet, so this
+// checks several common field names defensively. If none match, it logs the raw
+// response so we can see exactly what came back and adjust the parsing.
+async function fetchFromFFU(email, choice = 'login_code') {
+  try {
+    const r = await fetch(FFU_API_URL, {
+      method: 'POST',
+      headers: { 'X-Api-Key': FFU_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, choice }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error(`FFU fetch failed (${choice}):`, r.status, JSON.stringify(d).slice(0,300));
+      return [];
+    }
+    const now = Date.now();
+    const code = d.code || d.otp || d.pin || d.result?.code;
+    const link = d.link || d.url || d.result?.link;
+    if (code) {
+      return [{ type:'login_code', label:'Login Code (FFU)', code:String(code), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
+    }
+    if (link) {
+      return [{ type:'login_code', label:'Login Link (FFU)', link:String(link), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
+    }
+    // Nothing matched our known field names - log the raw shape so we can extend
+    // the parsing above once we see a real response.
+    console.log('FFU response had no recognized code/link field:', JSON.stringify(d).slice(0,300));
+    return [];
+  } catch(e) {
+    console.error('FFU fetch error:', e.message);
+    return [];
+  }
+}
+
+async function fetchAllFromFFU(email) {
+  const results = await Promise.allSettled(FFU_CHOICES.map(c => fetchFromFFU(email, c)));
+  const merged = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value.length > 0) merged.push(...r.value);
+  }
+  return merged;
+}
+
 // Public customers may only ever see household code / TV update link - never
 // sign-in or verification codes (those could let someone take over the account).
 // The shared background-poller cache mixes all types together (it always polls
@@ -2718,17 +2815,20 @@ app.get('/api/codes-full', async (req, res) => {
     //    4-digit, verification, 2FA, RESET) - this is what actually makes 2FA and
     //    the password-reset link available, since our own parser doesn't classify
     //    those two types at all.
+    // 4) FFU (a second, separate provider) - only 'login_code' confirmed so far.
     const bgCached = getCodesFromCache(email) || [];
-    const [freshImap, nfproAll] = await Promise.allSettled([
+    const [freshImap, nfproAll, ffuAll] = await Promise.allSettled([
       bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
       fetchAllFromNfpro(email),
+      fetchAllFromFFU(email),
     ]);
     const imapCodes = freshImap.status === 'fulfilled' ? freshImap.value : [];
     const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
+    const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
 
-    // Merge all three sources, de-duplicating on the actual code/link value so the
+    // Merge all sources, de-duplicating on the actual code/link value so the
     // same code found by two sources doesn't show twice.
-    const merged = [...bgCached, ...imapCodes, ...nfproCodes];
+    const merged = [...bgCached, ...imapCodes, ...nfproCodes, ...ffuCodes];
     const seen = new Set();
     const codes = merged.filter(c => {
       const k = c.code || c.link;
@@ -2739,18 +2839,34 @@ app.get('/api/codes-full', async (req, res) => {
 
     if (codes.length > 0) setCodesInCache(email, codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
-    const via = bgCached.length > 0 ? 'cache+nfpro' : (imapCodes.length > 0 ? 'imap+nfpro' : (nfproCodes.length > 0 ? 'nfpro' : 'none'));
+    const sources = [];
+    if (bgCached.length > 0) sources.push('cache');
+    if (imapCodes.length > 0) sources.push('imap');
+    if (nfproCodes.length > 0) sources.push('nfpro');
+    if (ffuCodes.length > 0) sources.push('ffu');
+    const via = sources.length > 0 ? sources.join('+') : 'none';
     res.json({ success:true, codes, count:codes.length, fetchTime, via });
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
+// Public tool landing page - branded per domain (see BRANDS config above).
+app.get('/', (req, res) => {
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const brand = getBrand(req.hostname);
+    res.send(applyBrand(html, brand));
+  } catch(e) { res.status(500).send('Error loading page'); }
+});
+
 // Secret full-access tool page - same UI as the public tool (/), served dynamically
 // with a flag + secret key injected so the frontend knows to call /api/codes-full.
-// The public index.html file on disk never contains this key.
+// The public index.html file on disk never contains this key. Also branded per
+// domain, same as the public page.
 app.get(ADMIN_TOOL_PATH, (req, res) => {
   try {
-    const fs2 = require('fs');
-    let html = fs2.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    const brand = getBrand(req.hostname);
+    html = applyBrand(html, brand);
     const inject = `<script>window.__FULL_ACCESS__=true;window.__FULL_KEY__=${JSON.stringify(ADMIN_TOOL_KEY)};</script>`;
     html = html.replace('</head>', inject + '</head>');
     res.send(html);
@@ -3325,7 +3441,12 @@ app.get('/api/track/:phone', (req, res) => {
 app.get('/track', (req, res) => res.sendFile(path.join(__dirname,'public','track.html')));
 app.get('/c/:token', (req, res) => res.sendFile(path.join(__dirname,'public','customer.html')));
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname,'public','index.html')));
+app.get('*', (req, res) => {
+  try {
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
+    res.send(applyBrand(html, getBrand(req.hostname)));
+  } catch(e) { res.sendFile(path.join(__dirname,'public','index.html')); }
+});
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err.message);
