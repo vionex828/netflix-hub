@@ -2770,7 +2770,10 @@ async function fetchAllFromFFU(email) {
 // with includeSignin:true so the /vionex full-access tool has everything ready),
 // so the PUBLIC endpoint must filter it down before returning anything from it.
 function publicSafeCodes(codes) {
-  return (codes || []).filter(c => c.type === 'household' || c.type === 'update');
+  // Allowed for customers: household, TV update link, and (per explicit owner
+  // confirmation) FFU's login_code. Sign-in/verify/2FA/reset remain excluded -
+  // those grant full account access and were never approved for customer view.
+  return (codes || []).filter(c => c.type === 'household' || c.type === 'update' || c.type === 'login_code');
 }
 
 // Fast, comprehensive code lookup for customer-facing endpoints. Races EVERY source
