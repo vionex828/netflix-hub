@@ -423,6 +423,7 @@ footer p{font-family:var(--f-mono);font-size:.58rem;color:var(--ink-dim);letter-
           <button class="tab" id="tab-verify" onclick="switchTab('verify')" style="display:none">Verification (6-digit) <span class="tc" id="cnt-verify">0</span></button>
           <button class="tab" id="tab-2fa" onclick="switchTab('2fa')" style="display:none">2FA <span class="tc" id="cnt-2fa">0</span></button>
           <button class="tab" id="tab-reset" onclick="switchTab('reset')" style="display:none">Reset Link <span class="tc" id="cnt-reset">0</span></button>
+          <button class="tab" id="tab-login_code" onclick="switchTab('login_code')" style="display:none">Login Code <span class="tc" id="cnt-login_code">0</span></button>
         </div>
         <div class="cards-wrap" id="cards"></div>
       </div>
@@ -520,7 +521,7 @@ window.onload=()=>{
   setInterval(fetchStats, 30000);
 
   if (window.__FULL_ACCESS__) {
-    ['tab-signin','tab-verify','tab-2fa','tab-reset'].forEach(id => {
+    ['tab-signin','tab-verify','tab-2fa','tab-reset','tab-login_code'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'flex';
     });
@@ -617,6 +618,7 @@ function updateCounts(){
   safe('cnt-verify',allCodes.filter(i=>i.type==='verify').length);
   safe('cnt-2fa',allCodes.filter(i=>i.type==='2fa').length);
   safe('cnt-reset',allCodes.filter(i=>i.type==='reset').length);
+  safe('cnt-login_code',allCodes.filter(i=>i.type==='login_code').length);
 }
 function renderCards(){
   const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
@@ -684,6 +686,15 @@ function cardHtml(item,i){
 
   if(item.type === 'reset') {
     return `<div class="card reset${freshClass}" style="${delay}">${freshBadge}<div class="c-ico" style="position:relative;background:rgba(229,9,20,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 3v6h6"/></svg></div><div class="c-body"><div class="c-type" style="color:#E50914">Password Reset Link</div><div class="c-to">→ ${esc(item.to)}</div><a class="c-link a" href="${esc(item.link)}" target="_blank">Open Reset Link →</a><div class="c-age">${age}</div></div><button class="cp-btn" onclick="doCopy('${esc(item.link)}',this)">Copy</button></div>`;
+  }
+
+  if(item.type === 'login_code') {
+    const val = item.code || item.link;
+    const isLink = !item.code && item.link;
+    const valueHtml = isLink
+      ? `<a class="c-link a" href="${esc(item.link)}" target="_blank">Open Login Link →</a>`
+      : `<div class="c-code">${item.code}</div>`;
+    return `<div class="card login-code${freshClass}" style="${delay}">${freshBadge}<div class="c-ico" style="position:relative;background:rgba(31,161,90,.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1fa15a" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></div><div class="c-body"><div class="c-type" style="color:#1fa15a">Login Code (${esc(item.label||'FFU')})</div><div class="c-to">→ ${esc(item.to)}</div>${valueHtml}<div class="c-age">${age}</div>${item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : ''}</div><button class="cp-btn" onclick="doCopy('${esc(val)}',this)">Copy</button></div>`;
   }
 
   const countdown = item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : '';
