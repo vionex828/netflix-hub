@@ -548,6 +548,14 @@ function cardHtml(item,i){
   }
   if(item.type==='signin')return`<div class="card signin${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Sign-in Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
   if(item.type==='verify')return`<div class="card verify${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${vIco}<div style="min-width:0"><div class="ctype">Verification Code</div><div class="ccode" style="font-size:2.4rem;letter-spacing:8px">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
+  if(item.type==='login_code'){
+    const val=item.code||item.link;
+    const isLink=!item.code&&item.link;
+    const valHtml=isLink
+      ? `<a class="clink a" href="${esc(item.link)}" target="_blank">Open Login Link →</a>`
+      : `<div class="ccode">${item.code}</div>`;
+    return `<div class="card login-code${fc}" style="${delay}" data-code="${esc(val)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Login Code</div>${valHtml}<div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(val)}',this,false)">Copy</button></div>`;
+  }
   const autoBadge=item.autoClicked?'<span style="background:rgba(70,211,105,.15);border:1px solid rgba(70,211,105,.3);color:var(--green);font-family:var(--m);font-size:.6rem;padding:3px 8px;border-radius:6px;margin-left:6px">⚡ Auto-Verified</span>':'';
   if(item.autoClicked&&!item.code)return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Household Verified${autoBadge}</div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">Auto-verified from BD. Netflix access restored.</div><div class="cmeta">${tt}</div></div></div>`;
   if(item.code)return`<div class="card household${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code${autoBadge}</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
