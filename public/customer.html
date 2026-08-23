@@ -324,9 +324,15 @@ async function fetchCodes(token,isRefresh=false){
       if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
       else{addAct('grey','No codes yet','Waiting for Netflix email...');}
     }
-    // ── FIX: 10s auto-refresh (was 60s) ──
+    // Adaptive auto-refresh: fast (3s) while genuinely waiting for a code, so it
+    // feels instant - but once a valid code is already showing (with its own live
+    // countdown), there's no need to hammer nfpro/FFU every few seconds. Those can
+    // actively trigger Netflix to send a NEW code on every call, so polling fast
+    // forever would mean requesting fresh codes from Netflix nonstop if a customer
+    // just leaves the tab open. Falls back to a calmer 12s cadence once satisfied.
     if(refTimer)clearInterval(refTimer);
-    refTimer=setInterval(()=>fetchCodes(token,true),10*1000);
+    const hasValidCode=data.codes&&data.codes.length>0;
+    refTimer=setInterval(()=>fetchCodes(token,true),hasValidCode?12*1000:3*1000);
     if(cdTimer)clearInterval(cdTimer);
     cdTimer=setInterval(tickCd,1000);
     if(data.daysLeft<=3&&data.daysLeft>0){
