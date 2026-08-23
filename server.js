@@ -1723,15 +1723,23 @@ app.get('/api/link/:token', async (req, res) => {
   const { count: ipCount, isNew: isNewIP } = trackIPSync(req.params.token, ip);
   if (isNewIP) checkGeoAndAlert(req.params.token, ip).catch(()=>{});
   try {
-    // Check cache — poller keeps this fresh every 15s
-    const cached = getCodesFromCache(link.email);
+    // SECURITY: customers may only ever see household code / TV update link -
+    // never sign-in/verify/2FA/reset (those could let someone take over the
+    // whole account, not just their profile). The shared poller cache mixes all
+    // types together, so it must be filtered before it reaches a customer.
+    const cached = publicSafeCodes(getCodesFromCache(link.email));
     if (cached !== null && cached.length > 0) {
       totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache empty or miss — return fetching:true, poller will update within 15s
-    // Also trigger immediate poll to get codes faster
-    if (_imapReady && !_imapPolling) _pollAll().catch(()=>{});
+    // Cache empty - actively race every source now (IMAP + nfpro + FFU, in parallel)
+    // instead of passively waiting on the background poller's next 15s-2min cycle.
+    // This is what makes first-load speed match the public tool page.
+    const fresh = await fetchAllSourcesForCustomer(link.email);
+    if (fresh.length > 0) {
+      totalToday += 1;
+      return res.json({ success:true, codes:fresh, count:fresh.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    }
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
   } catch(err) {
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
@@ -2601,12 +2609,14 @@ app.get('/api/link/:token/refresh', async (req, res) => {
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false });
   if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
-  // Clear cache and trigger immediate poll
+  // Clear cache so this is a genuinely fresh look, not a stale hit.
   clearEmailCache(link.email);
   try {
-    if (_imapReady && !_imapPolling) await _pollAll();
-    else await fetchNetflixEmailsFresh(link.email, true).then(codes => setCodesInCache(link.email, codes));
-    const codes = getCodesFromCache(link.email) || [];
+    // Race every source at once (IMAP + all nfpro choices + FFU) - no source is
+    // skipped, whichever answers with a code first wins. Safety filter (household/
+    // update only) is applied inside the helper, unconditionally, before this ever
+    // reaches the customer.
+    const codes = await fetchAllSourcesForCustomer(link.email);
     res.json({ success:true, codes, count:codes.length, refreshed:true });
   } catch(err) {
     res.json({ success:true, codes:[], count:0, refreshed:true });
@@ -2763,6 +2773,42 @@ function publicSafeCodes(codes) {
   return (codes || []).filter(c => c.type === 'household' || c.type === 'update');
 }
 
+// Fast, comprehensive code lookup for customer-facing endpoints. Races EVERY source
+// (our own cache, a fresh IMAP search, all of nfpro's choices, and FFU) in parallel -
+// no source is skipped, so whichever one actually has the code answers fastest. The
+// safety filter (household/update only) is always applied LAST, after merging, so no
+// matter which source responds, sign-in/verify/2FA/reset/login_code can never reach
+// a customer - the speed and the safety are two independent, unconditional steps.
+async function fetchAllSourcesForCustomer(email) {
+  const bgCached = getCodesFromCache(email) || [];
+  const [freshImap, nfproAll, ffuAll] = await Promise.allSettled([
+    bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
+    fetchAllFromNfpro(email),
+    fetchAllFromFFU(email),
+  ]);
+  const imapCodes = freshImap.status === 'fulfilled' ? freshImap.value : [];
+  const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
+  const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
+
+  // A fresh code from nfpro/FFU for a type we already have cached means Netflix
+  // issued a new one - the old cached one of that same provider+type is now stale.
+  const freshTypes = new Set([...nfproCodes, ...ffuCodes].map(c => `${c.source}:${c.type}`));
+  const bgCachedFiltered = bgCached.filter(c => !freshTypes.has(`${c.source}:${c.type}`));
+
+  const merged = [...bgCachedFiltered, ...imapCodes, ...nfproCodes, ...ffuCodes];
+  const seen = new Set();
+  const allCodes = merged.filter(c => {
+    const k = c.code || c.link;
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).sort((a,b) => b.ts - a.ts);
+
+  if (allCodes.length > 0) setCodesInCache(email, allCodes);
+  // Safety filter applied LAST, unconditionally, regardless of source.
+  return publicSafeCodes(allCodes);
+}
+
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
@@ -2827,9 +2873,18 @@ app.get('/api/codes-full', async (req, res) => {
     const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
     const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
 
+    // nfpro/FFU can actively trigger Netflix to issue a BRAND NEW code each time
+    // they're queried - a different value than last time, not just a re-read of the
+    // same email. Netflix invalidates the old code the moment it sends a new one, so
+    // an older cached nfpro/FFU code of the same type is now stale and must be
+    // dropped, not kept alongside the fresh one (showing both would be misleading -
+    // only the newest is actually still valid on Netflix's end).
+    const freshTypes = new Set([...nfproCodes, ...ffuCodes].map(c => `${c.source}:${c.type}`));
+    const bgCachedFiltered = bgCached.filter(c => !freshTypes.has(`${c.source}:${c.type}`));
+
     // Merge all sources, de-duplicating on the actual code/link value so the
     // same code found by two sources doesn't show twice.
-    const merged = [...bgCached, ...imapCodes, ...nfproCodes, ...ffuCodes];
+    const merged = [...bgCachedFiltered, ...imapCodes, ...nfproCodes, ...ffuCodes];
     const seen = new Set();
     const codes = merged.filter(c => {
       const k = c.code || c.link;
