@@ -2782,7 +2782,13 @@ function publicSafeCodes(codes) {
 // safety filter (household/update only) is always applied LAST, after merging, so no
 // matter which source responds, sign-in/verify/2FA/reset/login_code can never reach
 // a customer - the speed and the safety are two independent, unconditional steps.
-async function fetchAllSourcesForCustomer(email) {
+// Races every source (cache, fresh IMAP, all nfpro choices, FFU) in parallel and
+// merges them - no source skipped. Old codes stay visible until their OWN natural
+// expiry (15 min from receipt); a new code arriving does NOT remove an older
+// still-valid one, so nothing vanishes from view just because something newer
+// showed up. Returns the raw, UNFILTERED merged list (all types included) -
+// callers apply their own safety filtering as needed.
+async function fetchAllSourcesRaw(email) {
   const bgCached = getCodesFromCache(email) || [];
   const [freshImap, nfproAll, ffuAll] = await Promise.allSettled([
     bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
@@ -2793,14 +2799,11 @@ async function fetchAllSourcesForCustomer(email) {
   const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
   const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
 
-  // A fresh code from nfpro/FFU for a type we already have cached means Netflix
-  // issued a new one - the old cached one of that same provider+type is now stale.
-  const freshTypes = new Set([...nfproCodes, ...ffuCodes].map(c => `${c.source}:${c.type}`));
-  const bgCachedFiltered = bgCached.filter(c => !freshTypes.has(`${c.source}:${c.type}`));
-
-  const merged = [...bgCachedFiltered, ...imapCodes, ...nfproCodes, ...ffuCodes];
+  const merged = [...bgCached, ...imapCodes, ...nfproCodes, ...ffuCodes];
+  const now = Date.now();
   const seen = new Set();
   const allCodes = merged.filter(c => {
+    if (c.expiresAt && c.expiresAt < now) return false; // naturally expired - drop
     const k = c.code || c.link;
     if (!k || seen.has(k)) return false;
     seen.add(k);
@@ -2808,7 +2811,13 @@ async function fetchAllSourcesForCustomer(email) {
   }).sort((a,b) => b.ts - a.ts);
 
   if (allCodes.length > 0) setCodesInCache(email, allCodes);
-  // Safety filter applied LAST, unconditionally, regardless of source.
+  return { allCodes, imapCodes, nfproCodes, ffuCodes, bgCached };
+}
+
+// Customer-facing wrapper - same fetch/merge as above, but always applies the
+// household/update/login_code safety filter before returning.
+async function fetchAllSourcesForCustomer(email) {
+  const { allCodes } = await fetchAllSourcesRaw(email);
   return publicSafeCodes(allCodes);
 }
 
@@ -2857,46 +2866,11 @@ app.get('/api/codes-full', async (req, res) => {
   trackVisitor(ip); resetDailyIfNeeded();
   const start = Date.now();
   try {
-    // "All access": pull from every source we have at once, in parallel, and merge.
-    // 1) Our own background-poller cache (already has household/update/signin/verify
-    //    if this is one of our accounts and the poller has seen it recently).
-    // 2) A fresh IMAP search as a second chance if the cache was empty.
-    // 3) nfpro.store, queried for ALL 5 of its choice types at once (household,
-    //    4-digit, verification, 2FA, RESET) - this is what actually makes 2FA and
-    //    the password-reset link available, since our own parser doesn't classify
-    //    those two types at all.
-    // 4) FFU (a second, separate provider) - only 'login_code' confirmed so far.
-    const bgCached = getCodesFromCache(email) || [];
-    const [freshImap, nfproAll, ffuAll] = await Promise.allSettled([
-      bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
-      fetchAllFromNfpro(email),
-      fetchAllFromFFU(email),
-    ]);
-    const imapCodes = freshImap.status === 'fulfilled' ? freshImap.value : [];
-    const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
-    const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
-
-    // nfpro/FFU can actively trigger Netflix to issue a BRAND NEW code each time
-    // they're queried - a different value than last time, not just a re-read of the
-    // same email. Netflix invalidates the old code the moment it sends a new one, so
-    // an older cached nfpro/FFU code of the same type is now stale and must be
-    // dropped, not kept alongside the fresh one (showing both would be misleading -
-    // only the newest is actually still valid on Netflix's end).
-    const freshTypes = new Set([...nfproCodes, ...ffuCodes].map(c => `${c.source}:${c.type}`));
-    const bgCachedFiltered = bgCached.filter(c => !freshTypes.has(`${c.source}:${c.type}`));
-
-    // Merge all sources, de-duplicating on the actual code/link value so the
-    // same code found by two sources doesn't show twice.
-    const merged = [...bgCachedFiltered, ...imapCodes, ...nfproCodes, ...ffuCodes];
-    const seen = new Set();
-    const codes = merged.filter(c => {
-      const k = c.code || c.link;
-      if (!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    }).sort((a,b) => b.ts - a.ts);
-
-    if (codes.length > 0) setCodesInCache(email, codes);
+    // "All access": pull from every source we have at once, in parallel, and merge -
+    // same shared logic as the customer-facing endpoints, just unfiltered here since
+    // /vionex is admin-only (all types shown: household/update/signin/verify/2FA/
+    // reset/login_code). Old codes stay visible until their own natural expiry.
+    const { allCodes: codes, imapCodes, nfproCodes, ffuCodes, bgCached } = await fetchAllSourcesRaw(email);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
     const sources = [];
     if (bgCached.length > 0) sources.push('cache');
