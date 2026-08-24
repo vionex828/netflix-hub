@@ -2935,8 +2935,13 @@ app.get('/api/codes', async (req, res) => {
     // 1) Try our own IMAP first (free, already running)
     let codes = await fetchNetflixEmailsFreshLimited(email, false);
     let via = 'imap';
-    // 2) Fall back to FFU if our own inbox had nothing for this email
-    if (!codes || codes.length === 0) {
+    // 2) Fall back to FFU if our own inbox had nothing for this email - gated by
+    // the SAME kill-switch as the /c/:token dashboard. This call site was missed
+    // when that switch was first added, meaning the public tool page kept
+    // calling FFU unconditionally even after customers were supposed to be cut
+    // off - very likely the actual ongoing source of continuous API spam, since
+    // this page gets more traffic than the token dashboard.
+    if (CUSTOMER_FFU_ENABLED && (!codes || codes.length === 0)) {
       const ffu = await fetchFromFFU(email, 'household');
       if (ffu.length > 0) { codes = ffu; via = 'ffu'; }
     }
