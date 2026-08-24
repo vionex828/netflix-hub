@@ -46,7 +46,14 @@ function _connectIMAP() {
     host: 'imap.gmail.com', port: 993, tls: true,
     tlsOptions: { rejectUnauthorized: false },
     connTimeout: 10000, authTimeout: 8000,
-    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: true }
+    // forceNoop was previously true, which disabled real IMAP IDLE and meant we
+    // relied ENTIRELY on the 15s poll interval to notice new mail - a genuine
+    // code could sit unclassified for up to 15s before we even looked for it.
+    // With IDLE enabled, Gmail pushes a notification the instant new mail
+    // arrives (the 'mail' event below), so we react in ~1s instead of waiting
+    // for the next scheduled poll tick. This is what actually shrinks the gap
+    // between "Netflix sent it" and "it's in cache" - not a shorter timeout.
+    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: false }
   });
 
   _imap = imap;
@@ -55,9 +62,16 @@ function _connectIMAP() {
     imap.openBox('INBOX', true, (err) => {
       if (err) { console.error('IMAP openBox:', err.message); _scheduleReconnect(); return; }
       _imapReady = true;
-      console.log('IMAP: persistent connection ready');
+      console.log('IMAP: persistent connection ready (IDLE enabled)');
       _pollAll(); // immediate first poll
     });
+  });
+
+  // Fires near-instantly when Gmail pushes notice of new mail via IDLE - this is
+  // the real speed win, not a shorter timeout on any single fetch.
+  imap.on('mail', (numNew) => {
+    console.log(`IMAP IDLE: ${numNew} new message(s) - polling now`);
+    _pollAll();
   });
 
   imap.on('error', (err) => {
