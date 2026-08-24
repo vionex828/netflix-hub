@@ -181,11 +181,7 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
-// nfpro.store fallback API - used only by the public /api/codes tool when our own
-// IMAP finds nothing. Key lives in an env var (NFPRO_API_KEY); the literal below is a
-// fallback default so it still works if the env var isn't set yet.
-const NFPRO_API_KEY = process.env.NFPRO_API_KEY || '5f9233eec713d7d8e5ab213c99d1b532';
-const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/fetch';
+// nfpro.store removed by request - FFU is the only third-party fallback now.
 // Second fallback code-fetch provider (different vendor from nfpro.store). Only
 // known choice so far is 'login_code' - add more to FFU_CHOICES below once their
 // docs/testing reveal what else they support (e.g. household, update, 2FA, reset).
@@ -2694,61 +2690,6 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
   res.json({ success:true, before, after:unique.length, removed: before - unique.length });
 });
 
-// Fetch a code/link from the nfpro.store API for one email + one choice type.
-// Returns an array of code objects (same shape as our own parser) or [] on any
-// failure - so the caller can safely fall back or continue.
-async function fetchFromNfpro(email, choice = 'household') {
-  try {
-    // 3s timeout (not 10s) - since IMAP+nfpro+FFU race in parallel via
-    // Promise.allSettled, which waits for ALL of them, a slow provider would
-    // otherwise stretch the whole customer-facing fetch past the 3s speed target.
-    const r = await fetch(NFPRO_API_URL, {
-      method: 'POST',
-      headers: { 'X-Api-Key': NFPRO_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, choice }),
-      signal: AbortSignal.timeout(3000),
-    });
-    if (!r.ok) return [];
-    const d = await r.json();
-    const now = Date.now();
-    // Map nfpro's choice to our display type/label so cards render consistently.
-    const CHOICE_META = {
-      'household':    { type:'household', codeLabel:'Temporary Access Code', linkLabel:'Update Household (TV)' },
-      '4-digit':      { type:'signin',    codeLabel:'Sign-in Code' },
-      'verification': { type:'verify',    codeLabel:'Verification Code' },
-      '2FA':          { type:'2fa',       codeLabel:'2FA Code' },
-      'RESET':        { type:'reset',     codeLabel:'Password Reset Link' },
-    };
-    const meta = CHOICE_META[choice] || { type:'household', codeLabel:'Code' };
-    if (d.code) {
-      return [{ type:meta.type, label:meta.codeLabel, code:String(d.code), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
-    }
-    if (d.link) {
-      const isUpdate = String(d.link).includes('update-primary') || String(d.link).includes('update-household');
-      const label = isUpdate ? 'Update Household (TV)' : (meta.linkLabel || meta.codeLabel);
-      const type = isUpdate ? 'update' : (choice === 'RESET' ? 'reset' : meta.type);
-      return [{ type, label, link:String(d.link), to:email, ts:now, expiresAt:now+15*60*1000, source:'nfpro' }];
-    }
-    return [];
-  } catch(e) {
-    console.error('nfpro fetch error:', e.message);
-    return [];
-  }
-}
-
-// Full-access mode ("all access"): query nfpro.store for EVERY choice type it
-// supports (household, 4-digit, verification, 2FA, RESET) in parallel, merging
-// whatever comes back. Individual choice failures don't affect the others.
-async function fetchAllFromNfpro(email) {
-  const choices = ['household', '4-digit', 'verification', '2FA', 'RESET'];
-  const results = await Promise.allSettled(choices.map(c => fetchFromNfpro(email, c)));
-  const merged = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled' && r.value.length > 0) merged.push(...r.value);
-  }
-  return merged;
-}
-
 // Second fallback provider (FFU). Response shape isn't fully confirmed yet, so this
 // checks several common field names defensively. If none match, it logs the raw
 // response so we can see exactly what came back and adjust the parsing.
@@ -2838,27 +2779,22 @@ function publicSafeCodes(codes) {
 // callers apply their own safety filtering as needed.
 async function fetchAllSourcesRaw(email) {
   const bgCached = getCodesFromCache(email) || [];
-  // IMPORTANT: nfpro/FFU already have their OWN internal ~3s cutoff (AbortSignal
-  // inside each fetch). Racing the ENTIRE fetchAllFromNfpro/FFU call against
-  // ANOTHER 3000ms timer of the same duration was a bug - the outer timer is a
-  // bare setTimeout with near-zero overhead, so it almost always "won" the race
-  // before the inner call (which has real network/parsing work on top of its own
-  // timeout) could finish - silently discarding valid results a few ms too late.
-  // Fix: only IMAP gets the outer race (it has no clean self-contained bound of
-  // its own); nfpro/FFU are awaited directly and trusted to respect their own cap.
+  // nfpro.store removed by request - FFU is the only third-party fallback now.
+  // IMAP still gets an outer race since it has no clean self-contained bound of
+  // its own; FFU is awaited directly and trusted to respect its own internal
+  // ~3s AbortSignal cutoff.
   const TIMEOUT = Symbol('timeout');
   const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
 
   const imapPromise = (bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true)).catch(() => []);
-  const nfproPromise = fetchAllFromNfpro(email).catch(() => []);
   const ffuPromise = fetchAllFromFFU(email).catch(() => []);
 
-  const [imapResult, nfproCodes, ffuCodes] = await Promise.all([
+  const [imapResult, ffuCodes] = await Promise.all([
     Promise.race([imapPromise, timeoutAt(3000)]),
-    nfproPromise,
     ffuPromise,
   ]);
   const imapCodes = imapResult === TIMEOUT ? [] : imapResult;
+  const nfproCodes = [];
 
   // If IMAP hit the cap, let it keep running quietly in the background - if it
   // turns up something after the fact, it lands in the cache for next time.
@@ -2916,10 +2852,10 @@ app.get('/api/codes', async (req, res) => {
     // 1) Try our own IMAP first (free, already running)
     let codes = await fetchNetflixEmailsFresh(email, false);
     let via = 'imap';
-    // 2) Fall back to nfpro.store API if our own inbox had nothing for this email
+    // 2) Fall back to FFU if our own inbox had nothing for this email
     if (!codes || codes.length === 0) {
-      const nfpro = await fetchFromNfpro(email);
-      if (nfpro.length > 0) { codes = nfpro; via = 'nfpro'; }
+      const ffu = await fetchFromFFU(email, 'household');
+      if (ffu.length > 0) { codes = ffu; via = 'ffu'; }
     }
     codes = publicSafeCodes(codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
