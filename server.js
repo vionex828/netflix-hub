@@ -1776,16 +1776,18 @@ app.get('/api/link/:token', async (req, res) => {
       totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache empty - actively race every source now (IMAP + nfpro + FFU, in parallel)
-    // instead of passively waiting on the background poller's next 15s-2min cycle.
-    // This is what makes first-load speed match the public tool page.
+    // Cache empty - actively race every source now (IMAP + FFU if enabled)
+    // instead of passively waiting on the background poller's next cycle.
+    console.log(`[initial-load] calling fetchAllSourcesForCustomer for ${link.email}`);
     const fresh = await fetchAllSourcesForCustomer(link.email);
+    console.log(`[initial-load] DONE for ${link.email} - ${fresh.length} code(s)`);
     if (fresh.length > 0) {
       totalToday += 1;
       return res.json({ success:true, codes:fresh, count:fresh.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
   } catch(err) {
+    console.error(`[initial-load] CRASHED for ${link.email}:`, err.message, err.stack?.split('\n')[1]);
     res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
   }
 });
@@ -2670,16 +2672,15 @@ app.get('/api/link/:token/refresh', async (req, res) => {
   const link = links[req.params.token];
   if (!link) return res.status(404).json({ success:false });
   if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
-  // Clear cache so this is a genuinely fresh look, not a stale hit.
+  console.log(`[refresh] START for ${link.email}`);
   clearEmailCache(link.email);
   try {
-    // Race every source at once (IMAP + all nfpro choices + FFU) - no source is
-    // skipped, whichever answers with a code first wins. Safety filter (household/
-    // update only) is applied inside the helper, unconditionally, before this ever
-    // reaches the customer.
+    console.log(`[refresh] calling fetchAllSourcesForCustomer for ${link.email}`);
     const codes = await fetchAllSourcesForCustomer(link.email);
+    console.log(`[refresh] DONE for ${link.email} - ${codes.length} code(s)`);
     res.json({ success:true, codes, count:codes.length, refreshed:true });
   } catch(err) {
+    console.error(`[refresh] CRASHED for ${link.email}:`, err.message, err.stack?.split('\n')[1]);
     res.json({ success:true, codes:[], count:0, refreshed:true });
   }
 });
@@ -2902,8 +2903,17 @@ async function fetchAllSourcesRaw(email, ffuChoices = FFU_CHOICES) {
 
 // Customer-facing wrapper - same fetch/merge as above, but always applies the
 // household/update/login_code safety filter before returning.
+// TEMPORARY SAFETY SWITCH: multiple "site goes down when I hit refresh" reports
+// have come in since FFU was wired into this customer-facing path. Until we can
+// see exactly where it fails (via the logging just added to /refresh), FFU is
+// disabled here by default - the customer path falls back to IMAP only, which
+// is confirmed reliable. /vionex (admin-only, low-volume) is UNAFFECTED and
+// still queries FFU freely for continued testing. Set CUSTOMER_FFU_ENABLED=true
+// in Railway's env vars to re-enable this once the crash is diagnosed and fixed.
+const CUSTOMER_FFU_ENABLED = process.env.CUSTOMER_FFU_ENABLED === 'true';
 async function fetchAllSourcesForCustomer(email) {
-  const { allCodes } = await fetchAllSourcesRaw(email, FFU_CHOICES_CUSTOMER);
+  const choices = CUSTOMER_FFU_ENABLED ? FFU_CHOICES_CUSTOMER : [];
+  const { allCodes } = await fetchAllSourcesRaw(email, choices);
   return publicSafeCodes(allCodes);
 }
 
