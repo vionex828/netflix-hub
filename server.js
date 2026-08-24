@@ -1021,6 +1021,31 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
   return fetchNetflixEmailsFresh(filterEmail, includeSignin);
 }
 
+// Caps how many fresh IMAP connections can be open at once. Each customer
+// request that misses cache opens a brand-new connection to Gmail; if many
+// customers hit "Refresh" around the same moment, unlimited simultaneous fresh
+// connections could exhaust Gmail's own per-account connection limit or the
+// server's own resources. Requests beyond the cap wait briefly for a slot
+// rather than piling on more connections indefinitely.
+let _activeFreshImapConns = 0;
+const MAX_CONCURRENT_FRESH_IMAP = 4;
+function fetchNetflixEmailsFreshLimited(filterEmail, includeSignin=false) {
+  return new Promise((resolve) => {
+    const tryStart = () => {
+      if (_activeFreshImapConns >= MAX_CONCURRENT_FRESH_IMAP) {
+        setTimeout(tryStart, 250);
+        return;
+      }
+      _activeFreshImapConns++;
+      fetchNetflixEmailsFresh(filterEmail, includeSignin)
+        .then(resolve)
+        .catch(() => resolve([]))
+        .finally(() => { _activeFreshImapConns--; });
+    };
+    tryStart();
+  });
+}
+
 function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
   return new Promise((resolve, reject) => {
     // Restored to the original, reliable values (5000/4000) - the earlier
@@ -2751,14 +2776,43 @@ async function fetchFromFFU(email, choice = 'login_code') {
   }
 }
 
-async function fetchAllFromFFU(email) {
-  const results = await Promise.allSettled(FFU_CHOICES.map(c => fetchFromFFU(email, c)));
+// Caps how many FFU requests can be in flight across the WHOLE server at once,
+// regardless of how many distinct customers triggered them. Without this, many
+// customers loading/refreshing around the same moment could each fire a batch
+// of FFU calls simultaneously - real evidence (Live Activity log) showed 6
+// calls fired within ~11s for a single action; multiplied across many
+// concurrent customers, this is a real burst-load risk. Extra requests queue
+// briefly for a slot instead of piling on.
+let _activeFfuCalls = 0;
+const MAX_CONCURRENT_FFU = 4;
+function _ffuSlot() {
+  return new Promise((resolve) => {
+    const tryStart = () => {
+      if (_activeFfuCalls >= MAX_CONCURRENT_FFU) { setTimeout(tryStart, 200); return; }
+      _activeFfuCalls++;
+      resolve(() => { _activeFfuCalls--; });
+    };
+    tryStart();
+  });
+}
+
+// choices param lets callers request a smaller set - the customer-facing path
+// skips 'reset' (never shown to customers anyway per publicSafeCodes, so
+// fetching it on every request is pure wasted load) while /vionex (low-volume,
+// deliberate manual admin lookups) still gets the full list.
+async function fetchAllFromFFU(email, choices = FFU_CHOICES) {
+  const results = await Promise.allSettled(choices.map(async (c) => {
+    const release = await _ffuSlot();
+    try { return await fetchFromFFU(email, c); }
+    finally { release(); }
+  }));
   const merged = [];
   for (const r of results) {
     if (r.status === 'fulfilled' && r.value.length > 0) merged.push(...r.value);
   }
   return merged;
 }
+const FFU_CHOICES_CUSTOMER = FFU_CHOICES.filter(c => c !== 'reset');
 
 // Public customers may only ever see household code / TV update link - never
 // sign-in or verification codes (those could let someone take over the account).
@@ -2791,7 +2845,7 @@ function publicSafeCodes(codes) {
 // still-valid one, so nothing vanishes from view just because something newer
 // showed up. Returns the raw, UNFILTERED merged list (all types included) -
 // callers apply their own safety filtering as needed.
-async function fetchAllSourcesRaw(email) {
+async function fetchAllSourcesRaw(email, ffuChoices = FFU_CHOICES) {
   const bgCached = getCodesFromCache(email) || [];
   // nfpro.store removed by request - FFU is the only third-party fallback now.
   // IMPORTANT FIX: IMAP's own connTimeout(5000)+authTimeout(4000) ceiling is ~9s
@@ -2805,8 +2859,8 @@ async function fetchAllSourcesRaw(email) {
   const TIMEOUT = Symbol('timeout');
   const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
 
-  const imapPromise = (bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true)).catch(() => []);
-  const ffuPromise = fetchAllFromFFU(email).catch(() => []);
+  const imapPromise = (bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFreshLimited(email, true)).catch(() => []);
+  const ffuPromise = fetchAllFromFFU(email, ffuChoices).catch(() => []);
 
   const [imapResult, ffuCodes] = await Promise.all([
     Promise.race([imapPromise, timeoutAt(10000)]),
@@ -2849,7 +2903,7 @@ async function fetchAllSourcesRaw(email) {
 // Customer-facing wrapper - same fetch/merge as above, but always applies the
 // household/update/login_code safety filter before returning.
 async function fetchAllSourcesForCustomer(email) {
-  const { allCodes } = await fetchAllSourcesRaw(email);
+  const { allCodes } = await fetchAllSourcesRaw(email, FFU_CHOICES_CUSTOMER);
   return publicSafeCodes(allCodes);
 }
 
@@ -2869,7 +2923,7 @@ app.get('/api/codes', async (req, res) => {
       return res.json({ success:true, codes:bgSafe, count:bgSafe.length, fetchTime, cached:true });
     }
     // 1) Try our own IMAP first (free, already running)
-    let codes = await fetchNetflixEmailsFresh(email, false);
+    let codes = await fetchNetflixEmailsFreshLimited(email, false);
     let via = 'imap';
     // 2) Fall back to FFU if our own inbox had nothing for this email
     if (!codes || codes.length === 0) {
@@ -3515,6 +3569,17 @@ app.get('*', (req, res) => {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     res.send(applyBrand(html, getBrand(req.hostname)));
   } catch(e) { res.sendFile(path.join(__dirname,'public','index.html')); }
+});
+
+// Final safety net: if any route handler throws an error that Express catches
+// (sync throws, or errors passed to next(err) in Express 4), this stops it from
+// propagating further - the request gets a 500 response instead of potentially
+// destabilizing the whole process. Must be registered LAST, after all routes.
+app.use((err, req, res, next) => {
+  console.error('Express error handler caught:', err?.message || err);
+  if (err?.stack) console.error(err.stack);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ success:false, error:'Internal server error' });
 });
 
 process.on('uncaughtException', (err) => {
