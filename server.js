@@ -1012,11 +1012,16 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
 
 function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
   return new Promise((resolve, reject) => {
+    // Tighter timeouts than the library default (was 5000/4000, up to ~9s) - this
+    // function is raced in parallel against nfpro/FFU (each capped at 3s), so a
+    // slow IMAP connection was the one piece not actually bounded near the 3s
+    // speed target. A faster failure here just means the other parallel sources
+    // still deliver a result on time; IMAP isn't the only path anymore.
     const imap = new Imap({
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 5000, authTimeout: 4000
+      connTimeout: 2500, authTimeout: 2000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
@@ -2833,14 +2838,43 @@ function publicSafeCodes(codes) {
 // callers apply their own safety filtering as needed.
 async function fetchAllSourcesRaw(email) {
   const bgCached = getCodesFromCache(email) || [];
-  const [freshImap, nfproAll, ffuAll] = await Promise.allSettled([
-    bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true),
-    fetchAllFromNfpro(email),
-    fetchAllFromFFU(email),
+  // Hard 3s cap on the WHOLE fetch, not just each individual source. Previously,
+  // even with nfpro/FFU capped at 3s each, Promise.allSettled still waited for
+  // the SLOWEST of all three before returning anything - so a slow IMAP
+  // connection could still push the customer's wait well past 3s. Now: whichever
+  // sources have answered within 3s are used immediately; any still-running ones
+  // keep going in the background and just update the cache for the NEXT request
+  // (auto-poll or refresh) instead of making this one wait for them.
+  const TIMEOUT = Symbol('timeout');
+  const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
+
+  const imapPromise = (bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFresh(email, true)).catch(() => []);
+  const nfproPromise = fetchAllFromNfpro(email).catch(() => []);
+  const ffuPromise = fetchAllFromFFU(email).catch(() => []);
+
+  const [imapResult, nfproResult, ffuResult] = await Promise.all([
+    Promise.race([imapPromise, timeoutAt(3000)]),
+    Promise.race([nfproPromise, timeoutAt(3000)]),
+    Promise.race([ffuPromise, timeoutAt(3000)]),
   ]);
-  const imapCodes = freshImap.status === 'fulfilled' ? freshImap.value : [];
-  const nfproCodes = nfproAll.status === 'fulfilled' ? nfproAll.value : [];
-  const ffuCodes = ffuAll.status === 'fulfilled' ? ffuAll.value : [];
+  const imapCodes = imapResult === TIMEOUT ? [] : imapResult;
+  const nfproCodes = nfproResult === TIMEOUT ? [] : nfproResult;
+  const ffuCodes = ffuResult === TIMEOUT ? [] : ffuResult;
+
+  // Whatever's still running after the cap gets to finish quietly in the
+  // background - if it turns up something, it lands in the cache for next time.
+  Promise.all([imapPromise, nfproPromise, ffuPromise]).then(([i, n, f]) => {
+    const bgNow = Date.now();
+    const seenBg = new Set();
+    const bgMerged = [...(getCodesFromCache(email) || []), ...i, ...n, ...f].filter(c => {
+      if (c.expiresAt && c.expiresAt < bgNow) return false;
+      const k = c.code || c.link;
+      if (!k || seenBg.has(k)) return false;
+      seenBg.add(k);
+      return true;
+    }).sort((a,b) => b.ts - a.ts);
+    if (bgMerged.length > 0) setCodesInCache(email, bgMerged);
+  }).catch(() => {});
 
   const merged = [...bgCached, ...imapCodes, ...nfproCodes, ...ffuCodes];
   const now = Date.now();
