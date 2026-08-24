@@ -189,9 +189,13 @@ const NFPRO_API_URL = process.env.NFPRO_API_URL || 'https://nfpro.store/api/v1/f
 // Second fallback code-fetch provider (different vendor from nfpro.store). Only
 // known choice so far is 'login_code' - add more to FFU_CHOICES below once their
 // docs/testing reveal what else they support (e.g. household, update, 2FA, reset).
-const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_BkUxf0yeqOH1sTYtl0UqX6C742mYq7olPWKS6590';
+// Confirmed full choice list from FFU's docs (6 total). 'household' and
+// 'login_code' are approved for the customer dashboard (via publicSafeCodes);
+// the other 4 are new/unverified and stay admin-only (/vionex) until confirmed
+// safe - see FFU_CHOICE_META below for the type each one maps to.
+const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_CXfcaE7pQ3QHjFsE4mKxjAbNJXP0GErfhtSBqPxS';
 const FFU_API_URL = process.env.FFU_API_URL || 'https://web-household-30-production.up.railway.app/api/v1/fetch';
-const FFU_CHOICES = ['login_code'];
+const FFU_CHOICES = ['household', 'reset', 'login_code', 'verification_code_after_login', 'verify_email', 'tv_login'];
 // Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
 // (sign-in) and 6-digit (verification) codes on top of household/update. Gated by
 // BOTH the secret path AND a secret key baked into the page server-side (never in
@@ -1746,6 +1750,23 @@ app.get('/api/link/:token', async (req, res) => {
   }
 });
 
+// Lightweight, passive check - used by the recurring auto-refresh timer. Reads
+// ONLY the cache (which the background poller keeps fresh by scanning the inbox
+// continuously) - it NEVER calls nfpro or FFU. Those can actively trigger Netflix
+// to issue a brand-new code every time they're queried, so calling them on every
+// 3-second auto-poll tick would mean requesting a fresh code from Netflix nonstop
+// just from a customer leaving the dashboard open. nfpro/FFU are only queried on
+// genuine page load (/api/link/:token) or an explicit Refresh click (.../refresh).
+app.get('/api/link/:token/peek', (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false });
+  if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
+  markActivity(); // keeps the background IMAP poller in its fast (15s) cycle
+  const codes = publicSafeCodes(getCodesFromCache(link.email));
+  res.json({ success:true, codes, count:codes.length });
+});
+
 app.get('/api/debug-email', async (req, res) => {
   const filterEmail = (req.query.email || '').trim().toLowerCase();
   try {
@@ -2673,11 +2694,14 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
 // failure - so the caller can safely fall back or continue.
 async function fetchFromNfpro(email, choice = 'household') {
   try {
+    // 3s timeout (not 10s) - since IMAP+nfpro+FFU race in parallel via
+    // Promise.allSettled, which waits for ALL of them, a slow provider would
+    // otherwise stretch the whole customer-facing fetch past the 3s speed target.
     const r = await fetch(NFPRO_API_URL, {
       method: 'POST',
       headers: { 'X-Api-Key': NFPRO_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, choice }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(3000),
     });
     if (!r.ok) return [];
     const d = await r.json();
@@ -2723,13 +2747,24 @@ async function fetchAllFromNfpro(email) {
 // Second fallback provider (FFU). Response shape isn't fully confirmed yet, so this
 // checks several common field names defensively. If none match, it logs the raw
 // response so we can see exactly what came back and adjust the parsing.
+// Each FFU choice maps to its own distinct type/label - 'household' reuses our
+// existing safe household type, everything else gets its own type and stays
+// admin-only (/vionex) until explicitly confirmed safe for customers.
+const FFU_CHOICE_META = {
+  'household':                       { type:'household', label:'Household Code (FFU)' },
+  'reset':                           { type:'reset', label:'Password Reset Link (FFU)' },
+  'login_code':                      { type:'login_code', label:'Login Code (FFU)' },
+  'verification_code_after_login':   { type:'verify_after_login', label:'Verification Code (Post-Login)' },
+  'verify_email':                    { type:'verify_email', label:'Verify Email Code' },
+  'tv_login':                        { type:'tv_login', label:'TV Login Code' },
+};
 async function fetchFromFFU(email, choice = 'login_code') {
   try {
     const r = await fetch(FFU_API_URL, {
       method: 'POST',
       headers: { 'X-Api-Key': FFU_API_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, choice }),
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(3000),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -2737,17 +2772,18 @@ async function fetchFromFFU(email, choice = 'login_code') {
       return [];
     }
     const now = Date.now();
+    const meta = FFU_CHOICE_META[choice] || { type:'login_code', label:'Code (FFU)' };
     const code = d.code || d.otp || d.pin || d.result?.code;
     const link = d.link || d.url || d.result?.link;
     if (code) {
-      return [{ type:'login_code', label:'Login Code (FFU)', code:String(code), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
+      return [{ type:meta.type, label:meta.label, code:String(code), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
     }
     if (link) {
-      return [{ type:'login_code', label:'Login Link (FFU)', link:String(link), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
+      return [{ type:meta.type, label:meta.label, link:String(link), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
     }
     // Nothing matched our known field names - log the raw shape so we can extend
     // the parsing above once we see a real response.
-    console.log('FFU response had no recognized code/link field:', JSON.stringify(d).slice(0,300));
+    console.log(`FFU response (${choice}) had no recognized code/link field:`, JSON.stringify(d).slice(0,300));
     return [];
   } catch(e) {
     console.error('FFU fetch error:', e.message);
@@ -2769,11 +2805,18 @@ async function fetchAllFromFFU(email) {
 // The shared background-poller cache mixes all types together (it always polls
 // with includeSignin:true so the /vionex full-access tool has everything ready),
 // so the PUBLIC endpoint must filter it down before returning anything from it.
+const CUSTOMER_SAFE_TYPES = new Set([
+  'household', 'update',            // our own IMAP-classified types
+  'login_code',                     // FFU - approved earlier
+  'verify_after_login',             // FFU 'verification_code_after_login' - approved
+  'verify_email',                   // FFU 'verify_email' - approved
+  'tv_login',                       // FFU 'tv_login' - approved
+  // Deliberately excluded: nfpro's signin/verify/2FA/reset, and FFU's 'reset' -
+  // these grant full account-level access (password change, billing, etc.),
+  // not just "this device belongs to the household."
+]);
 function publicSafeCodes(codes) {
-  // Allowed for customers: household, TV update link, and (per explicit owner
-  // confirmation) FFU's login_code. Sign-in/verify/2FA/reset remain excluded -
-  // those grant full account access and were never approved for customer view.
-  return (codes || []).filter(c => c.type === 'household' || c.type === 'update' || c.type === 'login_code');
+  return (codes || []).filter(c => CUSTOMER_SAFE_TYPES.has(c.type));
 }
 
 // Fast, comprehensive code lookup for customer-facing endpoints. Races EVERY source
