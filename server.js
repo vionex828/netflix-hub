@@ -2838,13 +2838,14 @@ function publicSafeCodes(codes) {
 // callers apply their own safety filtering as needed.
 async function fetchAllSourcesRaw(email) {
   const bgCached = getCodesFromCache(email) || [];
-  // Hard 3s cap on the WHOLE fetch, not just each individual source. Previously,
-  // even with nfpro/FFU capped at 3s each, Promise.allSettled still waited for
-  // the SLOWEST of all three before returning anything - so a slow IMAP
-  // connection could still push the customer's wait well past 3s. Now: whichever
-  // sources have answered within 3s are used immediately; any still-running ones
-  // keep going in the background and just update the cache for the NEXT request
-  // (auto-poll or refresh) instead of making this one wait for them.
+  // IMPORTANT: nfpro/FFU already have their OWN internal ~3s cutoff (AbortSignal
+  // inside each fetch). Racing the ENTIRE fetchAllFromNfpro/FFU call against
+  // ANOTHER 3000ms timer of the same duration was a bug - the outer timer is a
+  // bare setTimeout with near-zero overhead, so it almost always "won" the race
+  // before the inner call (which has real network/parsing work on top of its own
+  // timeout) could finish - silently discarding valid results a few ms too late.
+  // Fix: only IMAP gets the outer race (it has no clean self-contained bound of
+  // its own); nfpro/FFU are awaited directly and trusted to respect their own cap.
   const TIMEOUT = Symbol('timeout');
   const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
 
@@ -2852,21 +2853,20 @@ async function fetchAllSourcesRaw(email) {
   const nfproPromise = fetchAllFromNfpro(email).catch(() => []);
   const ffuPromise = fetchAllFromFFU(email).catch(() => []);
 
-  const [imapResult, nfproResult, ffuResult] = await Promise.all([
+  const [imapResult, nfproCodes, ffuCodes] = await Promise.all([
     Promise.race([imapPromise, timeoutAt(3000)]),
-    Promise.race([nfproPromise, timeoutAt(3000)]),
-    Promise.race([ffuPromise, timeoutAt(3000)]),
+    nfproPromise,
+    ffuPromise,
   ]);
   const imapCodes = imapResult === TIMEOUT ? [] : imapResult;
-  const nfproCodes = nfproResult === TIMEOUT ? [] : nfproResult;
-  const ffuCodes = ffuResult === TIMEOUT ? [] : ffuResult;
 
-  // Whatever's still running after the cap gets to finish quietly in the
-  // background - if it turns up something, it lands in the cache for next time.
-  Promise.all([imapPromise, nfproPromise, ffuPromise]).then(([i, n, f]) => {
+  // If IMAP hit the cap, let it keep running quietly in the background - if it
+  // turns up something after the fact, it lands in the cache for next time.
+  imapPromise.then((i) => {
+    if (!i || i.length === 0) return;
     const bgNow = Date.now();
     const seenBg = new Set();
-    const bgMerged = [...(getCodesFromCache(email) || []), ...i, ...n, ...f].filter(c => {
+    const bgMerged = [...(getCodesFromCache(email) || []), ...i].filter(c => {
       if (c.expiresAt && c.expiresAt < bgNow) return false;
       const k = c.code || c.link;
       if (!k || seenBg.has(k)) return false;
