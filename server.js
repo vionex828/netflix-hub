@@ -1008,16 +1008,15 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
 
 function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
   return new Promise((resolve, reject) => {
-    // Tighter timeouts than the library default (was 5000/4000, up to ~9s) - this
-    // function is raced in parallel against nfpro/FFU (each capped at 3s), so a
-    // slow IMAP connection was the one piece not actually bounded near the 3s
-    // speed target. A faster failure here just means the other parallel sources
-    // still deliver a result on time; IMAP isn't the only path anymore.
+    // Restored to the original, reliable values (5000/4000) - the earlier
+    // tightening to 2500/2000 combined with an outer race window that was
+    // SHORTER than this connection budget, which broke the core IMAP path that
+    // was working fine before. Reliability over an aggressive speed target here.
     const imap = new Imap({
       user: GMAIL_USER, password: GMAIL_PASS,
       host: 'imap.gmail.com', port: 993, tls: true,
       tlsOptions: { rejectUnauthorized: false },
-      connTimeout: 2500, authTimeout: 2000
+      connTimeout: 5000, authTimeout: 4000
     });
     imap.once('ready', () => {
       imap.openBox('INBOX', true, (err) => {
@@ -2780,9 +2779,14 @@ function publicSafeCodes(codes) {
 async function fetchAllSourcesRaw(email) {
   const bgCached = getCodesFromCache(email) || [];
   // nfpro.store removed by request - FFU is the only third-party fallback now.
-  // IMAP still gets an outer race since it has no clean self-contained bound of
-  // its own; FFU is awaited directly and trusted to respect its own internal
-  // ~3s AbortSignal cutoff.
+  // IMPORTANT FIX: IMAP's own connTimeout(5000)+authTimeout(4000) ceiling is ~9s
+  // just for connection setup, before any search/fetch/parse work happens. The
+  // outer race window here MUST be longer than that, or it discards almost every
+  // legitimate IMAP result (a normal successful connection that just takes
+  // slightly over the window looks identical to a genuine timeout). This was
+  // previously set to 3000ms - far SHORTER than IMAP's own connection budget -
+  // which broke the original, reliable IMAP path that worked fine before any of
+  // this API integration. Now generously bounded at 10s instead.
   const TIMEOUT = Symbol('timeout');
   const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
 
@@ -2790,7 +2794,7 @@ async function fetchAllSourcesRaw(email) {
   const ffuPromise = fetchAllFromFFU(email).catch(() => []);
 
   const [imapResult, ffuCodes] = await Promise.all([
-    Promise.race([imapPromise, timeoutAt(3000)]),
+    Promise.race([imapPromise, timeoutAt(10000)]),
     ffuPromise,
   ]);
   const imapCodes = imapResult === TIMEOUT ? [] : imapResult;
