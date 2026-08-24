@@ -196,23 +196,6 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
-// nfpro.store removed by request - FFU is the only third-party fallback now.
-// Second fallback code-fetch provider (different vendor from nfpro.store). Only
-// known choice so far is 'login_code' - add more to FFU_CHOICES below once their
-// docs/testing reveal what else they support (e.g. household, update, 2FA, reset).
-// Confirmed full choice list from FFU's docs (6 total). 'household' and
-// 'login_code' are approved for the customer dashboard (via publicSafeCodes);
-// the other 4 are new/unverified and stay admin-only (/vionex) until confirmed
-// safe - see FFU_CHOICE_META below for the type each one maps to.
-const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_W0WGjdTFZQ9Ri1SeVIJ4BIjtPNgSBqtSLnqgMNtj';
-const FFU_API_URL = process.env.FFU_API_URL || 'https://web-household-30-production.up.railway.app/api/v1/fetch';
-const FFU_CHOICES = ['household', 'reset', 'login_code', 'verification_code_after_login', 'verify_email', 'tv_login'];
-// Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
-// (sign-in) and 6-digit (verification) codes on top of household/update. Gated by
-// BOTH the secret path AND a secret key baked into the page server-side (never in
-// the public index.html file), so guessing the path alone isn't enough.
-const ADMIN_TOOL_PATH = process.env.ADMIN_TOOL_PATH || '/vionex';
-const ADMIN_TOOL_KEY = process.env.ADMIN_TOOL_KEY || 'e5c66efb023a701785177b83';
 
 // ── MULTI-DOMAIN WHITE-LABEL BRANDING ────────────────────────────────────────
 // Each entry customizes the public tool page for one domain: brand name, accent
@@ -1021,31 +1004,6 @@ function fetchNetflixEmails(filterEmail, includeSignin=false) {
   return fetchNetflixEmailsFresh(filterEmail, includeSignin);
 }
 
-// Caps how many fresh IMAP connections can be open at once. Each customer
-// request that misses cache opens a brand-new connection to Gmail; if many
-// customers hit "Refresh" around the same moment, unlimited simultaneous fresh
-// connections could exhaust Gmail's own per-account connection limit or the
-// server's own resources. Requests beyond the cap wait briefly for a slot
-// rather than piling on more connections indefinitely.
-let _activeFreshImapConns = 0;
-const MAX_CONCURRENT_FRESH_IMAP = 4;
-function fetchNetflixEmailsFreshLimited(filterEmail, includeSignin=false) {
-  return new Promise((resolve) => {
-    const tryStart = () => {
-      if (_activeFreshImapConns >= MAX_CONCURRENT_FRESH_IMAP) {
-        setTimeout(tryStart, 250);
-        return;
-      }
-      _activeFreshImapConns++;
-      fetchNetflixEmailsFresh(filterEmail, includeSignin)
-        .then(resolve)
-        .catch(() => resolve([]))
-        .finally(() => { _activeFreshImapConns--; });
-    };
-    tryStart();
-  });
-}
-
 function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
   return new Promise((resolve, reject) => {
     // Restored to the original, reliable values (5000/4000) - the earlier
@@ -1776,8 +1734,8 @@ app.get('/api/link/:token', async (req, res) => {
       totalToday += 1;
       return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
     }
-    // Cache empty - actively race every source now (IMAP + FFU if enabled)
-    // instead of passively waiting on the background poller's next cycle.
+    // Cache empty - actively fetch now via IMAP instead of passively waiting on
+    // the background poller's next cycle.
     console.log(`[initial-load] calling fetchAllSourcesForCustomer for ${link.email}`);
     const fresh = await fetchAllSourcesForCustomer(link.email);
     console.log(`[initial-load] DONE for ${link.email} - ${fresh.length} code(s)`);
@@ -1794,11 +1752,7 @@ app.get('/api/link/:token', async (req, res) => {
 
 // Lightweight, passive check - used by the recurring auto-refresh timer. Reads
 // ONLY the cache (which the background poller keeps fresh by scanning the inbox
-// continuously) - it NEVER calls nfpro or FFU. Those can actively trigger Netflix
-// to issue a brand-new code every time they're queried, so calling them on every
-// 3-second auto-poll tick would mean requesting a fresh code from Netflix nonstop
-// just from a customer leaving the dashboard open. nfpro/FFU are only queried on
-// genuine page load (/api/link/:token) or an explicit Refresh click (.../refresh).
+// continuously) - never does a live fetch itself.
 app.get('/api/link/:token/peek', (req, res) => {
   const links = loadLinks();
   const link = links[req.params.token];
@@ -2730,192 +2684,22 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
   res.json({ success:true, before, after:unique.length, removed: before - unique.length });
 });
 
-// Second fallback provider (FFU). Response shape isn't fully confirmed yet, so this
-// checks several common field names defensively. If none match, it logs the raw
-// response so we can see exactly what came back and adjust the parsing.
-// Each FFU choice maps to its own distinct type/label - 'household' reuses our
-// existing safe household type, everything else gets its own type and stays
-// admin-only (/vionex) until explicitly confirmed safe for customers.
-const FFU_CHOICE_META = {
-  'household':                       { type:'household', label:'Household Code (FFU)' },
-  'reset':                           { type:'reset', label:'Password Reset Link (FFU)' },
-  'login_code':                      { type:'login_code', label:'Login Code (FFU)' },
-  'verification_code_after_login':   { type:'verify_after_login', label:'Verification Code (Post-Login)' },
-  'verify_email':                    { type:'verify_email', label:'Verify Email Code' },
-  'tv_login':                        { type:'tv_login', label:'TV Login Code' },
-};
-async function fetchFromFFU(email, choice = 'login_code') {
-  try {
-    const r = await fetch(FFU_API_URL, {
-      method: 'POST',
-      headers: { 'X-Api-Key': FFU_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, choice }),
-      signal: AbortSignal.timeout(3000),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      console.error(`FFU fetch failed (${choice}):`, r.status, JSON.stringify(d).slice(0,300));
-      return [];
-    }
-    const now = Date.now();
-    const meta = FFU_CHOICE_META[choice] || { type:'login_code', label:'Code (FFU)' };
-    const code = d.code || d.otp || d.pin || d.result?.code;
-    const link = d.link || d.url || d.result?.link;
-    if (code) {
-      return [{ type:meta.type, label:meta.label, code:String(code), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
-    }
-    if (link) {
-      return [{ type:meta.type, label:meta.label, link:String(link), to:email, ts:now, expiresAt:now+15*60*1000, source:'ffu' }];
-    }
-    // Nothing matched our known field names - log the raw shape so we can extend
-    // the parsing above once we see a real response.
-    console.log(`FFU response (${choice}) had no recognized code/link field:`, JSON.stringify(d).slice(0,300));
-    return [];
-  } catch(e) {
-    console.error('FFU fetch error:', e.message);
-    return [];
-  }
-}
-
-// Caps how many FFU requests can be in flight across the WHOLE server at once,
-// regardless of how many distinct customers triggered them. Without this, many
-// customers loading/refreshing around the same moment could each fire a batch
-// of FFU calls simultaneously - real evidence (Live Activity log) showed 6
-// calls fired within ~11s for a single action; multiplied across many
-// concurrent customers, this is a real burst-load risk. Extra requests queue
-// briefly for a slot instead of piling on.
-let _activeFfuCalls = 0;
-const MAX_CONCURRENT_FFU = 4;
-function _ffuSlot() {
-  return new Promise((resolve) => {
-    const tryStart = () => {
-      if (_activeFfuCalls >= MAX_CONCURRENT_FFU) { setTimeout(tryStart, 200); return; }
-      _activeFfuCalls++;
-      resolve(() => { _activeFfuCalls--; });
-    };
-    tryStart();
-  });
-}
-
-// choices param lets callers request a smaller set - the customer-facing path
-// skips 'reset' (never shown to customers anyway per publicSafeCodes, so
-// fetching it on every request is pure wasted load) while /vionex (low-volume,
-// deliberate manual admin lookups) still gets the full list.
-async function fetchAllFromFFU(email, choices = FFU_CHOICES) {
-  const results = await Promise.allSettled(choices.map(async (c) => {
-    const release = await _ffuSlot();
-    try { return await fetchFromFFU(email, c); }
-    finally { release(); }
-  }));
-  const merged = [];
-  for (const r of results) {
-    if (r.status === 'fulfilled' && r.value.length > 0) merged.push(...r.value);
-  }
-  return merged;
-}
-const FFU_CHOICES_CUSTOMER = FFU_CHOICES.filter(c => c !== 'reset');
-
 // Public customers may only ever see household code / TV update link - never
 // sign-in or verification codes (those could let someone take over the account).
-// The shared background-poller cache mixes all types together (it always polls
-// with includeSignin:true so the /vionex full-access tool has everything ready),
-// so the PUBLIC endpoint must filter it down before returning anything from it.
-const CUSTOMER_SAFE_TYPES = new Set([
-  'household', 'update',            // our own IMAP-classified types
-  'login_code',                     // FFU - approved earlier
-  'verify_after_login',             // FFU 'verification_code_after_login' - approved
-  'verify_email',                   // FFU 'verify_email' - approved
-  'tv_login',                       // FFU 'tv_login' - approved
-  // Deliberately excluded: nfpro's signin/verify/2FA/reset, and FFU's 'reset' -
-  // these grant full account-level access (password change, billing, etc.),
-  // not just "this device belongs to the household."
-]);
 function publicSafeCodes(codes) {
-  return (codes || []).filter(c => CUSTOMER_SAFE_TYPES.has(c.type));
+  return (codes || []).filter(c => c.type === 'household' || c.type === 'update');
 }
 
-// Fast, comprehensive code lookup for customer-facing endpoints. Races EVERY source
-// (our own cache, a fresh IMAP search, all of nfpro's choices, and FFU) in parallel -
-// no source is skipped, so whichever one actually has the code answers fastest. The
-// safety filter (household/update only) is always applied LAST, after merging, so no
-// matter which source responds, sign-in/verify/2FA/reset/login_code can never reach
-// a customer - the speed and the safety are two independent, unconditional steps.
-// Races every source (cache, fresh IMAP, all nfpro choices, FFU) in parallel and
-// merges them - no source skipped. Old codes stay visible until their OWN natural
-// expiry (15 min from receipt); a new code arriving does NOT remove an older
-// still-valid one, so nothing vanishes from view just because something newer
-// showed up. Returns the raw, UNFILTERED merged list (all types included) -
-// callers apply their own safety filtering as needed.
-async function fetchAllSourcesRaw(email, ffuChoices = FFU_CHOICES) {
-  const bgCached = getCodesFromCache(email) || [];
-  // nfpro.store removed by request - FFU is the only third-party fallback now.
-  // IMPORTANT FIX: IMAP's own connTimeout(5000)+authTimeout(4000) ceiling is ~9s
-  // just for connection setup, before any search/fetch/parse work happens. The
-  // outer race window here MUST be longer than that, or it discards almost every
-  // legitimate IMAP result (a normal successful connection that just takes
-  // slightly over the window looks identical to a genuine timeout). This was
-  // previously set to 3000ms - far SHORTER than IMAP's own connection budget -
-  // which broke the original, reliable IMAP path that worked fine before any of
-  // this API integration. Now generously bounded at 10s instead.
-  const TIMEOUT = Symbol('timeout');
-  const timeoutAt = (ms) => new Promise(resolve => setTimeout(() => resolve(TIMEOUT), ms));
-
-  const imapPromise = (bgCached.length > 0 ? Promise.resolve([]) : fetchNetflixEmailsFreshLimited(email, true)).catch(() => []);
-  const ffuPromise = fetchAllFromFFU(email, ffuChoices).catch(() => []);
-
-  const [imapResult, ffuCodes] = await Promise.all([
-    Promise.race([imapPromise, timeoutAt(10000)]),
-    ffuPromise,
-  ]);
-  const imapCodes = imapResult === TIMEOUT ? [] : imapResult;
-  const nfproCodes = [];
-
-  // If IMAP hit the cap, let it keep running quietly in the background - if it
-  // turns up something after the fact, it lands in the cache for next time.
-  imapPromise.then((i) => {
-    if (!i || i.length === 0) return;
-    const bgNow = Date.now();
-    const seenBg = new Set();
-    const bgMerged = [...(getCodesFromCache(email) || []), ...i].filter(c => {
-      if (c.expiresAt && c.expiresAt < bgNow) return false;
-      const k = c.code || c.link;
-      if (!k || seenBg.has(k)) return false;
-      seenBg.add(k);
-      return true;
-    }).sort((a,b) => b.ts - a.ts);
-    if (bgMerged.length > 0) setCodesInCache(email, bgMerged);
-  }).catch(() => {});
-
-  const merged = [...bgCached, ...imapCodes, ...nfproCodes, ...ffuCodes];
-  const now = Date.now();
-  const seen = new Set();
-  const allCodes = merged.filter(c => {
-    if (c.expiresAt && c.expiresAt < now) return false; // naturally expired - drop
-    const k = c.code || c.link;
-    if (!k || seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).sort((a,b) => b.ts - a.ts);
-
-  if (allCodes.length > 0) setCodesInCache(email, allCodes);
-  return { allCodes, imapCodes, nfproCodes, ffuCodes, bgCached };
-}
-
-// Customer-facing wrapper - same fetch/merge as above, but always applies the
-// household/update/login_code safety filter before returning.
-// TEMPORARY SAFETY SWITCH: multiple "site goes down when I hit refresh" reports
-// have come in since FFU was wired into this customer-facing path. Until we can
-// see exactly where it fails (via the logging just added to /refresh), FFU is
-// disabled here by default - the customer path falls back to IMAP only, which
-// is confirmed reliable. /vionex (admin-only, low-volume) is UNAFFECTED and
-// still queries FFU freely for continued testing. Set CUSTOMER_FFU_ENABLED=true
-// in Railway's env vars to re-enable this once the crash is diagnosed and fixed.
-const CUSTOMER_FFU_ENABLED = process.env.CUSTOMER_FFU_ENABLED === 'true';
+// Customer-facing code lookup - IMAP only, matching the original architecture
+// before any third-party API integration was attempted.
 async function fetchAllSourcesForCustomer(email) {
-  const choices = CUSTOMER_FFU_ENABLED ? FFU_CHOICES_CUSTOMER : [];
-  const { allCodes } = await fetchAllSourcesRaw(email, choices);
-  return publicSafeCodes(allCodes);
+  const cached = getCodesFromCache(email);
+  if (cached !== null && cached.length > 0) return publicSafeCodes(cached);
+  const codes = await fetchNetflixEmailsFresh(email, true);
+  if (codes && codes.length > 0) setCodesInCache(email, codes);
+  return publicSafeCodes(codes || []);
 }
+
 
 app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
@@ -2932,19 +2716,9 @@ app.get('/api/codes', async (req, res) => {
       const fetchTime = '0.0';
       return res.json({ success:true, codes:bgSafe, count:bgSafe.length, fetchTime, cached:true });
     }
-    // 1) Try our own IMAP first (free, already running)
-    let codes = await fetchNetflixEmailsFreshLimited(email, false);
+    // Try our own IMAP (free)
+    let codes = await fetchNetflixEmailsFresh(email, false);
     let via = 'imap';
-    // 2) Fall back to FFU if our own inbox had nothing for this email - gated by
-    // the SAME kill-switch as the /c/:token dashboard. This call site was missed
-    // when that switch was first added, meaning the public tool page kept
-    // calling FFU unconditionally even after customers were supposed to be cut
-    // off - very likely the actual ongoing source of continuous API spam, since
-    // this page gets more traffic than the token dashboard.
-    if (CUSTOMER_FFU_ENABLED && (!codes || codes.length === 0)) {
-      const ffu = await fetchFromFFU(email, 'household');
-      if (ffu.length > 0) { codes = ffu; via = 'ffu'; }
-    }
     codes = publicSafeCodes(codes);
     const fetchTime = ((Date.now()-start)/1000).toFixed(1);
     setCodesInCache(email, codes);
@@ -2954,60 +2728,12 @@ app.get('/api/codes', async (req, res) => {
   } catch(err) { res.status(500).json({ success:false, error:err.message }); }
 });
 
-// Full-access variant of /api/codes - requires the secret key (only ever embedded
-// in the page when served from ADMIN_TOOL_PATH, never in the public index.html file
-// on disk). Returns household + update-link + sign-in (4-digit) + verification
-// (6-digit) codes. Never used by the public tool.
-app.get('/api/codes-full', async (req, res) => {
-  const email = (req.query.email||'').trim();
-  const key = (req.query.key||'').trim();
-  console.log(`[codes-full] request received for ${email} - key match: ${key === ADMIN_TOOL_KEY}`);
-  if (key !== ADMIN_TOOL_KEY) return res.status(403).json({ success:false, error:'Invalid key' });
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
-  trackVisitor(ip); resetDailyIfNeeded();
-  const start = Date.now();
-  try {
-    // "All access": pull from every source we have at once, in parallel, and merge -
-    // same shared logic as the customer-facing endpoints, just unfiltered here since
-    // /vionex is admin-only (all types shown: household/update/signin/verify/2FA/
-    // reset/login_code). Old codes stay visible until their own natural expiry.
-    const { allCodes: codes, imapCodes, nfproCodes, ffuCodes, bgCached } = await fetchAllSourcesRaw(email);
-    const fetchTime = ((Date.now()-start)/1000).toFixed(1);
-    const sources = [];
-    if (bgCached.length > 0) sources.push('cache');
-    if (imapCodes.length > 0) sources.push('imap');
-    if (nfproCodes.length > 0) sources.push('nfpro');
-    if (ffuCodes.length > 0) sources.push('ffu');
-    const via = sources.length > 0 ? sources.join('+') : 'none';
-    console.log(`[codes-full] ${email} -> sources:[${via}] imap:${imapCodes.length} nfpro:${nfproCodes.length} ffu:${ffuCodes.length} total:${codes.length}`);
-    res.json({ success:true, codes, count:codes.length, fetchTime, via });
-  } catch(err) {
-    console.error('[codes-full] CRASHED:', err.message, err.stack?.split('\n')[1]);
-    res.status(500).json({ success:false, error:err.message });
-  }
-});
-
 // Public tool landing page - branded per domain (see BRANDS config above).
 app.get('/', (req, res) => {
   try {
     const html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
     const brand = getBrand(req.hostname);
     res.send(applyBrand(html, brand));
-  } catch(e) { res.status(500).send('Error loading page'); }
-});
-
-// Secret full-access tool page - same UI as the public tool (/), served dynamically
-// with a flag + secret key injected so the frontend knows to call /api/codes-full.
-// The public index.html file on disk never contains this key. Also branded per
-// domain, same as the public page.
-app.get(ADMIN_TOOL_PATH, (req, res) => {
-  try {
-    let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
-    const brand = getBrand(req.hostname);
-    html = applyBrand(html, brand);
-    const inject = `<script>window.__FULL_ACCESS__=true;window.__FULL_KEY__=${JSON.stringify(ADMIN_TOOL_KEY)};</script>`;
-    html = html.replace('</head>', inject + '</head>');
-    res.send(html);
   } catch(e) { res.status(500).send('Error loading page'); }
 });
 
