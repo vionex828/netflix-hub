@@ -46,14 +46,14 @@ function _connectIMAP() {
     host: 'imap.gmail.com', port: 993, tls: true,
     tlsOptions: { rejectUnauthorized: false },
     connTimeout: 10000, authTimeout: 8000,
-    // forceNoop was previously true, which disabled real IMAP IDLE and meant we
-    // relied ENTIRELY on the 15s poll interval to notice new mail - a genuine
-    // code could sit unclassified for up to 15s before we even looked for it.
-    // With IDLE enabled, Gmail pushes a notification the instant new mail
-    // arrives (the 'mail' event below), so we react in ~1s instead of waiting
-    // for the next scheduled poll tick. This is what actually shrinks the gap
-    // between "Netflix sent it" and "it's in cache" - not a shorter timeout.
-    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: false }
+    // REVERTED: tried enabling real IDLE (forceNoop:false) for faster mail
+    // detection, but couldn't verify it against real Gmail credentials in a
+    // sandboxed environment, and it's the most recent change before another
+    // "my own IMAP isn't working" report. Reverting to the known-reliable
+    // polling-only mode rather than risk it being the cause. The 'mail' event
+    // listener below is harmless to leave in place - it simply won't fire
+    // while forceNoop is true, since that disables real IDLE sessions.
+    keepalive: { interval: 10000, idleInterval: 300000, forceNoop: true }
   });
 
   _imap = imap;
@@ -62,13 +62,14 @@ function _connectIMAP() {
     imap.openBox('INBOX', true, (err) => {
       if (err) { console.error('IMAP openBox:', err.message); _scheduleReconnect(); return; }
       _imapReady = true;
-      console.log('IMAP: persistent connection ready (IDLE enabled)');
+      console.log('IMAP: persistent connection ready');
       _pollAll(); // immediate first poll
     });
   });
 
-  // Fires near-instantly when Gmail pushes notice of new mail via IDLE - this is
-  // the real speed win, not a shorter timeout on any single fetch.
+  // Currently inert (forceNoop:true above disables real IDLE sessions, so this
+  // won't fire) - left in place in case IDLE is safely re-enabled and verified
+  // later, without needing to re-add this listener from scratch.
   imap.on('mail', (numNew) => {
     console.log(`IMAP IDLE: ${numNew} new message(s) - polling now`);
     _pollAll();
@@ -203,7 +204,7 @@ const GMAIL_PASS = process.env.GMAIL_PASS;
 // 'login_code' are approved for the customer dashboard (via publicSafeCodes);
 // the other 4 are new/unverified and stay admin-only (/vionex) until confirmed
 // safe - see FFU_CHOICE_META below for the type each one maps to.
-const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_CXfcaE7pQ3QHjFsE4mKxjAbNJXP0GErfhtSBqPxS';
+const FFU_API_KEY = process.env.FFU_API_KEY || 'ffu_W0WGjdTFZQ9Ri1SeVIJ4BIjtPNgSBqtSLnqgMNtj';
 const FFU_API_URL = process.env.FFU_API_URL || 'https://web-household-30-production.up.railway.app/api/v1/fetch';
 const FFU_CHOICES = ['household', 'reset', 'login_code', 'verification_code_after_login', 'verify_email', 'tv_login'];
 // Secret full-access tool page - same UI as the public tool, but unlocks 4-digit
