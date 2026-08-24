@@ -274,11 +274,9 @@ function ep(){
   setTimeout(()=>{b.style.width='0';},400);
 }
 
-// Lightweight, passive poll - checks the inbox-fed cache only, never triggers
-// nfpro/FFU (those can request a brand-new code from Netflix every time they're
-// called, so hitting them on every recurring tick would spam Netflix for fresh
-// codes nonstop just from the dashboard sitting open). Safe to run every few
-// seconds indefinitely since it's just a cache read.
+// Lightweight, passive poll - checks the inbox-fed cache only, doesn't do a
+// live fetch itself. Safe to run every few seconds indefinitely since it's
+// just a cache read.
 async function pollPeek(token){
   try{
     const res=await fetch(`/api/link/${token}/peek?t=${Date.now()}`);
@@ -359,12 +357,9 @@ async function fetchCodes(token,isRefresh=false){
       if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
       else{addAct('grey','No codes yet','Waiting for Netflix email...');}
     }
-    // Recurring auto-refresh now uses the lightweight, passive /peek endpoint -
-    // it only reads the inbox-fed cache, never triggers nfpro/FFU, so it's safe
-    // to run every 3 seconds indefinitely without risking repeated fresh-code
-    // requests to Netflix just from the dashboard sitting open. The initial
-    // active fetch above (fetchCodes) already covers first-load speed; nfpro/FFU
-    // are only queried again on genuine page load or an explicit Refresh click.
+    // Recurring auto-refresh uses the lightweight, passive /peek endpoint - it
+    // only reads the inbox-fed cache, safe to run every 3 seconds indefinitely.
+    // The initial active fetch above (fetchCodes) already covers first-load speed.
     if(refTimer)clearInterval(refTimer);
     refTimer=setInterval(()=>pollPeek(token),3*1000);
     if(cdTimer)clearInterval(cdTimer);
@@ -588,29 +583,6 @@ function cardHtml(item,i){
   }
   if(item.type==='signin')return`<div class="card signin${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Sign-in Code</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
   if(item.type==='verify')return`<div class="card verify${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${vIco}<div style="min-width:0"><div class="ctype">Verification Code</div><div class="ccode" style="font-size:2.4rem;letter-spacing:8px">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
-  if(item.type==='login_code'){
-    const val=item.code||item.link;
-    const isLink=!item.code&&item.link;
-    const valHtml=isLink
-      ? `<a class="clink a" href="${esc(item.link)}" target="_blank">Open Login Link →</a>`
-      : `<div class="ccode">${item.code}</div>`;
-    return `<div class="card login-code${fc}" style="${delay}" data-code="${esc(val)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Login Code</div>${valHtml}<div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(val)}',this,false)">Copy</button></div>`;
-  }
-  const FFU_EXTRA_TYPES={
-    verify_after_login:{color:'#f5a623',title:'Verification Code'},
-    verify_email:{color:'#4da6ff',title:'Verify Email Code'},
-    tv_login:{color:'#E50914',title:'TV Login Code'},
-  };
-  if(FFU_EXTRA_TYPES[item.type]){
-    const meta=FFU_EXTRA_TYPES[item.type];
-    const val=item.code||item.link;
-    const isLink=!item.code&&item.link;
-    const valHtml=isLink
-      ? `<a class="clink a" href="${esc(item.link)}" target="_blank">Open Link →</a>`
-      : `<div class="ccode">${item.code}</div>`;
-    const ico=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${meta.color}" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></div>`;
-    return `<div class="card${fc}" style="${delay}" data-code="${esc(val)}">${fb}${ico}<div style="min-width:0"><div class="ctype" style="color:${meta.color}">${meta.title}</div>${valHtml}<div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(val)}',this,false)">Copy</button></div>`;
-  }
   const autoBadge=item.autoClicked?'<span style="background:rgba(70,211,105,.15);border:1px solid rgba(70,211,105,.3);color:var(--green);font-family:var(--m);font-size:.6rem;padding:3px 8px;border-radius:6px;margin-left:6px">⚡ Auto-Verified</span>':'';
   if(item.autoClicked&&!item.code)return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Household Verified${autoBadge}</div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">Auto-verified from BD. Netflix access restored.</div><div class="cmeta">${tt}</div></div></div>`;
   if(item.code)return`<div class="card household${fc}" style="${delay}" data-code="${esc(item.code)}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Temporary Access Code${autoBadge}</div><div class="ccode">${item.code}</div><div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(item.code)}',this,false)">Copy</button></div>`;
