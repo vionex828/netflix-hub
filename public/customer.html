@@ -274,6 +274,41 @@ function ep(){
   setTimeout(()=>{b.style.width='0';},400);
 }
 
+// Lightweight, passive poll - checks the inbox-fed cache only, never triggers
+// nfpro/FFU (those can request a brand-new code from Netflix every time they're
+// called, so hitting them on every recurring tick would spam Netflix for fresh
+// codes nonstop just from the dashboard sitting open). Safe to run every few
+// seconds indefinitely since it's just a cache read.
+async function pollPeek(token){
+  try{
+    const res=await fetch(`/api/link/${token}/peek?t=${Date.now()}`);
+    const data=await res.json();
+    if(!data.success)return;
+    const now=Date.now();
+    let codes=(data.codes||[]).filter(c=>{
+      if(c.code&&BLOCKED.includes(c.code))return false;
+      if(c.expiresAt&&c.expiresAt<now)return false;
+      return true;
+    });
+    const seen=new Set();
+    codes=codes.filter(c=>{const k=c.code||c.link;if(seen.has(k))return false;seen.add(k);return true;});
+    const prevCount=allCodes.length;
+    allCodes=codes;
+    // Auto-click household/update links from customer's browser (BD IP)
+    codes.forEach(c=>{
+      if((c.type==='household'||c.type==='update')&&c.link){
+        if(!window._autoClicked)window._autoClicked={};
+        if(!window._autoClicked[c.link]){
+          window._autoClicked[c.link]=true;
+          fetch(c.link,{mode:'no-cors',credentials:'omit'}).catch(()=>{});
+        }
+      }
+    });
+    updateCodes({codes});
+    if(codes.length>prevCount){addAct('green',`${codes.length} code(s) found`,'Codes ready to copy');playBeep();}
+  }catch(e){/* silent - next tick will retry */}
+}
+
 async function fetchCodes(token,isRefresh=false){
   if(isRefresh){sp();const r=document.getElementById('rbtn-ico');if(r)r.classList.add('spinning');}
   try{
@@ -293,7 +328,7 @@ async function fetchCodes(token,isRefresh=false){
       const c=document.getElementById('cards');
       if(c)c.innerHTML='<div class="empty"><div style="width:48px;height:48px;border-radius:50%;background:rgba(229,9,20,.1);display:flex;align-items:center;justify-content:center;margin:0 auto .8rem"><svg style="animation:spin 1s linear infinite" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></div><h3>Checking Inbox...</h3><p>Scanning for new Netflix codes.<br>Auto-updates every few seconds.</p></div>';
       if(refTimer)clearInterval(refTimer);
-      refTimer=setTimeout(()=>fetchCodes(token,true),3000);
+      refTimer=setInterval(()=>pollPeek(token),3000);
       return;
     }
     // ── Normal response ──
@@ -324,15 +359,14 @@ async function fetchCodes(token,isRefresh=false){
       if(data.codes.length>0){addAct('green',`${data.codes.length} code(s) found`,'Codes ready to copy');playBeep();}
       else{addAct('grey','No codes yet','Waiting for Netflix email...');}
     }
-    // Adaptive auto-refresh: fast (3s) while genuinely waiting for a code, so it
-    // feels instant - but once a valid code is already showing (with its own live
-    // countdown), there's no need to hammer nfpro/FFU every few seconds. Those can
-    // actively trigger Netflix to send a NEW code on every call, so polling fast
-    // forever would mean requesting fresh codes from Netflix nonstop if a customer
-    // just leaves the tab open. Falls back to a calmer 12s cadence once satisfied.
+    // Recurring auto-refresh now uses the lightweight, passive /peek endpoint -
+    // it only reads the inbox-fed cache, never triggers nfpro/FFU, so it's safe
+    // to run every 3 seconds indefinitely without risking repeated fresh-code
+    // requests to Netflix just from the dashboard sitting open. The initial
+    // active fetch above (fetchCodes) already covers first-load speed; nfpro/FFU
+    // are only queried again on genuine page load or an explicit Refresh click.
     if(refTimer)clearInterval(refTimer);
-    const hasValidCode=data.codes&&data.codes.length>0;
-    refTimer=setInterval(()=>fetchCodes(token,true),hasValidCode?12*1000:3*1000);
+    refTimer=setInterval(()=>pollPeek(token),3*1000);
     if(cdTimer)clearInterval(cdTimer);
     cdTimer=setInterval(tickCd,1000);
     if(data.daysLeft<=3&&data.daysLeft>0){
@@ -344,7 +378,7 @@ async function fetchCodes(token,isRefresh=false){
     if(!isRefresh)showError('error','Could not connect.');
     else{
       if(refTimer)clearInterval(refTimer);
-      refTimer=setTimeout(()=>fetchCodes(token,true),5000);
+      refTimer=setInterval(()=>pollPeek(token),3000);
     }
   }
 }
@@ -561,6 +595,21 @@ function cardHtml(item,i){
       ? `<a class="clink a" href="${esc(item.link)}" target="_blank">Open Login Link →</a>`
       : `<div class="ccode">${item.code}</div>`;
     return `<div class="card login-code${fc}" style="${delay}" data-code="${esc(val)}">${fb}${lIco}<div style="min-width:0"><div class="ctype">Login Code</div>${valHtml}<div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(val)}',this,false)">Copy</button></div>`;
+  }
+  const FFU_EXTRA_TYPES={
+    verify_after_login:{color:'#f5a623',title:'Verification Code'},
+    verify_email:{color:'#4da6ff',title:'Verify Email Code'},
+    tv_login:{color:'#E50914',title:'TV Login Code'},
+  };
+  if(FFU_EXTRA_TYPES[item.type]){
+    const meta=FFU_EXTRA_TYPES[item.type];
+    const val=item.code||item.link;
+    const isLink=!item.code&&item.link;
+    const valHtml=isLink
+      ? `<a class="clink a" href="${esc(item.link)}" target="_blank">Open Link →</a>`
+      : `<div class="ccode">${item.code}</div>`;
+    const ico=`<div class="cico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="${meta.color}" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></div>`;
+    return `<div class="card${fc}" style="${delay}" data-code="${esc(val)}">${fb}${ico}<div style="min-width:0"><div class="ctype" style="color:${meta.color}">${meta.title}</div>${valHtml}<div class="cmeta">${tt}${cd}</div></div><button class="cpbtn" onclick="event.stopPropagation();doCopy('${esc(val)}',this,false)">Copy</button></div>`;
   }
   const autoBadge=item.autoClicked?'<span style="background:rgba(70,211,105,.15);border:1px solid rgba(70,211,105,.3);color:var(--green);font-family:var(--m);font-size:.6rem;padding:3px 8px;border-radius:6px;margin-left:6px">⚡ Auto-Verified</span>':'';
   if(item.autoClicked&&!item.code)return`<div class="card household${fc}" style="${delay}">${fb}${pIco}<div style="min-width:0"><div class="ctype">Household Verified${autoBadge}</div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">Auto-verified from BD. Netflix access restored.</div><div class="cmeta">${tt}</div></div></div>`;
