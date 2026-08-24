@@ -424,6 +424,9 @@ footer p{font-family:var(--f-mono);font-size:.58rem;color:var(--ink-dim);letter-
           <button class="tab" id="tab-2fa" onclick="switchTab('2fa')" style="display:none">2FA <span class="tc" id="cnt-2fa">0</span></button>
           <button class="tab" id="tab-reset" onclick="switchTab('reset')" style="display:none">Reset Link <span class="tc" id="cnt-reset">0</span></button>
           <button class="tab" id="tab-login_code" onclick="switchTab('login_code')" style="display:none">Login Code <span class="tc" id="cnt-login_code">0</span></button>
+          <button class="tab" id="tab-verify_after_login" onclick="switchTab('verify_after_login')" style="display:none">Verify (Post-Login) <span class="tc" id="cnt-verify_after_login">0</span></button>
+          <button class="tab" id="tab-verify_email" onclick="switchTab('verify_email')" style="display:none">Verify Email <span class="tc" id="cnt-verify_email">0</span></button>
+          <button class="tab" id="tab-tv_login" onclick="switchTab('tv_login')" style="display:none">TV Login <span class="tc" id="cnt-tv_login">0</span></button>
         </div>
         <div class="cards-wrap" id="cards"></div>
       </div>
@@ -521,7 +524,7 @@ window.onload=()=>{
   setInterval(fetchStats, 30000);
 
   if (window.__FULL_ACCESS__) {
-    ['tab-signin','tab-verify','tab-2fa','tab-reset','tab-login_code'].forEach(id => {
+    ['tab-signin','tab-verify','tab-2fa','tab-reset','tab-login_code','tab-verify_after_login','tab-verify_email','tab-tv_login'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'flex';
     });
@@ -619,6 +622,9 @@ function updateCounts(){
   safe('cnt-2fa',allCodes.filter(i=>i.type==='2fa').length);
   safe('cnt-reset',allCodes.filter(i=>i.type==='reset').length);
   safe('cnt-login_code',allCodes.filter(i=>i.type==='login_code').length);
+  safe('cnt-verify_after_login',allCodes.filter(i=>i.type==='verify_after_login').length);
+  safe('cnt-verify_email',allCodes.filter(i=>i.type==='verify_email').length);
+  safe('cnt-tv_login',allCodes.filter(i=>i.type==='tv_login').length);
 }
 function renderCards(){
   const list=curTab==='all'?allCodes:allCodes.filter(i=>i.type===curTab);
@@ -695,6 +701,24 @@ function cardHtml(item,i){
       ? `<a class="c-link a" href="${esc(item.link)}" target="_blank">Open Login Link →</a>`
       : `<div class="c-code">${item.code}</div>`;
     return `<div class="card login-code${freshClass}" style="${delay}">${freshBadge}<div class="c-ico" style="position:relative;background:rgba(31,161,90,.12)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1fa15a" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/></svg></div><div class="c-body"><div class="c-type" style="color:#1fa15a">Login Code (${esc(item.label||'FFU')})</div><div class="c-to">→ ${esc(item.to)}</div>${valueHtml}<div class="c-age">${age}</div>${item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : ''}</div><button class="cp-btn" onclick="doCopy('${esc(val)}',this)">Copy</button></div>`;
+  }
+
+  // Newly confirmed FFU types (Aug 2026) - all admin-only on /vionex, not yet
+  // approved for the customer dashboard. Share one rendering pattern, distinct
+  // color per type so they're visually easy to tell apart while testing.
+  const NEW_FFU_TYPES = {
+    verify_after_login: { color:'#f5a623', title:'Verification (Post-Login)' },
+    verify_email:       { color:'#4da6ff', title:'Verify Email Code' },
+    tv_login:           { color:'#E50914', title:'TV Login Code' },
+  };
+  if (NEW_FFU_TYPES[item.type]) {
+    const meta = NEW_FFU_TYPES[item.type];
+    const val = item.code || item.link;
+    const isLink = !item.code && item.link;
+    const valueHtml = isLink
+      ? `<a class="c-link a" href="${esc(item.link)}" target="_blank">Open Link →</a>`
+      : `<div class="c-code">${item.code}</div>`;
+    return `<div class="card${freshClass}" style="${delay}">${freshBadge}<div class="c-ico" style="position:relative;background:${meta.color}22"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${meta.color}" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></div><div class="c-body"><div class="c-type" style="color:${meta.color}">${meta.title}</div><div class="c-to">→ ${esc(item.to)}</div>${valueHtml}<div class="c-age">${age}</div>${item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : ''}</div><button class="cp-btn" onclick="doCopy('${esc(val)}',this)">Copy</button></div>`;
   }
 
   const countdown = item.expiresAt ? `<div class="countdown-wrap" data-expires="${item.expiresAt}">${formatCountdown(item.expiresAt)}</div>` : '';
