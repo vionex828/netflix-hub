@@ -2693,8 +2693,8 @@ function publicSafeCodes(codes) {
 // Customer-facing code lookup - IMAP only, matching the original architecture
 // before any third-party API integration was attempted.
 async function fetchAllSourcesForCustomer(email) {
-  const cached = getCodesFromCache(email);
-  if (cached !== null && cached.length > 0) return publicSafeCodes(cached);
+  const cached = publicSafeCodes(getCodesFromCache(email));
+  if (cached.length > 0) return cached;
   const codes = await fetchNetflixEmailsFresh(email, true);
   if (codes && codes.length > 0) setCodesInCache(email, codes);
   return publicSafeCodes(codes || []);
