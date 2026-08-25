@@ -1024,8 +1024,8 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
           if (err) { console.error(`[imap-search] error for ${filterEmail}:`, err.message); imap.end(); return resolve([]); }
           console.log(`[imap-search] ${filterEmail || '(no filter)'}: search found ${uids ? uids.length : 0} matching Netflix email(s) in inbox`);
           if (!uids || uids.length === 0) { imap.end(); return resolve([]); }
-          // Fetch only last 5 UIDs (most recent emails) to reduce load
-          const recentUids = uids.slice(-5);
+          // Fetch only last 6 UIDs (most recent emails) to reduce load
+          const recentUids = uids.slice(-6);
           const fetch = imap.fetch(recentUids, { bodies: '' });
           const promises = [];
           fetch.on('message', (msg) => {
