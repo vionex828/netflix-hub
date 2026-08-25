@@ -1020,12 +1020,25 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
       imap.openBox('INBOX', true, (err) => {
         if (err) { imap.end(); return reject(err); }
         const since = new Date(Date.now() - 15*60*1000);
-        imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
+        // When a specific customer email is given, search IMAP directly for THAT
+        // email as text (headers or body) instead of a generic "any netflix email"
+        // search. This inbox is shared across many customers plus Netflix's own
+        // marketing mail, so a generic search followed by grabbing only the last
+        // few messages can easily miss a real code that got pushed out of that
+        // small window by unrelated traffic (other customers' emails, show
+        // recommendations, etc.) even though it's sitting right there in the
+        // inbox. Searching for the specific email directly avoids that entirely.
+        const searchCriteria = filterEmail
+          ? [['SINCE', since], ['TEXT', filterEmail]]
+          : [['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]];
+        imap.search(searchCriteria, (err, uids) => {
           if (err) { console.error(`[imap-search] error for ${filterEmail}:`, err.message); imap.end(); return resolve([]); }
-          console.log(`[imap-search] ${filterEmail || '(no filter)'}: search found ${uids ? uids.length : 0} matching Netflix email(s) in inbox`);
+          console.log(`[imap-search] ${filterEmail || '(no filter)'}: search found ${uids ? uids.length : 0} matching email(s) in inbox`);
           if (!uids || uids.length === 0) { imap.end(); return resolve([]); }
-          // Fetch only last 6 UIDs (most recent emails) to reduce load
-          const recentUids = uids.slice(-6);
+          // When searching for a specific email, every result is already relevant
+          // (IMAP itself filtered), so a larger cap is safe. Generic (no-filter)
+          // search still caps tighter since results there aren't pre-filtered.
+          const recentUids = filterEmail ? uids.slice(-15) : uids.slice(-6);
           const fetch = imap.fetch(recentUids, { bodies: '' });
           const promises = [];
           fetch.on('message', (msg) => {
