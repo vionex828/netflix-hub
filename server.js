@@ -984,17 +984,19 @@ async function scrapeOTP(link) {
       headers: { 'User-Agent':'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15', 'Accept':'text/html' },
       redirect: 'follow'
     });
+    console.log(`[scrape-otp] fetched ${link.slice(0,80)}... - status ${res.status}`);
     const html = await res.text();
     const patterns = [/>\s*(\d{4})\s*</g, /"code"\s*:\s*"(\d{4})"/, />\s*(\d{4,6})\s*<\/(?:p|h\d|div|span)/];
     for (const pattern of patterns) {
       const match = html.match(pattern);
-      if (match) { const code=(match[1]||match[0]).replace(/\D/g,''); if(code&&code.length>=4&&!BLOCKED_CODES.includes(code)) return code; }
+      if (match) { const code=(match[1]||match[0]).replace(/\D/g,''); if(code&&code.length>=4&&!BLOCKED_CODES.includes(code)) { console.log(`[scrape-otp] code found via pattern match: ${code}`); return code; } }
     }
     const allMatches = [...html.matchAll(/(?<![0-9])(\d{4})(?![0-9])/g)];
     const filtered = allMatches.filter(m=>!BLOCKED_CODES.includes(m[1])&&!['1080','1920','1440'].includes(m[1]));
-    if (filtered.length > 0) return filtered[0][1];
+    if (filtered.length > 0) { console.log(`[scrape-otp] code found via fallback digit scan: ${filtered[0][1]}`); return filtered[0][1]; }
+    console.log(`[scrape-otp] NO code found on page - html length ${html.length}, snippet: ${html.replace(/\s+/g,' ').slice(0,200)}`);
     return null;
-  } catch(e) { return null; }
+  } catch(e) { console.error(`[scrape-otp] fetch/parse error for ${link.slice(0,80)}:`, e.message); return null; }
 }
 
 function fetchNetflixEmails(filterEmail, includeSignin=false) {
@@ -2702,10 +2704,12 @@ app.post('/api/admin/accounts/cleanup', adminAuth, (req, res) => {
   res.json({ success:true, before, after:unique.length, removed: before - unique.length });
 });
 
-// Public customers may only ever see household code / TV update link - never
-// sign-in or verification codes (those could let someone take over the account).
+// Per explicit owner confirmation (understood risk: sign-in codes grant full
+// account login, not just household access), sign-in codes are now shown to
+// customers alongside household/update. Verify (6-digit) codes remain excluded
+// unless explicitly requested too.
 function publicSafeCodes(codes) {
-  return (codes || []).filter(c => c.type === 'household' || c.type === 'update');
+  return (codes || []).filter(c => c.type === 'household' || c.type === 'update' || c.type === 'signin');
 }
 
 // Customer-facing code lookup - IMAP only, matching the original architecture
