@@ -71,7 +71,7 @@ function _connectIMAP() {
   // won't fire) - left in place in case IDLE is safely re-enabled and verified
   // later, without needing to re-add this listener from scratch.
   imap.on('mail', (numNew) => {
-    console.log(`IMAP IDLE: ${numNew} new message(s) - polling now`);
+    console.log(`[imap-mail-event] ${numNew} new message(s) detected - polling now`);
     _pollAll();
   });
 
@@ -1021,7 +1021,9 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
         if (err) { imap.end(); return reject(err); }
         const since = new Date(Date.now() - 15*60*1000);
         imap.search([['SINCE', since], ['OR', ['FROM', 'netflix'], ['SUBJECT', 'netflix']]], (err, uids) => {
-          if (err || !uids || uids.length === 0) { imap.end(); return resolve([]); }
+          if (err) { console.error(`[imap-search] error for ${filterEmail}:`, err.message); imap.end(); return resolve([]); }
+          console.log(`[imap-search] ${filterEmail || '(no filter)'}: search found ${uids ? uids.length : 0} matching Netflix email(s) in inbox`);
+          if (!uids || uids.length === 0) { imap.end(); return resolve([]); }
           // Fetch only last 5 UIDs (most recent emails) to reduce load
           const recentUids = uids.slice(-5);
           const fetch = imap.fetch(recentUids, { bodies: '' });
@@ -1049,9 +1051,11 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
                       || fromValues.some(a => a === filterLower)
                       || fromText.toLowerCase().includes(filterLower)
                       || (mail.text||'').toLowerCase().includes(filterLower);
+                    console.log(`[imap-match] email "${subject.slice(0,50)}" (to:${toEmail}) vs filter ${filterLower}: ${matched ? 'MATCHED' : 'no match'}`);
                     if (!matched) return res(null);
                   }
                   const parsed = await classifyEmail({ subject, bodyHtml, bodyText, bodyPlain, toEmail, ts, includeSignin });
+                  console.log(`[imap-classify] "${subject.slice(0,50)}" -> ${parsed ? `type:${parsed.type}` : 'null (not classified as a code)'}`);
                   res(parsed);
                 });
               });
@@ -1060,6 +1064,7 @@ function fetchNetflixEmailsFresh(filterEmail, includeSignin=false, attempt=1) {
           });
           fetch.once('end', async () => {
             const items = (await Promise.all(promises)).filter(Boolean);
+            console.log(`[imap-fetch] ${filterEmail}: ${items.length} classified item(s) returned`);
             imap.end();
             resolve(items.sort((a,b) => b.ts - a.ts));
           });
