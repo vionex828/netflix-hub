@@ -1007,7 +1007,12 @@ async function fetchFromWHA(email, category = 'household') {
     const typeMap = { household:'household', reset:'reset', login_code:'signin', verification_code:'verify' };
     const type = typeMap[category] || category;
     return results.map(item => {
-      const code = item.code || item.otp || item.pin;
+      // Confirmed real shape (Aug 2026): { category, email, items:["0978"],
+      // result:"...text...", status:"found" } - code lives in items[0], NOT in
+      // code/otp/pin like the generic doc implied. status must be "found" (their
+      // API can return status:"not_found" or similar with an empty items array).
+      if (item.status && item.status !== 'found') return null;
+      const code = Array.isArray(item.items) && item.items.length > 0 ? item.items[0] : (item.code || item.otp || item.pin);
       const link = item.link || item.url;
       if (!code && !link) return null;
       return { type, label: `${category} (WHA)`, code: code ? String(code) : undefined, link, to: email, ts: now, expiresAt: now + 15*60*1000, source: 'wha' };
