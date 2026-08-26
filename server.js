@@ -809,15 +809,6 @@ function markActivity() { lastCustomerActivity = Date.now(); }
 function hasRecentActivity() { return Date.now() - lastCustomerActivity < 2*60*1000; } // active in last 2 min
 function getLiveVisitors() { const c = Date.now()-5*60*1000; return [...visitors.values()].filter(v=>v>c).length; }
 
-const rateLimitMap = new Map();
-function isRateLimited(ip) {
-  const now = Date.now();
-  const e = rateLimitMap.get(ip) || { count:0, start:now };
-  if (now - e.start > 5*60*1000) { rateLimitMap.set(ip,{count:1,start:now}); return false; }
-  if (e.count >= 10) return true;
-  e.count++; rateLimitMap.set(ip,e); return false;
-}
-
 const cache = new Map();
 function getCached(key) { const e=cache.get(key); if(e&&Date.now()-e.time<30000) return e.data; return null; }
 function setCache(key, data) { cache.set(key, {data, time:Date.now()}); }
@@ -2727,7 +2718,6 @@ app.get('/api/codes', async (req, res) => {
   const email = (req.query.email||'').trim();
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
   trackVisitor(ip); resetDailyIfNeeded();
-  if (isRateLimited(ip)) return res.status(429).json({ success:false, error:'Too many requests. Wait 5 minutes.' });
   const cached = getCached(email);
   if (cached) return res.json({ success:true, codes:publicSafeCodes(cached), count:publicSafeCodes(cached).length, cached:true, fetchTime:0 });
   const start = Date.now();
