@@ -196,6 +196,14 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
+// New supplier (Aug 2026) - separate from the FFU integration that was fully
+// removed. Different auth style (Bearer token, not X-Api-Key) and response
+// shape ({ok, results, error} not {code, link}). Starting deliberately narrow
+// after the FFU incident: only 'household' category queried by default, only
+// on explicit actions (page load / refresh), NEVER on the passive auto-poll.
+// Admin-only until tested and confirmed reliable - not shown to customers yet.
+const WHA_API_KEY = process.env.WHA_API_KEY || 'wha_yoEEtUdmoKsNAIDUY38Dnz8UooJLaDMDXD9TnU1KLrs';
+const WHA_API_URL = process.env.WHA_API_URL || 'https://web-household-stable-production.up.railway.app/api/v1/fetch';
 
 // ── MULTI-DOMAIN WHITE-LABEL BRANDING ────────────────────────────────────────
 // Each entry customizes the public tool page for one domain: brand name, accent
@@ -968,6 +976,43 @@ function checkAccountExpiry() {
 setInterval(checkAccountExpiry, 6*60*60*1000);
 try { checkAccountExpiry(); } catch(e) {}
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
+
+// New supplier (WHA) - Bearer token auth, {email, category} body, {ok, results,
+// error} response. Only 'household' queried by default (see WHA_CATEGORIES).
+// Logs every step so any failure is immediately visible, not silently swallowed.
+async function fetchFromWHA(email, category = 'household') {
+  try {
+    const r = await fetch(WHA_API_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${WHA_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, category }),
+      signal: AbortSignal.timeout(5000),
+    });
+    const d = await r.json().catch(() => ({}));
+    console.log(`[wha-fetch] ${email} category:${category} -> status:${r.status} ok:${d.ok}`);
+    if (!r.ok || !d.ok) {
+      console.error(`[wha-fetch] failed:`, d.error || `HTTP ${r.status}`);
+      return [];
+    }
+    const results = Array.isArray(d.results) ? d.results : (d.results ? [d.results] : []);
+    if (results.length === 0) {
+      console.log(`[wha-fetch] ${email} category:${category} - no results in response`);
+      return [];
+    }
+    const now = Date.now();
+    const typeMap = { household:'household', reset:'reset', login_code:'signin', verification_code:'verify' };
+    const type = typeMap[category] || category;
+    return results.map(item => {
+      const code = item.code || item.otp || item.pin;
+      const link = item.link || item.url;
+      if (!code && !link) return null;
+      return { type, label: `${category} (WHA)`, code: code ? String(code) : undefined, link, to: email, ts: now, expiresAt: now + 15*60*1000, source: 'wha' };
+    }).filter(Boolean);
+  } catch(e) {
+    console.error(`[wha-fetch] error for ${email} (${category}):`, e.message);
+    return [];
+  }
+}
 
 async function scrapeOTP(link) {
   try {
@@ -1772,6 +1817,21 @@ app.get('/api/link/:token/peek', (req, res) => {
   markActivity(); // keeps the background IMAP poller in its fast (15s) cycle
   const codes = publicSafeCodes(getCodesFromCache(link.email));
   res.json({ success:true, codes, count:codes.length });
+});
+
+// Isolated test endpoint for the new WHA supplier - completely separate from
+// any customer-facing flow. Use this to verify the integration actually works
+// before it's ever connected to real customer traffic. Protected by ADMIN_PASS
+// (your existing admin password) since this exposes raw supplier responses.
+app.get('/api/test-wha', async (req, res) => {
+  const key = req.headers['x-admin-token'] || req.query.key;
+  if (key !== ADMIN_PASS) return res.status(403).json({ success:false, error:'Invalid admin key' });
+  const email = (req.query.email || '').trim();
+  const category = (req.query.category || 'household').trim();
+  if (!email) return res.status(400).json({ success:false, error:'email query param required' });
+  const start = Date.now();
+  const results = await fetchFromWHA(email, category);
+  res.json({ success:true, email, category, fetchTime: ((Date.now()-start)/1000).toFixed(1), results });
 });
 
 app.get('/api/debug-email', async (req, res) => {
