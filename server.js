@@ -990,6 +990,10 @@ async function fetchFromWHA(email, category = 'household') {
     });
     const d = await r.json().catch(() => ({}));
     console.log(`[wha-fetch] ${email} category:${category} -> status:${r.status} ok:${d.ok}`);
+    // Log the ENTIRE raw response - our field-name assumptions (results/code/otp/
+    // pin/link/url) are a guess based on the doc, not confirmed against a real
+    // response yet. This shows exactly what they actually send back.
+    console.log(`[wha-fetch] RAW response:`, JSON.stringify(d).slice(0, 1000));
     if (!r.ok || !d.ok) {
       console.error(`[wha-fetch] failed:`, d.error || `HTTP ${r.status}`);
       return [];
@@ -1829,6 +1833,22 @@ app.get('/api/test-wha', async (req, res) => {
   const email = (req.query.email || '').trim();
   const category = (req.query.category || 'household').trim();
   if (!email) return res.status(400).json({ success:false, error:'email query param required' });
+  // ?raw=1 bypasses our parsing entirely and shows the supplier's exact response -
+  // useful since our field-name guesses (results/code/otp/pin) are unconfirmed.
+  if (req.query.raw === '1') {
+    try {
+      const r = await fetch(WHA_API_URL, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${WHA_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, category }),
+        signal: AbortSignal.timeout(5000),
+      });
+      const rawText = await r.text();
+      return res.json({ success:true, httpStatus: r.status, rawResponse: rawText });
+    } catch(e) {
+      return res.json({ success:false, error: e.message });
+    }
+  }
   const start = Date.now();
   const results = await fetchFromWHA(email, category);
   res.json({ success:true, email, category, fetchTime: ((Date.now()-start)/1000).toFixed(1), results });
