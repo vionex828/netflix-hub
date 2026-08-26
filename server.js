@@ -2788,14 +2788,34 @@ function publicSafeCodes(codes) {
   return (codes || []).filter(c => c.type === 'household' || c.type === 'update' || c.type === 'signin');
 }
 
-// Customer-facing code lookup - IMAP only, matching the original architecture
-// before any third-party API integration was attempted.
+// Customer-facing code lookup - IMAP + WHA supplier (household + login_code
+// categories only, per explicit approval - the other 5 WHA categories stay on
+// the isolated /api/test-wha endpoint until each is individually verified).
+// Sources race in parallel, each with its own self-contained timeout - no outer
+// competing timer this time (that mistake broke IMAP reliability once already).
 async function fetchAllSourcesForCustomer(email) {
   const cached = publicSafeCodes(getCodesFromCache(email));
   if (cached.length > 0) return cached;
-  const codes = await fetchNetflixEmailsFresh(email, true);
-  if (codes && codes.length > 0) setCodesInCache(email, codes);
-  return publicSafeCodes(codes || []);
+
+  const [imapCodes, whaHousehold, whaLogin] = await Promise.all([
+    fetchNetflixEmailsFresh(email, true).catch(() => []),
+    fetchFromWHA(email, 'household').catch(() => []),
+    fetchFromWHA(email, 'login_code').catch(() => []),
+  ]);
+
+  const merged = [...imapCodes, ...whaHousehold, ...whaLogin];
+  const now = Date.now();
+  const seen = new Set();
+  const allCodes = merged.filter(c => {
+    if (c.expiresAt && c.expiresAt < now) return false; // naturally expired
+    const k = c.code || c.link;
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).sort((a,b) => b.ts - a.ts);
+
+  if (allCodes.length > 0) setCodesInCache(email, allCodes);
+  return publicSafeCodes(allCodes);
 }
 
 
