@@ -277,11 +277,39 @@ function ep(){
 // Lightweight, passive poll - checks the inbox-fed cache only, doesn't do a
 // live fetch itself. Safe to run every few seconds indefinitely since it's
 // just a cache read.
+let obdCountdownTimer=null;
+function handleOutsideBdWarning(warning){
+  const popup=document.getElementById('obdpopup');
+  if(!popup)return;
+  if(!warning){
+    popup.style.display='none';
+    if(obdCountdownTimer){clearInterval(obdCountdownTimer);obdCountdownTimer=null;}
+    return;
+  }
+  document.getElementById('obd-country').textContent=warning.country||'another country';
+  const waMsg=encodeURIComponent(`Hi, my Netflix account showed a login-location warning and I need to upgrade to an international plan.`);
+  document.getElementById('obd-wabtn').href=`https://wa.me/8801928382918?text=${waMsg}`;
+  const tick=()=>{
+    const remaining=warning.deadline-Date.now();
+    const el=document.getElementById('obd-countdown');
+    if(!el)return;
+    if(remaining<=0){el.textContent='0m';return;}
+    const h=Math.floor(remaining/3600000);
+    const m=Math.floor((remaining%3600000)/60000);
+    el.textContent=h>0?`${h}h ${m}m`:`${m}m`;
+  };
+  tick();
+  popup.style.display='block';
+  if(obdCountdownTimer)clearInterval(obdCountdownTimer);
+  obdCountdownTimer=setInterval(tick,30000);
+}
+
 async function pollPeek(token){
   try{
     const res=await fetch(`/api/link/${token}/peek?t=${Date.now()}`);
     const data=await res.json();
     if(!data.success)return;
+    handleOutsideBdWarning(data.outsideBdWarning);
     const now=Date.now();
     let codes=(data.codes||[]).filter(c=>{
       if(c.code&&BLOCKED.includes(c.code))return false;
@@ -321,6 +349,7 @@ async function fetchCodes(token,isRefresh=false){
     }
     // ── FIX: Handle server background fetching ──
     window._ld=data; // set early so PIN works even during fetching
+    handleOutsideBdWarning(data.outsideBdWarning);
     if(data.fetching&&(!data.codes||data.codes.length===0)){
       if(!isRefresh)buildPage(data);
       const c=document.getElementById('cards');
@@ -482,6 +511,19 @@ function buildPage(data){
       <div style="width:34px;height:34px;border-radius:9px;background:rgba(245,166,35,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#f5a623" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
       <div style="flex:1"><div style="font-size:.84rem;font-weight:600;color:var(--amber)">Expiring in ${days} day${days!==1?'s':''}!</div><div style="font-size:.72rem;color:var(--muted);margin-top:2px">Contact FanFlix BD to renew.</div></div>
       <button onclick="openRenewModal()" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:700;font-size:.76rem;white-space:nowrap">Renew Now</button>
+    </div>
+    <div id="obdpopup" style="display:none;background:rgba(229,9,20,.08);border:1px solid rgba(229,9,20,.3);border-radius:12px;padding:1rem 1.1rem;margin-bottom:.9rem">
+      <div style="display:flex;align-items:flex-start;gap:.7rem">
+        <div style="width:34px;height:34px;border-radius:9px;background:rgba(229,9,20,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#E50914" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div style="flex:1">
+          <div style="font-size:.84rem;font-weight:700;color:var(--red)">Login detected from <span id="obd-country">another country</span></div>
+          <div style="font-size:.75rem;color:var(--text);margin-top:4px;line-height:1.5">Our system detected a login attempt from outside Bangladesh. Please contact WhatsApp to upgrade to an international plan — otherwise this link will be blocked in <b id="obd-countdown">1h 0m</b>.</div>
+        </div>
+      </div>
+      <a id="obd-wabtn" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:#25D366;color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-weight:700;font-size:.8rem;margin-top:.8rem;text-decoration:none">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347"/></svg>
+        Contact WhatsApp to Upgrade
+      </a>
     </div>
     <button onclick="openRenewModal()" style="width:100%;background:transparent;border:1px solid var(--border2);border-radius:16px;padding:.8rem;margin-bottom:.7rem;color:var(--muted);font-family:var(--m);font-size:.72rem;cursor:pointer;letter-spacing:1px;transition:all .2s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">RENEW SUBSCRIPTION</button>
     <button class="rbtn" id="rbtn" onclick="doRefresh()">
