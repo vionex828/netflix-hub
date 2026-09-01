@@ -714,24 +714,23 @@ async function checkGeoAndAlert(token, ip) {
       const links = loadLinks();
       const link = links[token];
 
-      // Block on the FIRST confirmed residential (non-datacenter) foreign IP.
-      // Datacenter/hosting IPs are still skipped entirely - those are Railway's own
-      // routing false-reads, never a real customer. A real customer on a residential
-      // foreign IP gets blocked immediately (no second chance).
-      const shouldAutoBlock = !looksDatacenter && link && link.active && !link.released;
+      // WARNING instead of instant block: customer gets 1 hour + a popup asking
+      // them to contact WhatsApp to upgrade to an international plan. Only if
+      // they never respond does a scheduled check (see checkOutsideBdDeadlines)
+      // actually block them. Datacenter/proxy IPs are still never flagged at all.
+      const shouldWarn = !looksDatacenter && link && link.active && !link.released && !link.outsideBdWarning;
 
-      if (shouldAutoBlock) {
-        // Auto-block: release the slot so it can't keep being used from abroad.
-        link.active = false;
-        link.released = true;
-        link.autoBlockedAt = Date.now();
-        link.autoBlockedReason = 'outside_bd';
+      if (shouldWarn) {
+        link.outsideBdWarning = true;
+        link.outsideBdWarningAt = Date.now();
+        link.outsideBdCountry = geo.country;
+        link.outsideBdDeadline = Date.now() + 60*60*1000; // 1 hour grace period
         links[token] = link;
         saveLinks(links);
-        sendTelegram(`🚫 <b>AUTO-BLOCKED — Outside BD!</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n✅ Slot released automatically (residential foreign login). Restore from Recycle Bin if this was a mistake.`);
-      } else {
-        // Datacenter/proxy IP - alert only, never block (avoids Railway false-reads).
-        sendTelegram(`🌍 <b>Outside BD Login Detected (not blocked)</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n⚠️ IP looks like a datacenter/proxy (possibly Railway's own routing) — NOT auto-blocked. Review manually if needed.`);
+        sendTelegram(`⚠️ <b>Outside BD Login — Warning Sent</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n\n⏳ Customer has 1 hour to contact WhatsApp before this link is auto-blocked. Clear the warning from Admin if this was legitimate.`);
+      } else if (looksDatacenter) {
+        // Datacenter/proxy IP - alert only, never warn or block (avoids Railway false-reads).
+        sendTelegram(`🌍 <b>Outside BD Login Detected (not blocked)</b>\n\n🔗 /c/${token}\n📧 ${link?.email||'unknown'}\n👤 ${link?.profile||'unknown'}\n📱 ${link?.phone||'unknown'}\n📍 ${geo.country} (${geo.countryCode})\n🌐 IP: ${ip}\n⚠️ IP looks like a datacenter/proxy (possibly Railway's own routing) — NOT flagged. Review manually if needed.`);
       }
 
       try {
@@ -745,7 +744,7 @@ async function checkGeoAndAlert(token, ip) {
           profile: link?.profile || '',
           phone: link?.phone || '',
           customerName: link?.customerName || '',
-          autoBlocked: shouldAutoBlock,
+          warningIssued: shouldWarn,
           datacenter: looksDatacenter,
           ts: Date.now(),
         });
@@ -976,6 +975,32 @@ function checkAccountExpiry() {
 setInterval(checkAccountExpiry, 6*60*60*1000);
 try { checkAccountExpiry(); } catch(e) {}
 try { scheduleMorningReport(); } catch(e) { console.error('Schedule error:', e.message); }
+
+// Runs every 5 minutes. Any link whose 1-hour outside-BD warning deadline has
+// passed - and the warning was never cleared (customer didn't contact WhatsApp
+// to upgrade) - gets blocked now. This is the deferred version of the old
+// instant auto-block: customer gets a real chance to respond first.
+function checkOutsideBdDeadlines() {
+  try {
+    const links = loadLinks();
+    const now = Date.now();
+    let changed = false;
+    for (const token of Object.keys(links)) {
+      const link = links[token];
+      if (!link.outsideBdWarning || !link.outsideBdDeadline) continue;
+      if (link.outsideBdDeadline > now) continue; // still within the grace window
+      if (!link.active || link.released) continue; // already inactive, nothing to do
+      link.active = false;
+      link.released = true;
+      link.autoBlockedAt = now;
+      link.autoBlockedReason = 'outside_bd';
+      changed = true;
+      sendTelegram(`🚫 <b>Blocked — Outside BD (grace period expired)</b>\n\n🔗 /c/${token}\n📧 ${link.email||'unknown'}\n👤 ${link.profile||'unknown'}\n📱 ${link.phone||'unknown'}\n📍 ${link.outsideBdCountry||'unknown'}\n\nCustomer never contacted WhatsApp within the 1-hour warning. Restore from Recycle Bin if this was a mistake.`);
+    }
+    if (changed) saveLinks(links);
+  } catch(e) { console.error('Outside-BD deadline check error:', e.message); }
+}
+setInterval(checkOutsideBdDeadlines, 5*60*1000);
 
 // New supplier (WHA) - Bearer token auth, {email, category} body, {ok, results,
 // error} response. Only 'household' queried by default (see WHA_CATEGORIES).
@@ -1789,6 +1814,11 @@ app.get('/api/link/:token', async (req, res) => {
   trackVisitor(ip);
   const { count: ipCount, isNew: isNewIP } = trackIPSync(req.params.token, ip);
   if (isNewIP) checkGeoAndAlert(req.params.token, ip).catch(()=>{});
+  // Outside-BD warning popup info - shown on the dashboard if flagged, with a
+  // countdown to when the link actually gets blocked if never addressed.
+  const outsideBdWarning = link.outsideBdWarning
+    ? { country: link.outsideBdCountry, deadline: link.outsideBdDeadline }
+    : null;
   try {
     // SECURITY: customers may only ever see household code / TV update link -
     // never sign-in/verify/2FA/reset (those could let someone take over the
@@ -1797,7 +1827,7 @@ app.get('/api/link/:token', async (req, res) => {
     const cached = publicSafeCodes(getCodesFromCache(link.email));
     if (cached !== null && cached.length > 0) {
       totalToday += 1;
-      return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+      return res.json({ success:true, codes:cached, count:cached.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, outsideBdWarning });
     }
     // Cache empty - actively fetch now via IMAP instead of passively waiting on
     // the background poller's next cycle.
@@ -1806,12 +1836,12 @@ app.get('/api/link/:token', async (req, res) => {
     console.log(`[initial-load] DONE for ${link.email} - ${fresh.length} code(s)`);
     if (fresh.length > 0) {
       totalToday += 1;
-      return res.json({ success:true, codes:fresh, count:fresh.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+      return res.json({ success:true, codes:fresh, count:fresh.length, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, outsideBdWarning });
     }
-    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true });
+    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, fetching:true, outsideBdWarning });
   } catch(err) {
     console.error(`[initial-load] CRASHED for ${link.email}:`, err.message, err.stack?.split('\n')[1]);
-    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses });
+    res.json({ success:true, codes:[], count:0, profile:link.profile, pin:link.pin, email:link.email, daysLeft, totalDays, ipCount, uses:link.uses, outsideBdWarning });
   }
 });
 
@@ -1825,7 +1855,10 @@ app.get('/api/link/:token/peek', (req, res) => {
   if (!link.active || link.expiresAt <= Date.now()) return res.status(403).json({ success:false });
   markActivity(); // keeps the background IMAP poller in its fast (15s) cycle
   const codes = publicSafeCodes(getCodesFromCache(link.email));
-  res.json({ success:true, codes, count:codes.length });
+  const outsideBdWarning = link.outsideBdWarning
+    ? { country: link.outsideBdCountry, deadline: link.outsideBdDeadline }
+    : null;
+  res.json({ success:true, codes, count:codes.length, outsideBdWarning });
 });
 
 // Isolated test endpoint for the new WHA supplier - completely separate from
@@ -3052,6 +3085,21 @@ app.post('/api/admin/accounts/:email/clear-banned', adminAuth, (req, res) => {
   delete accounts[idx].bannedDetected;
   delete accounts[idx].bannedAt;
   saveAccounts(accounts);
+  res.json({ success:true });
+});
+
+// Clears an outside-BD warning on a customer link (e.g. the customer legitimately
+// upgraded/contacted, or it was a false positive) - link stays active, the 1-hour
+// deadline is cancelled, and it can be re-triggered fresh if flagged again later.
+app.post('/api/admin/links/:token/clear-outside-bd', adminAuth, (req, res) => {
+  const links = loadLinks();
+  const link = links[req.params.token];
+  if (!link) return res.status(404).json({ success:false, error:'Link not found' });
+  delete link.outsideBdWarning;
+  delete link.outsideBdWarningAt;
+  delete link.outsideBdCountry;
+  delete link.outsideBdDeadline;
+  saveLinks(links);
   res.json({ success:true });
 });
 
