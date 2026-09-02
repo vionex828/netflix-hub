@@ -383,7 +383,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
       </div>
 
       <div id="section-accountperf" style="display:none;padding:1.5rem">
-        <div style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Netflix Account Performance</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.5rem;flex-wrap:wrap">
+          <div style="font-size:1.1rem;font-weight:700">Netflix Account Performance</div>
+          <button onclick="cleanupBanned()" style="background:var(--red);color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:var(--m);font-size:.68rem;white-space:nowrap">🧹 Cleanup Banned Accounts</button>
+        </div>
         <div style="font-family:var(--m);font-size:.68rem;color:var(--muted);margin-bottom:1.2rem">Accounts ranked by risk — outside-BD incidents, PIN changes, and non-renewal rate. Highest risk shows first.</div>
         <div id="accountperf-list"><div style="text-align:center;padding:2rem;color:var(--muted);font-family:var(--m);font-size:.75rem">Loading...</div></div>
       </div>
@@ -646,8 +649,16 @@ async function clearBannedFlag(email){
   if(d.success){showToast('✅ Flag cleared');loadAccountPerformance();}
   else showToast('Error clearing flag',true);
 }
-async function deleteNetflixAccount(email,activeCount){
-  const warn = activeCount>0
+async function cleanupBanned(){
+  if(!confirm('Remove ALL banned/cancelled accounts?\n\nThis deletes every account flagged with an "Account Issue" from your stock, recycles their customer links, and stops their Telegram alerts. This cannot be easily undone.'))return;
+  const r=await fetch('/api/admin/accounts/cleanup-banned',{method:'POST',headers:{'x-admin-token':adminToken}});
+  const d=await r.json();
+  if(d.success){
+    showToast(`🧹 Removed ${d.removed} banned account(s), ${d.linksAffected} link(s) recycled`);
+    loadAccountPerformance();loadAll&&loadAll();
+  } else showToast(d.error||'Cleanup failed',true);
+}
+async function deleteNetflixAccount(email,activeCount){  const warn = activeCount>0
     ? `This Netflix account has ${activeCount} active customer(s). Deleting removes it from stock permanently — their links will stop working. Continue?`
     : 'Delete this Netflix account from stock permanently? This cannot be undone.';
   if(!confirm(warn))return;
