@@ -577,6 +577,28 @@ function detectDeviceType(productName) {
 function ensureDataDir() { try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch(e) {} }
 function loadLinks() { try { return JSON.parse(fs.readFileSync(LINKS_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveLinks(links) { ensureDataDir(); fs.writeFileSync(LINKS_FILE, JSON.stringify(links, null, 2)); }
+
+// Serializes read-modify-write cycles on links.json. Without this, two nearly-
+// simultaneous requests (very plausible with many customers loading dashboards
+// at once) can each read the file, make their own change, then save - the
+// second save overwrites the first's changes entirely, since saveLinks writes
+// the WHOLE file, not a merge. This is the likely cause of links intermittently
+// "going invalid" - a change (or the link itself) silently getting lost under
+// real concurrent traffic. mutatorFn receives the freshly-loaded links object,
+// mutates it in place, and its return value (if any) is returned by this call.
+let _linksLockChain = Promise.resolve();
+function updateLinks(mutatorFn) {
+  const run = _linksLockChain.then(() => {
+    const links = loadLinks();
+    const result = mutatorFn(links);
+    saveLinks(links);
+    return result;
+  });
+  // Keep the chain alive even if this particular update throws, so one failure
+  // doesn't permanently jam every future link update behind it.
+  _linksLockChain = run.catch(() => {});
+  return run;
+}
 function loadAnalytics() { try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf8')); } catch(e) { return {}; } }
 function saveAnalytics(data) { ensureDataDir(); fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2)); }
 function loadIPs() { try { return JSON.parse(fs.readFileSync(IP_FILE, 'utf8')); } catch(e) { return {}; } }
@@ -766,6 +788,10 @@ function getNextAvailableSlot(customerDays, deviceType) {
       // Skip accounts with no valid email - assigning one would create a broken
       // link that shows "invalid" to the customer.
       if (!email || !String(email).trim() || !String(email).includes('@')) continue;
+      // Never assign a NEW customer to an account already flagged as
+      // banned/cancelled by Netflix - this was silently missing before, meaning
+      // banned accounts kept receiving new customers.
+      if (account.bannedDetected) continue;
       // Untagged accounts default to mobile for backward compatibility
       const accountType = account.deviceType === 'tv' ? 'tv' : 'mobile';
       if (accountType !== wantType) continue;
@@ -863,7 +889,20 @@ setInterval(checkExpiringLinks, 60*60*1000);
 // Universal renewal reminder via WhatsApp - once daily at 9:30 PM BD time,
 // 2 days before expiry, for ALL active customers regardless of product type.
 // Replaces the old BulkSMS-based reminder system entirely.
+let _renewalRemindersRunning = false;
 async function sendUniversalRenewalReminders() {
+  // Guard against overlapping runs - this function can take several minutes
+  // (15s gap per customer), so if anything ever triggers it twice close
+  // together, this stops a second run from double-processing the same links.
+  if (_renewalRemindersRunning) { console.log('[renewal-reminders] already running, skipping this trigger'); return; }
+  _renewalRemindersRunning = true;
+  try {
+    await _sendUniversalRenewalRemindersInner();
+  } finally {
+    _renewalRemindersRunning = false;
+  }
+}
+async function _sendUniversalRenewalRemindersInner() {
   const now = Date.now();
   // The reminder job runs once a day (9:30 PM BD). If we only caught links with
   // exactly <=2 days left at that moment, links whose expiry falls in the gap between
@@ -912,21 +951,33 @@ async function sendUniversalRenewalReminders() {
   // Send with a 15s gap between each customer - avoids firing many simultaneous
   // requests at Respond.io, which was causing more "queued" (449) responses.
   // Instead of one Telegram per customer, we tally results and send a single summary.
+  // Dedup by phone+product before sending - if a customer somehow ends up with
+  // two active records for the same product (e.g. from a past data issue), this
+  // stops them getting the same reminder twice in one run. A customer with a
+  // genuine combo (e.g. Netflix + Prime) still gets one reminder per product,
+  // since those are different product names, not duplicates.
+  const seenPhoneProduct = new Set();
+  const uniqueDue = dueLinks.filter(({ link, productName }) => {
+    if (!link.phone) return false;
+    const key = `${link.phone.replace(/\D/g,'')}:${productName}`;
+    if (seenPhoneProduct.has(key)) return false;
+    seenPhoneProduct.add(key);
+    return true;
+  });
+
   let sentCount = 0;
   const failedList = [];
-  for (const { link, productName } of dueLinks) {
-    if (link.phone) {
-      const remaining = link.expiresAt - now;
-      const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
-      const ok = await sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft);
-      if (ok) sentCount++;
-      else failedList.push(`${link.customerName||'Customer'} (${link.phone})`);
-      await new Promise(r => setTimeout(r, 15000));
-    }
+  for (const { link, productName } of uniqueDue) {
+    const remaining = link.expiresAt - now;
+    const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
+    const ok = await sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft);
+    if (ok) sentCount++;
+    else failedList.push(`${link.customerName||'Customer'} (${link.phone})`);
+    await new Promise(r => setTimeout(r, 15000));
   }
 
   // One summary Telegram (only if there was anything to send)
-  if (dueLinks.length > 0) {
+  if (uniqueDue.length > 0) {
     let summary = `🔔 <b>Renewal Reminders Sent</b>\n\n✅ Successfully sent to <b>${sentCount}</b> customer(s) today.`;
     if (failedList.length > 0) {
       summary += `\n\n⚠️ <b>Failed (${failedList.length}):</b>\n` + failedList.map(f => `• ${f}`).join('\n') + `\n\nConsider contacting these customers another way.`;
@@ -3192,9 +3243,32 @@ app.post('/api/admin/accounts/:email/toggle', adminAuth, (req, res) => {
   const accounts = loadAccounts();
   const idx = accounts.findIndex(a => a.email === decodeURIComponent(req.params.email));
   if (idx === -1) return res.status(404).json({ success:false, error:'Not found' });
+  const target = decodeURIComponent(req.params.email).trim().toLowerCase();
   accounts[idx].active = !accounts[idx].active;
   saveAccounts(accounts);
-  res.json({ success:true, active: accounts[idx].active });
+
+  let linksAffected = 0;
+  // Turning an account OFF previously only blocked NEW assignments - existing
+  // customers already on that account kept using it indefinitely, which is why
+  // customers could stay tied to an account no longer in active rotation. Now
+  // deactivating also stops their existing links from working, matching what
+  // "turn this account off" should actually mean.
+  if (!accounts[idx].active) {
+    const links = loadLinks();
+    const now = Date.now();
+    for (const token of Object.keys(links)) {
+      if (links[token].email && links[token].email.trim().toLowerCase() === target && links[token].active) {
+        links[token].active = false;
+        links[token].released = true;
+        links[token].recycled = true;
+        links[token].recycledAt = now;
+        links[token].recycledReason = 'account_deactivated';
+        linksAffected++;
+      }
+    }
+    if (linksAffected > 0) saveLinks(links);
+  }
+  res.json({ success:true, active: accounts[idx].active, linksAffected });
 });
 
 app.get('/api/admin/settings', adminAuth, (req, res) => {
@@ -3400,8 +3474,15 @@ app.post('/api/auto-create', async (req, res) => {
     }
 
     const token = generateToken();
-    allLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName:customerName||'', plan:product, amount, orderName, renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
-    saveLinks(allLinks);
+    // FIX: previously saved using `allLinks`, a snapshot taken BEFORE the 20s
+    // wait above - if two auto-create calls landed close together, whichever
+    // saved second would overwrite the file with ITS stale snapshot, silently
+    // erasing the other's brand-new link even after the customer already
+    // received it via WhatsApp. Re-reading fresh + using the atomic lock here
+    // means a concurrent auto-create can no longer wipe this one out.
+    await updateLinks((freshLinks) => {
+      freshLinks[token] = { token, email:slot.email, profile:slot.profile, pin:slot.pin, phone, customerName:customerName||'', plan:product, amount, orderName, renewalCount:0, days:d, createdAt:now, expiresAt:now+d*24*60*60*1000, uses:0, lastUsed:null, active:true, warningSent:false };
+    });
     checkLowStock();
 
     const dashLink = `${SITE_URL}/c/${token}`;
