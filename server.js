@@ -3156,19 +3156,20 @@ app.post('/api/admin/links/:token/clear-outside-bd', adminAuth, (req, res) => {
 
 // Cleanup ALL banned/cancelled accounts in one action - removes each flagged account
 // from accounts.json, recycles its customer links, and suppresses future alerts.
-app.post('/api/admin/accounts/cleanup-banned', adminAuth, (req, res) => {
+// Shared logic - removes every banned-flagged account, recycles their customer
+// links, and suppresses future alerts for them. Used both by the manual admin
+// button and the automatic daily schedule below.
+function cleanupBannedAccounts() {
   const accounts = loadAccounts();
   const banned = accounts.filter(a => a.bannedDetected);
-  if (banned.length === 0) return res.json({ success:true, removed:0, linksAffected:0, message:'No banned accounts found.' });
+  if (banned.length === 0) return { removed:0, linksAffected:0 };
 
   const bannedEmails = new Set(banned.map(a => a.email.trim().toLowerCase()));
   const now = Date.now();
 
-  // Remove banned accounts from the pool
   const remaining = accounts.filter(a => !a.bannedDetected);
   saveAccounts(remaining);
 
-  // Recycle all their customer links
   const links = loadLinks();
   let linksAffected = 0;
   for (const token of Object.keys(links)) {
@@ -3185,12 +3186,17 @@ app.post('/api/admin/accounts/cleanup-banned', adminAuth, (req, res) => {
   if (linksAffected > 0) saveLinks(links);
   try { cache.clear(); } catch(e) {}
 
-  // Suppress future alerts for all of them
   bannedEmails.forEach(em => deletedAccountEmails.add(em));
   persistDeletedEmails();
 
-  sendTelegram(`🧹 <b>Banned Accounts Cleaned Up</b>\n\n🗑 Removed <b>${banned.length}</b> banned account(s)\n🔗 ${linksAffected} customer link(s) recycled\n\nFuture alerts for these accounts are now suppressed.`);
-  res.json({ success:true, removed: banned.length, linksAffected });
+  return { removed: banned.length, linksAffected };
+}
+
+app.post('/api/admin/accounts/cleanup-banned', adminAuth, (req, res) => {
+  const result = cleanupBannedAccounts();
+  if (result.removed === 0) return res.json({ success:true, removed:0, linksAffected:0, message:'No banned accounts found.' });
+  sendTelegram(`🧹 <b>Banned Accounts Cleaned Up</b>\n\n🗑 Removed <b>${result.removed}</b> banned account(s)\n🔗 ${result.linksAffected} customer link(s) recycled\n\nFuture alerts for these accounts are now suppressed.`);
+  res.json({ success:true, ...result });
 });
 
 app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
