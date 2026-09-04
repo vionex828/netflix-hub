@@ -679,6 +679,16 @@ function renewCustomerLink(allLinks, token, days) {
   link.renewalCount = (link.renewalCount || 0) + 1;
 }
 
+// Checks the account behind a link is still present, active, and not banned -
+// used before any auto-renewal so a deleted/deactivated/banned account never
+// gets silently extended forever just because an old link still points to it.
+function isAccountStillValid(email) {
+  if (!email) return false;
+  const accounts = loadAccounts();
+  const acct = accounts.find(a => a.email && a.email.trim().toLowerCase() === email.trim().toLowerCase());
+  return !!(acct && acct.active !== false && !acct.bannedDetected);
+}
+
 function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
 function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } catch(e) { return { autoLink: false }; } }
 function saveSettings(data) { ensureDataDir(); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data,null,2)); }
@@ -951,33 +961,46 @@ async function _sendUniversalRenewalRemindersInner() {
   // Send with a 15s gap between each customer - avoids firing many simultaneous
   // requests at Respond.io, which was causing more "queued" (449) responses.
   // Instead of one Telegram per customer, we tally results and send a single summary.
-  // Dedup by phone+product before sending - if a customer somehow ends up with
-  // two active records for the same product (e.g. from a past data issue), this
-  // stops them getting the same reminder twice in one run. A customer with a
-  // genuine combo (e.g. Netflix + Prime) still gets one reminder per product,
-  // since those are different product names, not duplicates.
-  const seenPhoneProduct = new Set();
-  const uniqueDue = dueLinks.filter(({ link, productName }) => {
-    if (!link.phone) return false;
-    const key = `${link.phone.replace(/\D/g,'')}:${productName}`;
-    if (seenPhoneProduct.has(key)) return false;
-    seenPhoneProduct.add(key);
-    return true;
-  });
+  //
+  // IMPORTANT: a combo purchase (e.g. Netflix + Prime) creates TWO SEPARATE link
+  // records under the hood, each with its own expiry. If both happen to become
+  // due around the same time, sending one message per record means the customer
+  // gets 2-3 separate, confusingly-worded "your account expires" texts with
+  // different day-counts within the same evening. Instead: group everything due
+  // by PHONE NUMBER, and send ONE consolidated message per customer listing all
+  // their due products together, using the soonest expiry as the day-count.
+  const byPhone = new Map();
+  for (const item of dueLinks) {
+    if (!item.link.phone) continue;
+    const key = item.link.phone.replace(/\D/g,'');
+    if (!byPhone.has(key)) byPhone.set(key, { phone:item.link.phone, customerName:item.link.customerName, items:[] });
+    byPhone.get(key).items.push(item);
+  }
+  // Within one customer's group, dedup by product name too (protects against a
+  // genuine duplicate-record data issue producing the exact same product twice).
+  for (const group of byPhone.values()) {
+    const seenProducts = new Set();
+    group.items = group.items.filter(({ productName }) => {
+      if (seenProducts.has(productName)) return false;
+      seenProducts.add(productName);
+      return true;
+    });
+  }
 
   let sentCount = 0;
   const failedList = [];
-  for (const { link, productName } of uniqueDue) {
-    const remaining = link.expiresAt - now;
-    const daysLeft = Math.max(1, Math.ceil(remaining/(24*60*60*1000)));
-    const ok = await sendUniversalRenewalNotice(link.phone, link.customerName, productName, daysLeft);
+  for (const group of byPhone.values()) {
+    const productNames = group.items.map(i => i.productName).join(' & ');
+    const minRemaining = Math.min(...group.items.map(i => i.link.expiresAt - now));
+    const daysLeft = Math.max(1, Math.ceil(minRemaining/(24*60*60*1000)));
+    const ok = await sendUniversalRenewalNotice(group.phone, group.customerName, productNames, daysLeft);
     if (ok) sentCount++;
-    else failedList.push(`${link.customerName||'Customer'} (${link.phone})`);
+    else failedList.push(`${group.customerName||'Customer'} (${group.phone})`);
     await new Promise(r => setTimeout(r, 15000));
   }
 
   // One summary Telegram (only if there was anything to send)
-  if (uniqueDue.length > 0) {
+  if (byPhone.size > 0) {
     let summary = `🔔 <b>Renewal Reminders Sent</b>\n\n✅ Successfully sent to <b>${sentCount}</b> customer(s) today.`;
     if (failedList.length > 0) {
       summary += `\n\n⚠️ <b>Failed (${failedList.length}):</b>\n` + failedList.map(f => `• ${f}`).join('\n') + `\n\nConsider contacting these customers another way.`;
@@ -2284,7 +2307,9 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       return;
     }
 
-    // Renewal check
+    // Renewal check - validates the account is still valid before extending
+    // (see isAccountStillValid) so a deleted/deactivated/banned account never
+    // gets silently renewed forever from this path either.
     const allLinks = loadLinks();
     const now = Date.now();
     const phoneNorm = phone.replace(/\D/g,'');
@@ -2292,15 +2317,21 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
-      for (const el of existingActive) {
-        renewCustomerLink(allLinks, el.token, d);
+      const validLinks = existingActive.filter(el => isAccountStillValid(el.email));
+      const invalidLinks = existingActive.filter(el => !isAccountStillValid(el.email));
+      if (invalidLinks.length > 0) {
+        sendTelegram(`⚠️ <b>Waitlist Renewal Needs Attention — Account Missing/Invalid</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n\n${invalidLinks.map(l=>`• ${l.email||'(no email)'} — /c/${l.token}`).join('\n')}\n\nNOT auto-renewed. Please reassign manually.`);
       }
-      saveLinks(allLinks);
-      waitlist.splice(idx, 1);
-      saveWaitlist(waitlist);
-      const first = existingActive[0];
-      sendTelegram(`🔄 <b>Renewal Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n🔗 Extended ${existingActive.length} link(s) +${d} days`);
-      return res.json({ success:true, renewed:true, token:first.token, link:SITE_URL+'/c/'+first.token });
+      if (validLinks.length > 0) {
+        for (const el of validLinks) renewCustomerLink(allLinks, el.token, d);
+        saveLinks(allLinks);
+        waitlist.splice(idx, 1);
+        saveWaitlist(waitlist);
+        const first = validLinks[0];
+        sendTelegram(`🔄 <b>Renewal Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n🔗 Extended ${validLinks.length} link(s) +${d} days`);
+        return res.json({ success:true, renewed:true, token:first.token, link:SITE_URL+'/c/'+first.token });
+      }
+      // All existing links were invalid - fall through to normal new-assignment
     }
 
     // New customer — get slot (own account first)
@@ -2619,6 +2650,13 @@ app.post('/api/renew/verify-payment', async (req, res) => {
     renewCustomerLink(links, token, renewDays);
     saveLinks(links);
 
+    // Customer already PAID for this - we still extend so they're not left with
+    // nothing despite paying, but flag urgently if the account behind their link
+    // is no longer valid (deleted/deactivated/banned) so it gets manually fixed.
+    if (!isAccountStillValid(link.email)) {
+      sendTelegram(`🚨 <b>URGENT — Paid Renewal on Invalid Account</b>\n\n👤 ${link.customerName || 'Customer'} | 📱 ${link.phone || 'unknown'}\n📧 ${link.email} — this account is no longer in your active list (deleted, deactivated, or banned)\n💰 ৳${verifyData.amount||'?'} was charged and the link WAS extended, but this customer needs to be manually reassigned to a working account ASAP.`);
+    }
+
     sendTelegram(
       `🔄 <b>Auto-Renewed by Customer!</b>\n\n` +
       `👤 ${link.customerName || 'Customer'} | 📱 ${link.phone || 'unknown'}\n` +
@@ -2696,6 +2734,9 @@ app.post('/uddoktapay-ipn', async (req, res) => {
         const renewDays = parseInt(metadata.days) || normalizeDays(days);
         renewCustomerLink(allLinksForToken, metadata.token, renewDays);
         saveLinks(allLinksForToken);
+        if (!isAccountStillValid(targetLink.email)) {
+          sendTelegram(`🚨 <b>URGENT — Paid Renewal on Invalid Account</b>\n\n👤 ${customerName || targetLink.customerName || 'Customer'} | 📱 ${sender_number}\n📧 ${targetLink.email} — no longer in your active list (deleted, deactivated, or banned)\n\nLink WAS extended since payment was received, but this customer needs manual reassignment ASAP.`);
+        }
         sendTelegram(
           `🔄 <b>Auto-Renewed by Customer!</b>\n\n` +
           `👤 ${customerName || targetLink.customerName || 'Customer'} | 📱 ${sender_number}\n` +
@@ -2725,6 +2766,10 @@ app.post('/uddoktapay-ipn', async (req, res) => {
         renewCustomerLink(allLinks, el.token, days);
       }
       saveLinks(allLinks);
+      const invalidOnes = existingActive.filter(el => !isAccountStillValid(el.email));
+      if (invalidOnes.length > 0) {
+        sendTelegram(`🚨 <b>URGENT — Paid Renewal on Invalid Account</b>\n\n👤 ${customerName} | 📱 ${sender_number}\n\n${invalidOnes.map(l=>`• ${l.email||'(no email)'} — /c/${l.token}`).join('\n')}\n\nLink(s) WERE extended since payment was received, but need manual reassignment ASAP.`);
+      }
       sendTelegram(`🔄 <b>Renewal via UddoktaPay!</b>
 👤 ${customerName} | 📱 ${sender_number}
 🔗 Extended ${existingActive.length} link(s) +${days} days`);
@@ -3380,22 +3425,44 @@ app.post('/api/auto-create', async (req, res) => {
     const phoneNorm = phone.replace(/\D/g,'');
     const now = Date.now();
 
-    // Renewal check - if they already have an unreleased link, just extend it
+    // Renewal check - if they already have an unreleased link, just extend it.
+    // FIX: previously this NEVER checked whether the account behind the link
+    // still exists / is still valid in accounts.json - only NEW assignments went
+    // through that check. If an account was ever removed or banned but its
+    // existing customer link wasn't cleaned up alongside it, every future
+    // renewal just kept silently extending that same invisible/banned account
+    // forever. Now: renewal only proceeds automatically if the account is still
+    // present, active, and not banned - otherwise it alerts admin instead of
+    // silently continuing.
     const allLinks = loadLinks();
     const existingActive = Object.values(allLinks).filter(l =>
       l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
-      for (const el of existingActive) renewCustomerLink(allLinks, el.token, d);
-      saveLinks(allLinks);
-      const first = existingActive[0];
-      const dashLink = `${SITE_URL}/c/${first.token}`;
-      sendWhatsAppDelivery(phone, first.email, first.profile, dashLink, customerName).then(sent => {
-        sendTelegram(sent
-          ? `🔄 <b>Auto-Renewed + WhatsApp Sent!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days`
-          : `🔄 <b>Auto-Renewed (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days\n\n❗ Please message manually.`);
-      });
-      return res.json({ success:true, renewed:true, token:first.token });
+      const validLinks = [];
+      const invalidLinks = [];
+      for (const el of existingActive) {
+        if (isAccountStillValid(el.email)) validLinks.push(el);
+        else invalidLinks.push(el);
+      }
+      if (invalidLinks.length > 0) {
+        sendTelegram(`⚠️ <b>Renewal Needs Attention — Account Missing/Invalid</b>\n\n👤 ${customerName||'Customer'} | 📱 ${phone}\n\nThis customer tried to renew, but their account email is no longer in your active list (deleted, deactivated, or banned):\n${invalidLinks.map(l=>`• ${l.email||'(no email)'} — /c/${l.token}`).join('\n')}\n\nThis was NOT auto-renewed. Please reassign this customer to a valid account manually, then renew from Admin.`);
+      }
+      if (validLinks.length > 0) {
+        for (const el of validLinks) renewCustomerLink(allLinks, el.token, d);
+        saveLinks(allLinks);
+        const first = validLinks[0];
+        const dashLink = `${SITE_URL}/c/${first.token}`;
+        sendWhatsAppDelivery(phone, first.email, first.profile, dashLink, customerName).then(sent => {
+          sendTelegram(sent
+            ? `🔄 <b>Auto-Renewed + WhatsApp Sent!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days`
+            : `🔄 <b>Auto-Renewed (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days\n\n❗ Please message manually.`);
+        });
+        return res.json({ success:true, renewed:true, token:first.token });
+      }
+      // Every existing link for this phone was invalid - fall through to normal
+      // new-assignment flow below instead of returning, so they still get served
+      // from a genuinely valid account rather than being stuck with nothing.
     }
 
     // Third-party Netflix renewal check - if this customer is on a third-party account,
