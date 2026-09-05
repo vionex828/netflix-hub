@@ -689,6 +689,17 @@ function isAccountStillValid(email) {
   return !!(acct && acct.active !== false && !acct.bannedDetected);
 }
 
+// Same check, for the streaming-product pools (Prime/HBO/Disney+/ChatGPT/3rd-
+// party Netflix) - these each use a SEPARATE accounts file from the main Netflix
+// list, so isAccountStillValid() above never covered them. This was the exact
+// gap that let a deleted 3rd-party Netflix account keep auto-renewing forever.
+function isStreamingAccountStillValid(type, email) {
+  if (!email || !STREAMING_PRODUCTS[type]) return false;
+  const accounts = loadStreamingAccounts(type);
+  const acct = accounts.find(a => a.email && a.email.trim().toLowerCase() === email.trim().toLowerCase());
+  return !!(acct && acct.active !== false && !acct.bannedDetected);
+}
+
 function saveAccounts(data) { ensureDataDir(); fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(data,null,2)); }
 function loadSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE,'utf8')); } catch(e) { return { autoLink: false }; } }
 function saveSettings(data) { ensureDataDir(); fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data,null,2)); }
@@ -2264,19 +2275,19 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       const phoneNorm2 = phone.replace(/\D/g,'');
       const sLinks = loadStreamingLinks(type);
 
-      // Renewal check within this product's pool
+      // Every purchase gets a fresh slot, never an extension of the old
+      // account - retire any existing link for this phone in this product's
+      // pool first, then always continue to a brand new assignment below.
       const sExisting = Object.values(sLinks).filter(l => l.phone && l.phone.replace(/\D/g,'') === phoneNorm2 && l.active && !l.released);
       if (sExisting.length > 0) {
         for (const el of sExisting) {
-          sLinks[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-          sLinks[el.token].renewalSmsSent = false;
-          sLinks[el.token].renewalCount = (sLinks[el.token].renewalCount||0) + 1;
+          sLinks[el.token].active = false;
+          sLinks[el.token].released = true;
+          sLinks[el.token].recycled = true;
+          sLinks[el.token].recycledAt = now2;
+          sLinks[el.token].recycledReason = 'new_purchase_replaces_old';
         }
         saveStreamingLinks(type, sLinks);
-        waitlist.splice(idx, 1); saveWaitlist(waitlist);
-        const sf = sExisting[0];
-        sendUniversalAccountDelivery(phone, w.customerName, STREAMING_PRODUCTS[type].name, sf.email, sf.password, sf.profile, sf.pin);
-        return res.json({ success:true, renewed:true });
       }
 
       const sSlot = getNextAvailableStreamingSlot(type, d);
@@ -2307,9 +2318,9 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       return;
     }
 
-    // Renewal check - validates the account is still valid before extending
-    // (see isAccountStillValid) so a deleted/deactivated/banned account never
-    // gets silently renewed forever from this path either.
+    // Every purchase gets a fresh slot, never an extension of the old account -
+    // retire any existing link for this phone first, then always continue to a
+    // brand new assignment below.
     const allLinks = loadLinks();
     const now = Date.now();
     const phoneNorm = phone.replace(/\D/g,'');
@@ -2317,22 +2328,16 @@ app.post('/api/admin/waitlist/approve/:phone', adminAuth, async (req, res) => {
       l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
-      const validLinks = existingActive.filter(el => isAccountStillValid(el.email));
-      const invalidLinks = existingActive.filter(el => !isAccountStillValid(el.email));
-      if (invalidLinks.length > 0) {
-        sendTelegram(`⚠️ <b>Waitlist Renewal Needs Attention — Account Missing/Invalid</b>\n\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n\n${invalidLinks.map(l=>`• ${l.email||'(no email)'} — /c/${l.token}`).join('\n')}\n\nNOT auto-renewed. Please reassign manually.`);
+      for (const el of existingActive) {
+        allLinks[el.token].active = false;
+        allLinks[el.token].released = true;
+        allLinks[el.token].recycled = true;
+        allLinks[el.token].recycledAt = now;
+        allLinks[el.token].recycledReason = 'new_purchase_replaces_old';
       }
-      if (validLinks.length > 0) {
-        for (const el of validLinks) renewCustomerLink(allLinks, el.token, d);
-        saveLinks(allLinks);
-        waitlist.splice(idx, 1);
-        saveWaitlist(waitlist);
-        const first = validLinks[0];
-        sendTelegram(`🔄 <b>Renewal Approved!</b>\n👤 ${w.customerName||'Customer'} | 📱 ${phone}\n🔗 Extended ${validLinks.length} link(s) +${d} days`);
-        return res.json({ success:true, renewed:true, token:first.token, link:SITE_URL+'/c/'+first.token });
-      }
-      // All existing links were invalid - fall through to normal new-assignment
+      saveLinks(allLinks);
     }
+
 
     // New customer — get slot (own account first)
     const slot = getNextAvailableSlot(d, detectDeviceType(w.product));
@@ -3210,21 +3215,18 @@ function cleanupBannedAccounts() {
   if (banned.length === 0) return { removed:0, linksAffected:0 };
 
   const bannedEmails = new Set(banned.map(a => a.email.trim().toLowerCase()));
-  const now = Date.now();
 
   const remaining = accounts.filter(a => !a.bannedDetected);
   saveAccounts(remaining);
 
+  // TRUE hard delete, matching the single-account delete endpoint - links are
+  // removed entirely, not soft-recycled. No recovery once cleaned up.
   const links = loadLinks();
   let linksAffected = 0;
   for (const token of Object.keys(links)) {
     const em = (links[token].email || '').trim().toLowerCase();
     if (bannedEmails.has(em)) {
-      links[token].active = false;
-      links[token].released = true;
-      links[token].recycled = true;
-      links[token].recycledAt = now;
-      links[token].recycledReason = 'account_banned_cleanup';
+      delete links[token];
       linksAffected++;
     }
   }
@@ -3255,17 +3257,14 @@ app.delete('/api/admin/accounts/:email', adminAuth, (req, res) => {
   if (filtered.length === accounts.length) return res.status(404).json({ success:false, error:'Account not found' });
   saveAccounts(filtered);
 
-  // Also deactivate every customer link tied to this account so /c/token stops working
-  // (previously links stayed live after the account was deleted). We move them to the
-  // Recycle Bin (recycled) rather than hard-deleting, so it can be undone if needed.
+  // TRUE hard delete, per explicit instruction: "delete mean no data recover".
+  // Every customer link tied to this account is REMOVED ENTIRELY from links.json
+  // (not soft-recycled/marked inactive) - there is no Recycle Bin state for this
+  // action, no way to restore it afterward. This is deliberately permanent.
   let linksAffected = 0;
   for (const token of Object.keys(links)) {
     if (links[token].email && links[token].email.trim().toLowerCase() === target) {
-      links[token].active = false;
-      links[token].released = true;
-      links[token].recycled = true;
-      links[token].recycledAt = now;
-      links[token].recycledReason = 'account_deleted';
+      delete links[token];
       linksAffected++;
     }
   }
@@ -3348,24 +3347,22 @@ app.post('/api/streaming/auto-create', async (req, res) => {
     const links = loadStreamingLinks(type);
     const phoneNorm = phone.replace(/\D/g,'');
 
-    // Renewal check - if existing active link found, extend it
+    // Every purchase gets a fresh slot, never an extension of the old account -
+    // retire any existing link for this phone in this product, then always
+    // continue to a brand new assignment below. This is the exact path that
+    // sent "Renewed + Re-Delivered (PRIME)!" on a deleted account before.
     const existingActive = Object.values(links).filter(l =>
       l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
     );
     if (existingActive.length > 0) {
       for (const el of existingActive) {
-        links[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-        links[el.token].renewalSmsSent = false;
-        links[el.token].renewalCount = (links[el.token].renewalCount||0) + 1;
+        links[el.token].active = false;
+        links[el.token].released = true;
+        links[el.token].recycled = true;
+        links[el.token].recycledAt = now;
+        links[el.token].recycledReason = 'new_purchase_replaces_old';
       }
       saveStreamingLinks(type, links);
-      const first = existingActive[0];
-      sendUniversalAccountDelivery(phone, customerName, STREAMING_PRODUCTS[type].name, first.email, first.password, first.profile, first.pin).then(sent => {
-        sendTelegram(sent
-          ? `🔄 <b>Renewed + Re-Delivered (${type.toUpperCase()})!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ Extended +${d} days`
-          : `🔄 <b>Renewed (${type.toUpperCase()}) — WhatsApp Failed!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n❗ Please message manually.`);
-      });
-      return res.json({ success:true, renewed:true });
     }
 
     // New customer - try to assign a slot
@@ -3425,67 +3422,42 @@ app.post('/api/auto-create', async (req, res) => {
     const phoneNorm = phone.replace(/\D/g,'');
     const now = Date.now();
 
-    // Renewal check - if they already have an unreleased link, just extend it.
-    // FIX: previously this NEVER checked whether the account behind the link
-    // still exists / is still valid in accounts.json - only NEW assignments went
-    // through that check. If an account was ever removed or banned but its
-    // existing customer link wasn't cleaned up alongside it, every future
-    // renewal just kept silently extending that same invisible/banned account
-    // forever. Now: renewal only proceeds automatically if the account is still
-    // present, active, and not banned - otherwise it alerts admin instead of
-    // silently continuing.
+    // Every purchase is treated as a brand NEW assignment, never a renewal that
+    // extends an existing account - per explicit instruction: "new purchase
+    // doesn't mean renew". If this phone already has an active link (main
+    // Netflix or 3rd-party Netflix), it's retired now and a completely fresh
+    // slot gets assigned below - the customer never keeps the same account
+    // across separate purchases.
     const allLinks = loadLinks();
-    const existingActive = Object.values(allLinks).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
-    );
-    if (existingActive.length > 0) {
-      const validLinks = [];
-      const invalidLinks = [];
-      for (const el of existingActive) {
-        if (isAccountStillValid(el.email)) validLinks.push(el);
-        else invalidLinks.push(el);
+    const retiredNow = Date.now();
+    let retiredAny = false;
+    for (const token of Object.keys(allLinks)) {
+      const l = allLinks[token];
+      if (l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released) {
+        l.active = false;
+        l.released = true;
+        l.recycled = true;
+        l.recycledAt = retiredNow;
+        l.recycledReason = 'new_purchase_replaces_old';
+        retiredAny = true;
       }
-      if (invalidLinks.length > 0) {
-        sendTelegram(`⚠️ <b>Renewal Needs Attention — Account Missing/Invalid</b>\n\n👤 ${customerName||'Customer'} | 📱 ${phone}\n\nThis customer tried to renew, but their account email is no longer in your active list (deleted, deactivated, or banned):\n${invalidLinks.map(l=>`• ${l.email||'(no email)'} — /c/${l.token}`).join('\n')}\n\nThis was NOT auto-renewed. Please reassign this customer to a valid account manually, then renew from Admin.`);
-      }
-      if (validLinks.length > 0) {
-        for (const el of validLinks) renewCustomerLink(allLinks, el.token, d);
-        saveLinks(allLinks);
-        const first = validLinks[0];
-        const dashLink = `${SITE_URL}/c/${first.token}`;
-        sendWhatsAppDelivery(phone, first.email, first.profile, dashLink, customerName).then(sent => {
-          sendTelegram(sent
-            ? `🔄 <b>Auto-Renewed + WhatsApp Sent!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days`
-            : `🔄 <b>Auto-Renewed (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n🔗 Extended +${d} days\n\n❗ Please message manually.`);
-        });
-        return res.json({ success:true, renewed:true, token:first.token });
-      }
-      // Every existing link for this phone was invalid - fall through to normal
-      // new-assignment flow below instead of returning, so they still get served
-      // from a genuinely valid account rather than being stuck with nothing.
     }
+    if (retiredAny) saveLinks(allLinks);
 
-    // Third-party Netflix renewal check - if this customer is on a third-party account,
-    // extend that instead of assigning them a new slot.
     const tpLinksAll = loadStreamingLinks('netflix3p');
-    const tpExisting = Object.values(tpLinksAll).filter(l =>
-      l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released
-    );
-    if (tpExisting.length > 0) {
-      for (const el of tpExisting) {
-        tpLinksAll[el.token].expiresAt += d * 24 * 60 * 60 * 1000;
-        tpLinksAll[el.token].renewalSmsSent = false;
-        tpLinksAll[el.token].renewalCount = (tpLinksAll[el.token].renewalCount||0) + 1;
+    let tpRetiredAny = false;
+    for (const token of Object.keys(tpLinksAll)) {
+      const l = tpLinksAll[token];
+      if (l.phone && l.phone.replace(/\D/g,'') === phoneNorm && l.active && !l.released) {
+        l.active = false;
+        l.released = true;
+        l.recycled = true;
+        l.recycledAt = retiredNow;
+        l.recycledReason = 'new_purchase_replaces_old';
+        tpRetiredAny = true;
       }
-      saveStreamingLinks('netflix3p', tpLinksAll);
-      const tf = tpExisting[0];
-      sendUniversalAccountDelivery(phone, customerName, 'Netflix Account', tf.email, tf.password, tf.profile, tf.pin).then(sent => {
-        sendTelegram(sent
-          ? `🔄 <b>Auto-Renewed (Netflix 3rd-Party)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ Extended +${d} days`
-          : `🔄 <b>Renewed 3rd-Party (WhatsApp Failed)!</b>\n👤 ${customerName||'Customer'} | 📱 ${phone}\n⏳ +${d} days\n\n❗ Please message manually.`);
-      });
-      return res.json({ success:true, renewed:true, thirdParty:true });
     }
+    if (tpRetiredAny) saveStreamingLinks('netflix3p', tpLinksAll);
 
     // EPS bot already sent order_confirmation before calling this endpoint.
     // Wait 20s before attempting delivery, spacing the two WhatsApp messages out.
